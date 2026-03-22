@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  #root {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    text-align: left;
+    border: none;
+  }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background-color: #f9f4ee;
+    color: #12111a;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm transition-all duration-300 whitespace-nowrap;
+  }
+  .btn-gold {
+    @apply bg-gold text-dark hover:bg-gold-light hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(244,168,40,0.4)];
+  }
+  .btn-outline {
+    @apply bg-transparent text-white border-2 border-white/50 hover:border-white hover:bg-white/10 hover:-translate-y-0.5;
+  }
+  .btn-dark {
+    @apply bg-dark text-white hover:bg-dark2 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)];
+  }
+
+  .section-label {
+    @apply text-gold text-xs font-semibold tracking-[0.18em] uppercase mb-3 block;
+  }
+  .section-title {
+    @apply font-serif text-[clamp(2rem,4vw,3rem)] font-bold leading-tight;
+  }
+  .section-title em {
+    @apply italic text-gold not-italic;
+    font-style: italic !important;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_16px_48px_rgba(0,0,0,0.15)];
+  }
+}
+
+@layer utilities {
+  .font-serif-italic {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-style: italic;
+  }
+  .zellige-pattern {
+    background-image:
+      repeating-linear-gradient(45deg, rgba(244,168,40,0.035) 0, rgba(244,168,40,0.035) 1px, transparent 0, transparent 50%),
+      repeating-linear-gradient(-45deg, rgba(244,168,40,0.035) 0, rgba(244,168,40,0.035) 1px, transparent 0, transparent 50%);
+    background-size: 40px 40px;
+  }
+  .vendor-zellige {
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0, rgba(255,255,255,0.04) 1px, transparent 0, transparent 50%),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.04) 0, rgba(255,255,255,0.04) 1px, transparent 0, transparent 50%);
+    background-size: 30px 30px;
+  }
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #f4a828, #c8841a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* Scrollbar hide for filter tabs */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
