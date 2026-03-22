@@ -1,12 +1,8 @@
+import { useState, useEffect } from 'react'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import SectionHeader from '../components/ui/SectionHeader'
+import { supabase } from '../lib/supabase'
 import { Globe, Users, ShieldCheck, Heart } from 'lucide-react'
-
-const TEAM = [
-  { initials: 'YB', name: 'Youssef Benali', role: 'Co-fondateur & CEO', origin: '🇲🇦 Casablanca', bg: 'linear-gradient(135deg,#f4a828,#c8841a)' },
-  { initials: 'AS', name: 'Aminata Sow',    role: 'Co-fondatrice & Head of Community', origin: '🇸🇳 Dakar → Casablanca', bg: 'linear-gradient(135deg,#e8521a,#f4a828)' },
-  { initials: 'WZ', name: 'Wei Zhang',      role: 'CTO',                origin: '🇨🇳 Shanghai → Marrakech',  bg: 'linear-gradient(135deg,#b71c1c,#e53935)' },
-]
 
 const VALUES = [
   { Icon: Globe,       title: 'Multiculturalisme',    desc: 'Nous croyons que la diversité culturelle est une richesse. DiaTable célèbre chaque communauté et chaque saveur.' },
@@ -17,6 +13,21 @@ const VALUES = [
 
 export default function About() {
   const ref = useScrollReveal()
+  const [team, setTeam]       = useState([])
+  const [teamLoading, setTeamLoading] = useState(true)
+
+  useEffect(() => {
+    if (!supabase) { setTeamLoading(false); return }
+    supabase
+      .from('team')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order')
+      .then(({ data }) => {
+        if (data?.length) setTeam(data)
+        setTeamLoading(false)
+      })
+  }, [])
 
   return (
     <div ref={ref}>
@@ -94,18 +105,29 @@ export default function About() {
       <section className="bg-cream py-24">
         <div className="max-w-5xl mx-auto px-6" ref={useScrollReveal()}>
           <SectionHeader label="Les Fondateurs" title="L'équipe <em>DiaTable</em>" />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-            {TEAM.map((m, i) => (
-              <div key={m.name} data-reveal data-delay={`${i * 0.12}s`}
-                className="bg-white rounded-2xl p-7 shadow-sm border border-black/[0.05] text-center hover:-translate-y-1 hover:shadow-md transition-all duration-300">
-                <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center font-serif text-xl font-black text-dark"
-                  style={{ background: m.bg }}>{m.initials}</div>
-                <h3 className="font-serif font-bold text-dark text-lg">{m.name}</h3>
-                <p className="text-gold text-xs font-semibold mt-1">{m.role}</p>
-                <p className="text-muted text-xs mt-2">{m.origin}</p>
-              </div>
-            ))}
-          </div>
+          {teamLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-10 h-10 rounded-full border-4 border-gold/30 border-t-gold animate-spin" />
+            </div>
+          ) : team.length === 0 ? (
+            <p className="text-center text-muted py-12">Aucun membre d'équipe pour le moment.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {team.map((m, i) => (
+                <div key={m.id} data-reveal data-delay={`${i * 0.12}s`}
+                  className="bg-white rounded-2xl p-7 shadow-sm border border-black/[0.05] text-center hover:-translate-y-1 hover:shadow-md transition-all duration-300">
+                  <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center font-serif text-xl font-black text-dark"
+                    style={{ background: m.avatar_bg || 'linear-gradient(135deg,#f4a828,#c8841a)' }}>
+                    {m.initials}
+                  </div>
+                  <h3 className="font-serif font-bold text-dark text-lg">{m.name}</h3>
+                  <p className="text-gold text-xs font-semibold mt-1">{m.role}</p>
+                  <p className="text-muted text-xs mt-2">{m.origin}</p>
+                  {m.bio && <p className="text-dark/60 text-xs mt-3 leading-relaxed">{m.bio}</p>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

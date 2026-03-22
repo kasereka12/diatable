@@ -1,25 +1,56 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useScrollReveal } from '../hooks/useScrollReveal'
-import SectionHeader from '../components/ui/SectionHeader'
-import { ChevronRight } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { getCuisineIcon } from '../lib/cuisineIcons'
+import { ChevronRight, Utensils } from 'lucide-react'
 
-const ALL_CUISINES = [
-  { id: 'senegalaise', flag: '🇸🇳', country: 'Sénégal',    label: 'Sénégalaise',  dish: 'Thiéboudienne', vendors: 12, bg: 'linear-gradient(135deg,#e8521a,#f4a828)' },
-  { id: 'libanaise',   flag: '🇱🇧', country: 'Liban',      label: 'Libanaise',    dish: 'Mezze',         vendors: 9,  bg: 'linear-gradient(135deg,#1b5e20,#43a047)' },
-  { id: 'chinoise',    flag: '🇨🇳', country: 'Chine',      label: 'Chinoise',     dish: 'Dim Sum',       vendors: 7,  bg: 'linear-gradient(135deg,#b71c1c,#e53935)' },
-  { id: 'syrienne',    flag: '🇸🇾', country: 'Syrie',      label: 'Syrienne',     dish: 'Shawarma',      vendors: 11, bg: 'linear-gradient(135deg,#4a148c,#7b1fa2)' },
-  { id: 'francaise',   flag: '🇫🇷', country: 'France',     label: 'Française',    dish: 'Croissants',    vendors: 6,  bg: 'linear-gradient(135deg,#0d47a1,#1565c0)' },
-  { id: 'italienne',   flag: '🇮🇹', country: 'Italie',     label: 'Italienne',    dish: 'Pasta',         vendors: 5,  bg: 'linear-gradient(135deg,#c62828,#1b5e20)' },
-  { id: 'nigeriane',   flag: '🇳🇬', country: 'Nigéria',    label: 'Nigériane',    dish: 'Jollof Rice',   vendors: 8,  bg: 'linear-gradient(135deg,#1b5e20,#f9a825)' },
-  { id: 'indienne',    flag: '🇮🇳', country: 'Inde',       label: 'Indienne',     dish: 'Curry',         vendors: 10, bg: 'linear-gradient(135deg,#e65100,#fbc02d)' },
-  { id: 'bresilienne', flag: '🇧🇷', country: 'Brésil',     label: 'Brésilienne',  dish: 'Feijoada',      vendors: 4,  bg: 'linear-gradient(135deg,#1b5e20,#0d47a1)' },
-  { id: 'ivoirienne',  flag: '🇨🇮', country: 'Côte d\'Ivoire', label: 'Ivoirienne', dish: 'Alloco',      vendors: 3,  bg: 'linear-gradient(135deg,#e65100,#f4a828)' },
-  { id: 'marocaine',   flag: '🇲🇦', country: 'Maroc',      label: 'Marocaine',    dish: 'Tajine',        vendors: 15, bg: 'linear-gradient(135deg,#b71c1c,#f4a828)' },
-  { id: 'turque',      flag: '🇹🇷', country: 'Turquie',    label: 'Turque',       dish: 'Kebab',         vendors: 6,  bg: 'linear-gradient(135deg,#b71c1c,#e53935)' },
-]
+// Visual mapping — UI-only, not stored in DB
+const CUISINE_META = {
+  senegalaise: { bg: 'linear-gradient(135deg,#e8521a,#f4a828)',  dish: 'Thiéboudienne' },
+  libanaise:   { bg: 'linear-gradient(135deg,#1b5e20,#43a047)',  dish: 'Mezze' },
+  chinoise:    { bg: 'linear-gradient(135deg,#b71c1c,#e53935)',  dish: 'Dim Sum' },
+  syrienne:    { bg: 'linear-gradient(135deg,#4a148c,#7b1fa2)',  dish: 'Shawarma' },
+  francaise:   { bg: 'linear-gradient(135deg,#0d47a1,#1565c0)',  dish: 'Croissants' },
+  italienne:   { bg: 'linear-gradient(135deg,#c62828,#1b5e20)',  dish: 'Pasta' },
+  nigeriane:   { bg: 'linear-gradient(135deg,#1b5e20,#f9a825)',  dish: 'Jollof Rice' },
+  indienne:    { bg: 'linear-gradient(135deg,#e65100,#fbc02d)',  dish: 'Curry' },
+  bresilienne: { bg: 'linear-gradient(135deg,#1b5e20,#0d47a1)',  dish: 'Feijoada' },
+  ivoirienne:  { bg: 'linear-gradient(135deg,#e65100,#f4a828)',  dish: 'Alloco' },
+  marocaine:   { bg: 'linear-gradient(135deg,#b71c1c,#f4a828)',  dish: 'Tajine' },
+  turque:      { bg: 'linear-gradient(135deg,#b71c1c,#e53935)',  dish: 'Kebab' },
+}
 
 export default function Cuisines() {
   const ref = useScrollReveal()
+  const [cuisines, setCuisines] = useState([])
+  const [loading,  setLoading]  = useState(true)
+
+  useEffect(() => {
+    if (!supabase) { setLoading(false); return }
+
+    supabase
+      .from('restaurants')
+      .select('cuisine, cuisine_label, flag')
+      .eq('is_active', true)
+      .then(({ data, error }) => {
+        if (error || !data?.length) { setLoading(false); return }
+
+        // Group by cuisine and count vendors
+        const map = {}
+        data.forEach(r => {
+          if (!map[r.cuisine]) {
+            map[r.cuisine] = { id: r.cuisine, label: r.cuisine_label, flag: r.flag, vendors: 0 }
+          }
+          map[r.cuisine].vendors++
+        })
+
+        setCuisines(
+          Object.values(map).sort((a, b) => b.vendors - a.vendors)
+        )
+        setLoading(false)
+      })
+  }, [])
 
   return (
     <div className="bg-cream min-h-screen" ref={ref}>
@@ -33,49 +64,62 @@ export default function Cuisines() {
             Toutes les <em className="text-gold italic">Cuisines</em>
           </h1>
           <p className="text-light/70" data-reveal data-delay="0.2s">
-            {ALL_CUISINES.length} cuisines du monde entier, représentées par la diaspora au Maroc
+            {loading ? '…' : cuisines.length} cuisines du monde entier, représentées par la diaspora au Maroc
           </p>
         </div>
       </div>
 
       {/* Grid */}
       <div className="max-w-6xl mx-auto px-6 py-16">
-        <SectionHeader label="Toutes les cuisines" title="Choisissez votre <em>Saveur</em>" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-          {ALL_CUISINES.map((c, i) => (
-            <Link
-              key={c.id}
-              to={`/restaurants?cuisine=${c.id}`}
-              data-reveal data-delay={`${(i % 4) * 0.07}s`}
-              className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-black/[0.05]
-                         hover:-translate-y-1.5 hover:shadow-[0_12px_36px_rgba(0,0,0,0.12)] transition-all duration-300"
-            >
-              {/* Image area */}
-              <div className="h-28 relative" style={{ background: c.bg }}>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-5xl filter drop-shadow-lg">{c.flag}</span>
-                </div>
-              </div>
-              {/* Info */}
-              <div className="p-4">
-                <h3 className="font-serif font-bold text-dark text-base leading-tight">{c.label}</h3>
-                <p className="text-muted text-xs mt-0.5">{c.dish}</p>
-                <div className="flex items-center justify-between mt-3">
-                  <span className="text-[0.7rem] bg-gold/10 text-gold-dark font-semibold px-2.5 py-0.5 rounded-full">
-                    {c.vendors} vendeurs
-                  </span>
-                  <span className="text-gold text-xs font-semibold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
-                    Voir <ChevronRight size={14} />
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex justify-center py-24">
+            <div className="w-10 h-10 rounded-full border-4 border-gold/30 border-t-gold animate-spin" />
+          </div>
+        ) : cuisines.length === 0 ? (
+          <div className="text-center py-24">
+            <Utensils size={48} className="text-gold mx-auto mb-4" />
+            <p className="text-muted">Aucune cuisine disponible pour le moment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+            {cuisines.map((c, i) => {
+              const meta = CUISINE_META[c.id] || { bg: 'linear-gradient(135deg,#1a1a2e,#f4a828)', dish: '' }
+              const Icon = getCuisineIcon(c.id)
+              return (
+                <Link
+                  key={c.id}
+                  to={`/restaurants?cuisine=${c.id}`}
+                  data-reveal data-delay={`${(i % 4) * 0.07}s`}
+                  className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-black/[0.05]
+                             hover:-translate-y-1.5 hover:shadow-[0_12px_36px_rgba(0,0,0,0.12)] transition-all duration-300"
+                >
+                  <div className="h-28 relative" style={{ background: meta.bg }}>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Icon size={48} className="text-white/80 drop-shadow-lg" />
+                    </div>
+                    <div className="absolute top-2.5 right-3 text-xl">{c.flag}</div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-serif font-bold text-dark text-base leading-tight">{c.label}</h3>
+                    <p className="text-muted text-xs mt-0.5">{meta.dish}</p>
+                    <div className="flex items-center justify-between mt-3">
+                      <span className="text-[0.7rem] bg-gold/10 text-gold-dark font-semibold px-2.5 py-0.5 rounded-full">
+                        {c.vendors} vendeur{c.vendors > 1 ? 's' : ''}
+                      </span>
+                      <span className="text-gold text-xs font-semibold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                        Voir <ChevronRight size={14} />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* CTA */}
-      <div className="bg-dark2 py-16 text-center" ref={useScrollReveal()}>
+      <div className="bg-dark2 py-16 text-center">
         <div className="max-w-xl mx-auto px-6" data-reveal>
           <h2 className="font-serif text-2xl font-bold text-white mb-3">
             Votre cuisine n'est pas listée ?

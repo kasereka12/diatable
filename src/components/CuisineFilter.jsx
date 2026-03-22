@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { useRestaurants } from '../hooks/useRestaurants'
 import { TABS } from '../data/restaurants'
@@ -24,21 +25,27 @@ function RestaurantCard({ r, delay = '0s' }) {
   const CuisineIcon = getCuisineIcon(r.cuisine)
 
   return (
-    <div
+    <Link
+      to={`/restaurants/${r.id}`}
       data-reveal
       data-delay={delay}
       className="bg-white rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.10)]
-                 border border-black/5 transition-all duration-300
+                 border border-black/5 transition-all duration-300 block
                  hover:-translate-y-1.5 hover:shadow-[0_16px_48px_rgba(0,0,0,0.15)]"
     >
       {/* Card image */}
       <div
-        className="h-44 relative"
-        style={{ background: GRAD_STYLES[r.gradient] }}
+        className="h-44 relative overflow-hidden"
+        style={!r.image_url ? { background: GRAD_STYLES[r.gradient] } : {}}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-lg">
-          <CuisineIcon size={52} className="text-white/90" />
-        </div>
+        {r.image_url ? (
+          <img src={r.image_url} alt={r.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-lg">
+            <CuisineIcon size={52} className="text-white/90" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
         <div
           className="absolute top-3 left-3 bg-dark/75 backdrop-blur-sm text-white
                      text-[0.72rem] font-semibold px-3 py-1 rounded-full flex items-center gap-1.5"
@@ -56,22 +63,24 @@ function RestaurantCard({ r, delay = '0s' }) {
           <span className="text-muted text-xs flex items-center gap-1">
             <MapPin size={12} /> {r.location}
           </span>
-          <span className="flex items-center gap-1 text-xs font-semibold text-dark">
-            <StarRating rating={r.rating} />
-            {r.rating}
-            <span className="text-muted font-normal">({r.reviews})</span>
-          </span>
+          {r.reviews > 0 ? (
+            <span className="flex items-center gap-1 text-xs font-semibold text-dark">
+              <StarRating rating={r.rating} />
+              {r.rating}
+              <span className="text-muted font-normal">({r.reviews})</span>
+            </span>
+          ) : (
+            <span className="text-xs text-muted italic">Aucun avis</span>
+          )}
         </div>
-        <button
-          className="w-full py-2.5 rounded-lg text-sm font-semibold border-2 border-gold
+        <div className="w-full py-2.5 rounded-lg text-sm font-semibold border-2 border-gold
                      text-gold-dark bg-transparent transition-all duration-200
-                     hover:bg-gold hover:text-dark hover:border-gold
-                     flex items-center justify-center gap-1.5"
-        >
-          Voir le Menu <ArrowRight size={14} />
-        </button>
+                     group-hover:bg-gold group-hover:text-dark
+                     flex items-center justify-center gap-1.5">
+          Voir le profil <ArrowRight size={14} />
+        </div>
       </div>
-    </div>
+    </Link>
   )
 }
 

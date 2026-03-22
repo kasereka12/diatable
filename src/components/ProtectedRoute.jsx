@@ -5,7 +5,7 @@ export default function ProtectedRoute({ children, requireVendor = false }) {
   const { user, isVendor, loading } = useAuth()
   const location = useLocation()
 
-  if (loading) {
+  if (loading || (user && isVendor === undefined)) {
     return (
       <div className="min-h-screen bg-dark flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">

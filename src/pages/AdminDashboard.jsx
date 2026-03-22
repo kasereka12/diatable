@@ -1,798 +1,1382 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import DashboardTopbar from '../components/DashboardTopbar'
 import {
-  LayoutDashboard, Users, Store, Star, Flag, Settings,
-  LogOut, Menu, Eye, Ban, CheckCircle, XCircle, Trash2,
-  Search, ChevronLeft, ChevronRight, Bell, TrendingUp,
-  AlertTriangle, UserPlus, MessageSquare
+  LayoutDashboard, Users, Store, ImageIcon, Users2, LogOut,
+  Plus, Pencil, Trash2, CheckCircle, XCircle, Search,
+  Globe, ShieldCheck, AlertCircle, RefreshCw, Menu, X, ChevronLeft,
+  Phone, MessageCircle, Instagram, Clock, MapPin, Utensils, Eye, ChevronRight
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
-// ─── Sample data ──────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const GLOBAL_KPIS = [
-  { label: "Total utilisateurs",  value: "1 247", icon: Users,         color: "bg-blue-50 text-blue-600"   },
-  { label: "Vendeurs actifs",     value: "203",   icon: Store,         color: "bg-green-50 text-green-600" },
-  { label: "Restaurants listés",  value: "198",   icon: Store,         color: "bg-yellow-50 text-yellow-600" },
-  { label: "Avis publiés",        value: "4 821", icon: Star,          color: "bg-purple-50 text-purple-600" },
-  { label: "Villes couvertes",    value: "8",     icon: TrendingUp,    color: "bg-pink-50 text-pink-600"   },
-  { label: "Cuisines",            value: "30+",   icon: MessageSquare, color: "bg-orange-50 text-orange-600" },
-]
+function Spinner() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="w-8 h-8 rounded-full border-4 border-[#f4a828]/30 border-t-[#f4a828] animate-spin" />
+    </div>
+  )
+}
 
-const RECENT_ACTIVITY = [
-  { event: "Inscription vendeur",    user: "Moussa Diallo",     date: "21 mars 2026 09:14", statut: "nouveau",    color: "bg-blue-100 text-blue-700"   },
-  { event: "Nouveau restaurant",     user: "Lina El Amrani",    date: "21 mars 2026 08:52", statut: "en attente", color: "bg-yellow-100 text-yellow-700" },
-  { event: "Avis publié",            user: "Fatima Ouyahia",    date: "20 mars 2026 23:30", statut: "publié",     color: "bg-green-100 text-green-700"  },
-  { event: "Signalement",            user: "Ahmed Bencherif",   date: "20 mars 2026 18:07", statut: "urgent",     color: "bg-red-100 text-red-700"     },
-  { event: "Inscription client",     user: "Nadia Coulibaly",   date: "20 mars 2026 15:44", statut: "nouveau",    color: "bg-blue-100 text-blue-700"   },
-  { event: "Restauration profil",    user: "Karim Touré",       date: "20 mars 2026 14:20", statut: "traité",     color: "bg-gray-100 text-gray-600"   },
-  { event: "Nouveau restaurant",     user: "Sara Benjelloun",   date: "19 mars 2026 11:10", statut: "vérifié",    color: "bg-green-100 text-green-700"  },
-  { event: "Avis signalé",           user: "Youssef El Fassi",  date: "19 mars 2026 09:05", statut: "en attente", color: "bg-yellow-100 text-yellow-700" },
-]
+function ErrorMsg({ msg }) {
+  return (
+    <div className="flex items-center gap-2 bg-red-900/30 border border-red-500/40 text-red-300 rounded-lg px-4 py-3 text-sm">
+      <AlertCircle className="w-4 h-4 shrink-0" />
+      {msg}
+    </div>
+  )
+}
 
-const PENDING_RESTAURANTS = [
-  {
-    id: 1,
-    nom: "Le Baobab Doré",
-    cuisine: "Afrique de l'Ouest",
-    ville: "Casablanca",
-    owner: "Moussa Diallo",
-    gradient: "from-yellow-400 to-orange-500",
-  },
-  {
-    id: 2,
-    nom: "Saveurs du Nil",
-    cuisine: "Cuisine égyptienne",
-    ville: "Rabat",
-    owner: "Hana Ibrahim",
-    gradient: "from-blue-400 to-indigo-500",
-  },
-  {
-    id: 3,
-    nom: "Chez Mamadou",
-    cuisine: "Sénégalaise",
-    ville: "Marrakech",
-    owner: "Mamadou Balde",
-    gradient: "from-green-400 to-teal-500",
-  },
-]
+function EmptyState({ text }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-[#8892a4] gap-2">
+      <AlertCircle className="w-8 h-8 opacity-40" />
+      <p className="text-sm">{text}</p>
+    </div>
+  )
+}
 
-const USERS_DATA = [
-  { id: 1, nom: "Fatima Ouyahia",   email: "f.ouyahia@email.com",   role: "client",  ville: "Casablanca",  inscrit: "12 jan 2026", statut: "actif"    },
-  { id: 2, nom: "Moussa Diallo",    email: "m.diallo@email.com",    role: "vendor",  ville: "Casablanca",  inscrit: "5 fév 2026",  statut: "actif"    },
-  { id: 3, nom: "Lina El Amrani",   email: "l.amrani@email.com",    role: "vendor",  ville: "Rabat",       inscrit: "18 jan 2026", statut: "actif"    },
-  { id: 4, nom: "Ahmed Bencherif",  email: "a.bencherif@email.com", role: "client",  ville: "Fès",         inscrit: "2 mar 2026",  statut: "suspendu" },
-  { id: 5, nom: "Nadia Coulibaly",  email: "n.coulibaly@email.com", role: "client",  ville: "Marrakech",   inscrit: "8 mar 2026",  statut: "actif"    },
-  { id: 6, nom: "Karim Touré",      email: "k.toure@email.com",     role: "vendor",  ville: "Tanger",      inscrit: "15 fév 2026", statut: "actif"    },
-  { id: 7, nom: "Sara Benjelloun",  email: "s.benjelloun@email.com",role: "vendor",  ville: "Agadir",      inscrit: "20 jan 2026", statut: "actif"    },
-  { id: 8, nom: "Youssef El Fassi", email: "y.elfassi@email.com",   role: "client",  ville: "Meknès",      inscrit: "1 mar 2026",  statut: "actif"    },
-  { id: 9, nom: "Aicha Traoré",     email: "a.traore@email.com",    role: "client",  ville: "Oujda",       inscrit: "10 mar 2026", statut: "actif"    },
-  { id: 10, nom: "Admin DiaTable",  email: "admin@datable.ma",      role: "admin",   ville: "Casablanca",  inscrit: "1 jan 2026",  statut: "actif"    },
-]
+function formatDate(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+}
 
-const RESTAURANTS_DATA = [
-  { id: 1, nom: "Saveurs du Continent", cuisine: "Afrique de l'Ouest", ville: "Casablanca", owner: "Moussa Diallo",   note: 4.8, statut: "vérifié",   gradient: "from-yellow-400 to-orange-400" },
-  { id: 2, nom: "Le Nil Bleu",          cuisine: "Égyptienne",          ville: "Rabat",       owner: "Hana Ibrahim",    note: 4.5, statut: "vérifié",   gradient: "from-blue-400 to-indigo-400"  },
-  { id: 3, nom: "Chez Mamadou",         cuisine: "Sénégalaise",         ville: "Marrakech",   owner: "Mamadou Balde",   note: 4.7, statut: "en attente",gradient: "from-green-400 to-teal-400"   },
-  { id: 4, nom: "Dakar Palace",         cuisine: "Sénégalaise",         ville: "Casablanca",  owner: "Ibrahima Sow",    note: 4.3, statut: "vérifié",   gradient: "from-pink-400 to-red-400"     },
-  { id: 5, nom: "Al Khaima",            cuisine: "Mauritanienne",       ville: "Fès",         owner: "Ahmed Ould",      note: 4.6, statut: "inactif",   gradient: "from-orange-400 to-amber-400" },
-  { id: 6, nom: "Baobab Doré",          cuisine: "Afrique de l'Ouest", ville: "Tanger",      owner: "Fatoumata Bah",   note: 4.9, statut: "vérifié",   gradient: "from-purple-400 to-pink-400"  },
-  { id: 7, nom: "Nairobi Kitchen",      cuisine: "Kényane",             ville: "Agadir",      owner: "James Mwangi",    note: 4.2, statut: "en attente",gradient: "from-teal-400 to-cyan-400"    },
-  { id: 8, nom: "Addis Grill",          cuisine: "Éthiopienne",         ville: "Rabat",       owner: "Tigist Haile",    note: 4.4, statut: "vérifié",   gradient: "from-red-400 to-rose-400"     },
-]
+// ─── Section 1: Vue globale ────────────────────────────────────────────────────
 
-const AVIS_DATA = [
-  { id: 1, auteur: "Fatima M.",  initials: "FM", restaurant: "Saveurs du Continent", note: 5, date: "15 mar 2026", statut: "approuvé",   comment: "Extraordinaire ! Le thiéboudiène était exactement comme à Dakar." },
-  { id: 2, auteur: "Ahmed K.",   initials: "AK", restaurant: "Le Nil Bleu",          note: 2, date: "12 mar 2026", statut: "signalé",    comment: "Service très lent, j'ai attendu plus d'une heure." },
-  { id: 3, auteur: "Nadia C.",   initials: "NC", restaurant: "Chez Mamadou",         note: 4, date: "10 mar 2026", statut: "en attente", comment: "Bonne cuisine, cadre agréable. Je recommande les brochettes." },
-  { id: 4, auteur: "Youssef F.", initials: "YF", restaurant: "Dakar Palace",         note: 1, date: "8 mar 2026",  statut: "signalé",    comment: "Commande jamais arrivée, impossible de les joindre. Arnaque !" },
-  { id: 5, auteur: "Sara B.",    initials: "SB", restaurant: "Baobab Doré",          note: 5, date: "5 mar 2026",  statut: "approuvé",   comment: "Le meilleur restaurant diaspora de Tanger. Qualité exceptionnelle !" },
-]
+function SectionOverview() {
+  const [stats, setStats] = useState(null)
+  const [latestUsers, setLatestUsers] = useState([])
+  const [latestRestaurants, setLatestRestaurants] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-const SIGNALEMENTS_DATA = [
-  { id: 1, type: "Avis",        contenu: "Commentaire offensant",     signale_par: "Moussa D.",  date: "20 mar 2026", priorite: "Haute"   },
-  { id: 2, type: "Restaurant",  contenu: "Informations incorrectes",  signale_par: "Fatima O.",  date: "19 mar 2026", priorite: "Moyenne" },
-  { id: 3, type: "Utilisateur", contenu: "Comportement abusif",       signale_par: "Ahmed B.",   date: "18 mar 2026", priorite: "Haute"   },
-  { id: 4, type: "Avis",        contenu: "Avis frauduleux (spam)",    signale_par: "Nadia C.",   date: "17 mar 2026", priorite: "Basse"   },
-  { id: 5, type: "Restaurant",  contenu: "Photos inappropriées",      signale_par: "Sara B.",    date: "15 mar 2026", priorite: "Moyenne" },
-]
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const [
+          { count: profilesCount, error: e1 },
+          { count: restaurantsCount, error: e2 },
+          { count: dishesCount, error: e3 },
+          { count: teamCount, error: e4 },
+          { count: reviewsCount, error: e5 },
+        ] = await Promise.all([
+          supabase.from('profiles').select('*', { count: 'exact', head: true }),
+          supabase.from('restaurants').select('*', { count: 'exact', head: true }),
+          supabase.from('dishes').select('*', { count: 'exact', head: true }),
+          supabase.from('team').select('*', { count: 'exact', head: true }),
+          supabase.from('reviews').select('*', { count: 'exact', head: true }),
+        ])
+        const err = e1 || e2 || e3 || e4 || e5
+        if (err) throw err
+        setStats({ profilesCount, restaurantsCount, dishesCount, teamCount, reviewsCount })
 
-// ─── Sub-components ────────────────────────────────────────────────────────────
+        const [{ data: users, error: ue }, { data: restaurants, error: re }] = await Promise.all([
+          supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(5),
+          supabase.from('restaurants').select('*').order('created_at', { ascending: false }).limit(5),
+        ])
+        if (ue) throw ue
+        if (re) throw re
+        setLatestUsers(users || [])
+        setLatestRestaurants(restaurants || [])
+      } catch (err) {
+        setError(err.message || 'Erreur lors du chargement')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
 
-function RoleBadge({ role }) {
-  const styles = {
-    admin:  "bg-red-100 text-red-700",
-    vendor: "bg-yellow-100 text-yellow-700",
-    client: "bg-blue-100 text-blue-700",
+  const kpis = stats ? [
+    { label: 'Utilisateurs', value: stats.profilesCount ?? 0, icon: Users, color: 'text-blue-400' },
+    { label: 'Restaurants', value: stats.restaurantsCount ?? 0, icon: Store, color: 'text-[#f4a828]' },
+    { label: 'Plats (galerie)', value: stats.dishesCount ?? 0, icon: ImageIcon, color: 'text-green-400' },
+    { label: "Membres équipe", value: stats.teamCount ?? 0, icon: Users2, color: 'text-purple-400' },
+    { label: 'Avis', value: stats.reviewsCount ?? 0, icon: ShieldCheck, color: 'text-pink-400' },
+  ] : []
+
+  const roleBadge = (role) => {
+    const map = { admin: 'bg-red-900/50 text-red-300', vendor: 'bg-[#f4a828]/20 text-[#f4a828]', client: 'bg-blue-900/40 text-blue-300' }
+    return map[role] || 'bg-white/10 text-[#8892a4]'
   }
-  const labels = { admin: "Admin", vendor: "Vendeur", client: "Client" }
+
   return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${styles[role] || "bg-gray-100 text-gray-600"}`}>
-      {labels[role] || role}
-    </span>
+    <div>
+      <h2 className="text-2xl font-serif text-[#f9f5f0] mb-6">Vue globale</h2>
+      {loading && <Spinner />}
+      {error && <ErrorMsg msg={error} />}
+      {!loading && !error && stats && (
+        <>
+          {/* KPI cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            {kpis.map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className="bg-[#16213e] rounded-xl p-5 flex flex-col gap-2 border border-white/5">
+                <Icon className={`w-6 h-6 ${color}`} />
+                <span className="text-3xl font-bold text-[#f9f5f0]">{value.toLocaleString('fr-FR')}</span>
+                <span className="text-xs text-[#8892a4]">{label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Two panels */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Latest users */}
+            <div className="bg-[#16213e] rounded-xl border border-white/5 p-5">
+              <h3 className="font-semibold text-[#f9f5f0] mb-4">Derniers utilisateurs inscrits</h3>
+              {latestUsers.length === 0 ? (
+                <EmptyState text="Aucun utilisateur" />
+              ) : (
+                <ul className="divide-y divide-white/5">
+                  {latestUsers.map((u) => (
+                    <li key={u.id} className="flex items-center justify-between py-3 gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-[#f4a828]/20 flex items-center justify-center text-[#f4a828] font-bold text-sm shrink-0">
+                          {(u.full_name || u.email || '?')[0].toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm text-[#f9f5f0] truncate">{u.full_name || u.email || '—'}</p>
+                          <p className="text-xs text-[#8892a4]">{formatDate(u.created_at)}</p>
+                        </div>
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${roleBadge(u.role)}`}>{u.role || '—'}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Latest restaurants */}
+            <div className="bg-[#16213e] rounded-xl border border-white/5 p-5">
+              <h3 className="font-semibold text-[#f9f5f0] mb-4">Derniers restaurants ajoutés</h3>
+              {latestRestaurants.length === 0 ? (
+                <EmptyState text="Aucun restaurant" />
+              ) : (
+                <ul className="divide-y divide-white/5">
+                  {latestRestaurants.map((r) => (
+                    <li key={r.id} className="flex items-center justify-between py-3 gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm text-[#f9f5f0] truncate">{r.name || '—'}</p>
+                        <p className="text-xs text-[#8892a4]">{r.cuisine || '—'}</p>
+                      </div>
+                      {r.is_verified ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-300 shrink-0">Vérifié</span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-[#8892a4] shrink-0">Non vérifié</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
-function StatutBadge({ statut }) {
-  const styles = {
-    actif:       "bg-green-100 text-green-700",
-    suspendu:    "bg-red-100 text-red-700",
-    "vérifié":   "bg-green-100 text-green-700",
-    "en attente":"bg-yellow-100 text-yellow-700",
-    inactif:     "bg-gray-100 text-gray-500",
-    nouveau:     "bg-blue-100 text-blue-700",
-    publié:      "bg-green-100 text-green-700",
-    traité:      "bg-gray-100 text-gray-600",
-    urgent:      "bg-red-100 text-red-700",
-    approuvé:    "bg-green-100 text-green-700",
-    signalé:     "bg-red-100 text-red-700",
+// ─── Section 2: Utilisateurs ───────────────────────────────────────────────────
+
+function SectionUsers() {
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('tous')
+  const [updatingId, setUpdatingId] = useState(null)
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
+      if (err) throw err
+      setUsers(data || [])
+    } catch (err) {
+      setError(err.message || 'Erreur lors du chargement')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchUsers() }, [fetchUsers])
+
+  const updateRole = async (userId, role) => {
+    setUpdatingId(userId)
+    try {
+      const { error: err } = await supabase.from('profiles').update({ role }).eq('id', userId)
+      if (err) throw err
+      await fetchUsers()
+    } catch (err) {
+      alert(err.message || 'Erreur')
+    } finally {
+      setUpdatingId(null)
+    }
   }
-  return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${styles[statut] || "bg-gray-100 text-gray-600"}`}>
-      {statut}
-    </span>
-  )
-}
 
-function PrioriteBadge({ priorite }) {
-  const styles = {
-    Haute:   "bg-red-100 text-red-700",
-    Moyenne: "bg-yellow-100 text-yellow-700",
-    Basse:   "bg-gray-100 text-gray-600",
+  const roleBadgeClass = (role) => {
+    const map = { admin: 'bg-red-900/50 text-red-300', vendor: 'bg-[#f4a828]/20 text-[#f4a828]', client: 'bg-blue-900/40 text-blue-300' }
+    return map[role] || 'bg-white/10 text-[#8892a4]'
   }
+
+  const roleFilters = [
+    { key: 'tous', label: 'Tous' },
+    { key: 'client', label: 'Clients' },
+    { key: 'vendor', label: 'Vendeurs' },
+    { key: 'admin', label: 'Admins' },
+  ]
+
+  const filtered = users.filter((u) => {
+    const matchRole = roleFilter === 'tous' || u.role === roleFilter
+    const q = search.toLowerCase()
+    const matchSearch = !q || (u.full_name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)
+    return matchRole && matchSearch
+  })
+
   return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${styles[priorite] || "bg-gray-100 text-gray-600"}`}>
-      {priorite}
-    </span>
+    <div>
+      <h2 className="text-2xl font-serif text-[#f9f5f0] mb-6">Utilisateurs</h2>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8892a4]" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher par nom ou email..."
+            className="w-full bg-[#16213e] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-[#f9f5f0] placeholder-[#8892a4] focus:outline-none focus:border-[#f4a828]/50"
+          />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {roleFilters.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setRoleFilter(key)}
+              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${roleFilter === key ? 'bg-[#f4a828] text-[#1a1a2e] font-semibold' : 'bg-[#16213e] text-[#8892a4] border border-white/10 hover:border-[#f4a828]/40'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button onClick={fetchUsers} className="p-2 rounded-lg bg-[#16213e] border border-white/10 text-[#8892a4] hover:text-[#f4a828] transition-colors" title="Actualiser">
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      </div>
+
+      {error && <ErrorMsg msg={error} />}
+      {loading ? <Spinner /> : filtered.length === 0 ? (
+        <EmptyState text="Aucun utilisateur trouvé" />
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-white/5">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[#16213e] text-[#8892a4] text-left">
+                <th className="px-4 py-3 font-medium">Nom</th>
+                <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Rôle</th>
+                <th className="px-4 py-3 font-medium">Inscrit le</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {filtered.map((u) => (
+                <tr key={u.id} className="bg-[#16213e]/60 hover:bg-[#16213e] transition-colors">
+                  <td className="px-4 py-3 text-[#f9f5f0]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-[#f4a828]/20 flex items-center justify-center text-[#f4a828] font-bold text-xs shrink-0">
+                        {(u.full_name || u.email || '?')[0].toUpperCase()}
+                      </div>
+                      {u.full_name || '—'}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-[#8892a4]">{u.email || '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${roleBadgeClass(u.role)}`}>{u.role || '—'}</span>
+                  </td>
+                  <td className="px-4 py-3 text-[#8892a4]">{formatDate(u.created_at)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1 flex-wrap">
+                      {u.role !== 'admin' && (
+                        <button
+                          onClick={() => updateRole(u.id, 'admin')}
+                          disabled={updatingId === u.id}
+                          className="px-2 py-1 rounded text-xs bg-red-900/40 text-red-300 hover:bg-red-900/60 disabled:opacity-50 transition-colors"
+                        >
+                          Admin
+                        </button>
+                      )}
+                      {u.role !== 'vendor' && (
+                        <button
+                          onClick={() => updateRole(u.id, 'vendor')}
+                          disabled={updatingId === u.id}
+                          className="px-2 py-1 rounded text-xs bg-[#f4a828]/20 text-[#f4a828] hover:bg-[#f4a828]/30 disabled:opacity-50 transition-colors"
+                        >
+                          Vendeur
+                        </button>
+                      )}
+                      {u.role !== 'client' && (
+                        <button
+                          onClick={() => updateRole(u.id, 'client')}
+                          disabled={updatingId === u.id}
+                          className="px-2 py-1 rounded text-xs bg-blue-900/40 text-blue-300 hover:bg-blue-900/60 disabled:opacity-50 transition-colors"
+                        >
+                          Client
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   )
 }
 
-function Stars({ count }) {
+// ─── Profile completion scorer ─────────────────────────────────────────────────
+
+const PROFILE_FIELDS = [
+  { key: 'name',          label: 'Nom',           weight: 15 },
+  { key: 'description',   label: 'Description',   weight: 15 },
+  { key: 'cuisine_label', label: 'Cuisine',        weight: 10 },
+  { key: 'location',      label: 'Ville',          weight: 10 },
+  { key: 'address',       label: 'Adresse',        weight: 10 },
+  { key: 'hours',         label: 'Horaires',       weight: 10 },
+  { key: 'phone',         label: 'Téléphone',      weight: 10 },
+  { key: 'whatsapp',      label: 'WhatsApp',       weight: 5  },
+  { key: 'instagram',     label: 'Instagram',      weight: 5  },
+]
+const MENU_WEIGHT = 10  // up to 10 points for menu items
+
+function profileScore(r, menuCount = 0) {
+  let score = 0
+  for (const f of PROFILE_FIELDS) {
+    if (r[f.key] && String(r[f.key]).trim() !== '') score += f.weight
+  }
+  // menu: 0 items = 0, 1-2 = 5, 3+ = full 10
+  score += menuCount === 0 ? 0 : menuCount < 3 ? 5 : MENU_WEIGHT
+  return Math.min(score, 100)
+}
+
+// ─── Restaurant detail panel ───────────────────────────────────────────────────
+
+function RestaurantDetailPanel({ r, onClose, onUpdate }) {
+  const [menuItems, setMenuItems] = useState([])
+  const [loadingMenu, setLoadingMenu] = useState(true)
+  const [updating, setUpdating] = useState(false)
+
+  useEffect(() => {
+    async function fetchMenu() {
+      setLoadingMenu(true)
+      const { data } = await supabase.from('menu_items').select('*').eq('restaurant_id', r.id).order('category')
+      setMenuItems(data || [])
+      setLoadingMenu(false)
+    }
+    fetchMenu()
+  }, [r.id])
+
+  const menuByCategory = menuItems.reduce((acc, item) => {
+    const cat = item.category || 'Autres'
+    if (!acc[cat]) acc[cat] = []
+    acc[cat].push(item)
+    return acc
+  }, {})
+
+  const score = profileScore(r, menuItems.length)
+  const scoreColor = score >= 80 ? 'bg-green-500' : score >= 50 ? 'bg-amber-500' : 'bg-red-500'
+  const scoreText  = score >= 80 ? 'text-green-400' : score >= 50 ? 'text-amber-400' : 'text-red-400'
+
+  async function toggle(field) {
+    setUpdating(true)
+    await supabase.from('restaurants').update({ [field]: !r[field] }).eq('id', r.id)
+    setUpdating(false)
+    onUpdate()
+  }
+
+  async function handleVerify() {
+    setUpdating(true)
+    await supabase.from('restaurants').update({ is_verified: true, is_active: true }).eq('id', r.id)
+    setUpdating(false)
+    onUpdate()
+  }
+
+  async function handleReject() {
+    if (!window.confirm('Rejeter et désactiver ce restaurant ?')) return
+    setUpdating(true)
+    await supabase.from('restaurants').update({ is_verified: false, is_active: false }).eq('id', r.id)
+    setUpdating(false)
+    onUpdate()
+  }
+
+  const INFO_ROWS = [
+    { Icon: Store,          label: 'Cuisine',    value: `${r.flag || ''} ${r.cuisine_label || '—'}` },
+    { Icon: MapPin,         label: 'Ville',      value: r.location || '—' },
+    { Icon: MapPin,         label: 'Adresse',    value: r.address || <span className="text-red-400 text-xs">Non renseigné</span> },
+    { Icon: Clock,          label: 'Horaires',   value: r.hours || <span className="text-red-400 text-xs">Non renseigné</span> },
+    { Icon: Phone,          label: 'Téléphone',  value: r.phone || <span className="text-red-400 text-xs">Non renseigné</span> },
+    { Icon: MessageCircle,  label: 'WhatsApp',   value: r.whatsapp || <span className="text-red-400 text-xs">Non renseigné</span> },
+    { Icon: Instagram,      label: 'Instagram',  value: r.instagram ? `@${r.instagram.replace('@','')}` : <span className="text-red-400 text-xs">Non renseigné</span> },
+  ]
+
   return (
-    <span className="flex gap-0.5">
-      {[1,2,3,4,5].map(i => (
-        <Star key={i} size={12} className={i <= count ? "text-yellow-400 fill-yellow-400" : "text-gray-300"} />
-      ))}
-    </span>
+    <div className="fixed inset-0 z-50 flex items-start justify-end">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Panel */}
+      <div className="relative w-full max-w-xl h-full bg-[#1a1a2e] border-l border-white/10 overflow-y-auto flex flex-col shadow-2xl">
+        {/* Header */}
+        <div className="sticky top-0 bg-[#1a1a2e] border-b border-white/10 px-6 py-4 flex items-start justify-between z-10">
+          <div>
+            <h3 className="text-lg font-serif font-bold text-[#f9f5f0] leading-tight">{r.name}</h3>
+            <p className="text-[#8892a4] text-xs mt-0.5">{r.profiles?.full_name || r.profiles?.email || 'Vendeur inconnu'}</p>
+          </div>
+          <button onClick={onClose} className="text-[#8892a4] hover:text-white transition-colors mt-0.5">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 px-6 py-5 space-y-6">
+
+          {/* Completion score */}
+          <div className="bg-[#16213e] rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-[#f9f5f0]">Complétion du profil</span>
+              <span className={`text-2xl font-bold ${scoreText}`}>{score}%</span>
+            </div>
+            <div className="h-2.5 bg-white/10 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all duration-500 ${scoreColor}`} style={{ width: `${score}%` }} />
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
+              {PROFILE_FIELDS.map(f => {
+                const filled = r[f.key] && String(r[f.key]).trim() !== ''
+                return (
+                  <div key={f.key} className={`flex items-center gap-1.5 text-xs rounded-lg px-2 py-1 ${filled ? 'bg-green-900/30 text-green-400' : 'bg-red-900/20 text-red-400'}`}>
+                    {filled ? <CheckCircle size={10} /> : <XCircle size={10} />}
+                    {f.label}
+                  </div>
+                )
+              })}
+              <div className={`flex items-center gap-1.5 text-xs rounded-lg px-2 py-1 ${menuItems.length >= 3 ? 'bg-green-900/30 text-green-400' : menuItems.length > 0 ? 'bg-amber-900/30 text-amber-400' : 'bg-red-900/20 text-red-400'}`}>
+                {menuItems.length >= 3 ? <CheckCircle size={10} /> : <XCircle size={10} />}
+                Carte ({menuItems.length})
+              </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          {r.description && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-[#8892a4] mb-2">Description</p>
+              <p className="text-sm text-[#f9f5f0] leading-relaxed bg-[#16213e] rounded-xl px-4 py-3">{r.description}</p>
+            </div>
+          )}
+
+          {/* Info rows */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#8892a4] mb-3">Informations</p>
+            <div className="bg-[#16213e] rounded-xl divide-y divide-white/5">
+              {INFO_ROWS.map(({ Icon, label, value }) => (
+                <div key={label} className="flex items-center gap-3 px-4 py-3">
+                  <Icon size={14} className="text-[#8892a4] flex-shrink-0" />
+                  <span className="text-[#8892a4] text-xs w-24 flex-shrink-0">{label}</span>
+                  <span className="text-sm text-[#f9f5f0] flex-1">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Menu */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-[#8892a4]">Carte & Menu</p>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${menuItems.length === 0 ? 'bg-red-900/40 text-red-400' : 'bg-green-900/40 text-green-400'}`}>
+                {menuItems.length} plat{menuItems.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            {loadingMenu ? (
+              <div className="text-center py-4 text-[#8892a4] text-sm">Chargement…</div>
+            ) : menuItems.length === 0 ? (
+              <div className="bg-red-900/20 border border-red-500/20 rounded-xl px-4 py-4 text-center">
+                <Utensils size={24} className="text-red-400 mx-auto mb-2 opacity-60" />
+                <p className="text-red-400 text-sm font-medium">Aucun plat — carte vide</p>
+                <p className="text-red-400/60 text-xs mt-1">Le vendeur n'a pas encore ajouté de plats.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(menuByCategory).map(([cat, items]) => (
+                  <div key={cat} className="bg-[#16213e] rounded-xl overflow-hidden">
+                    <div className="px-4 py-2 bg-white/5">
+                      <p className="text-xs font-bold uppercase tracking-widest text-[#f4a828]">{cat}</p>
+                    </div>
+                    {items.map(item => (
+                      <div key={item.id} className="flex items-center justify-between px-4 py-2.5 border-t border-white/5">
+                        <div>
+                          <span className="text-sm text-[#f9f5f0] font-medium">{item.name}</span>
+                          {item.description && <p className="text-xs text-[#8892a4] mt-0.5 line-clamp-1">{item.description}</p>}
+                        </div>
+                        <span className="text-[#f4a828] text-sm font-semibold ml-4 flex-shrink-0">
+                          {Number(item.price).toFixed(2)} MAD
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Action footer */}
+        <div className="sticky bottom-0 bg-[#1a1a2e] border-t border-white/10 px-6 py-4 space-y-2">
+          {!r.is_verified && (
+            <button
+              onClick={handleVerify}
+              disabled={updating}
+              className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-60 text-sm"
+            >
+              <CheckCircle size={16} /> Valider et publier le restaurant
+            </button>
+          )}
+          {r.is_verified && (
+            <button
+              onClick={() => toggle('is_verified')}
+              disabled={updating}
+              className="w-full flex items-center justify-center gap-2 bg-amber-600/30 hover:bg-amber-600/50 text-amber-400 font-semibold py-3 rounded-xl transition-colors disabled:opacity-60 text-sm border border-amber-500/30"
+            >
+              <XCircle size={16} /> Retirer la vérification
+            </button>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => toggle('is_active')}
+              disabled={updating}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-60 border ${r.is_active ? 'border-red-500/30 text-red-400 hover:bg-red-900/20' : 'border-green-500/30 text-green-400 hover:bg-green-900/20'}`}
+            >
+              {r.is_active ? 'Désactiver' : 'Activer'}
+            </button>
+            <button
+              onClick={handleReject}
+              disabled={updating}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border border-red-500/30 text-red-400 hover:bg-red-900/20 transition-colors disabled:opacity-60"
+            >
+              <Trash2 size={14} /> Rejeter & supprimer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
-function NavItem({ icon: Icon, label, active, onClick }) {
+// ─── Section 3: Restaurants ────────────────────────────────────────────────────
+
+function SectionRestaurants() {
+  const [restaurants, setRestaurants] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('tous')
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null)
+
+  const fetchRestaurants = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase
+        .from('restaurants')
+        .select('*, profiles(full_name, email)')
+        .order('created_at', { ascending: false })
+      if (err) throw err
+      setRestaurants(data || [])
+    } catch (err) {
+      setError(err.message || 'Erreur lors du chargement')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchRestaurants() }, [fetchRestaurants])
+
+  const statusFilters = [
+    { key: 'tous',       label: 'Tous' },
+    { key: 'pending',    label: 'En attente' },
+    { key: 'verified',   label: 'Vérifiés' },
+    { key: 'inactive',   label: 'Inactifs' },
+  ]
+
+  const filtered = restaurants.filter((r) => {
+    let matchStatus = true
+    if (statusFilter === 'pending')   matchStatus = !r.is_verified
+    else if (statusFilter === 'verified')  matchStatus = r.is_verified === true
+    else if (statusFilter === 'inactive')  matchStatus = r.is_active === false
+    const q = search.toLowerCase()
+    const matchSearch = !q || (r.name || '').toLowerCase().includes(q) || (r.location || '').toLowerCase().includes(q)
+    return matchStatus && matchSearch
+  })
+
+  function handleUpdate() {
+    fetchRestaurants()
+    // refresh selected if open
+    if (selectedRestaurant) {
+      setSelectedRestaurant(prev => {
+        const updated = restaurants.find(r => r.id === prev?.id)
+        return updated || prev
+      })
+    }
+  }
+
   return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-        active
-          ? "bg-red-500 text-white font-semibold"
-          : "text-white/70 hover:bg-white/10 hover:text-white"
-      }`}
-    >
-      <Icon size={18} />
-      <span className="flex-1 text-left">{label}</span>
-    </button>
+    <div>
+      <h2 className="text-2xl font-serif text-[#f9f5f0] mb-6">Restaurants</h2>
+
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8892a4]" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un restaurant..."
+            className="w-full bg-[#16213e] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-[#f9f5f0] placeholder-[#8892a4] focus:outline-none focus:border-[#f4a828]/50"
+          />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {statusFilters.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setStatusFilter(key)}
+              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${statusFilter === key ? 'bg-[#f4a828] text-[#1a1a2e] font-semibold' : 'bg-[#16213e] text-[#8892a4] border border-white/10 hover:border-[#f4a828]/40'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button onClick={fetchRestaurants} className="p-2 rounded-lg bg-[#16213e] border border-white/10 text-[#8892a4] hover:text-[#f4a828] transition-colors" title="Actualiser">
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      </div>
+
+      {error && <ErrorMsg msg={error} />}
+      {loading ? <Spinner /> : filtered.length === 0 ? (
+        <EmptyState text="Aucun restaurant trouvé" />
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((r) => (
+            <div
+              key={r.id}
+              onClick={() => setSelectedRestaurant(r)}
+              className="bg-[#16213e]/60 hover:bg-[#16213e] border border-white/5 hover:border-[#f4a828]/30 rounded-xl px-4 py-3.5 cursor-pointer transition-all flex items-center gap-4"
+            >
+              {/* Flag + name */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-lg leading-none">{r.flag}</span>
+                  <span className="text-[#f9f5f0] font-semibold text-sm truncate">{r.name}</span>
+                </div>
+                <p className="text-[#8892a4] text-xs truncate">
+                  {r.cuisine_label} · {r.location || '—'} · {r.profiles?.full_name || r.profiles?.email || '—'}
+                </p>
+              </div>
+
+              {/* Completion badge */}
+              <div className="flex-shrink-0 text-center w-14">
+                <CompletionRing restaurantId={r.id} restaurant={r} />
+              </div>
+
+              {/* Status */}
+              <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                {r.is_verified
+                  ? <span className="text-xs font-semibold text-green-400 bg-green-900/30 px-2 py-0.5 rounded-full">Vérifié</span>
+                  : <span className="text-xs font-semibold text-amber-400 bg-amber-900/30 px-2 py-0.5 rounded-full">En attente</span>
+                }
+                {!r.is_active && <span className="text-xs text-red-400 bg-red-900/20 px-2 py-0.5 rounded-full">Inactif</span>}
+              </div>
+
+              <ChevronRight size={16} className="text-[#8892a4] flex-shrink-0" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selectedRestaurant && (
+        <RestaurantDetailPanel
+          r={selectedRestaurant}
+          onClose={() => setSelectedRestaurant(null)}
+          onUpdate={async () => { await fetchRestaurants(); setSelectedRestaurant(null) }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Mini ring showing completion % — fetches menu count lazily
+function CompletionRing({ restaurant: r }) {
+  const [menuCount, setMenuCount] = useState(null)
+  useEffect(() => {
+    supabase.from('menu_items').select('*', { count: 'exact', head: true }).eq('restaurant_id', r.id)
+      .then(({ count }) => setMenuCount(count || 0))
+  }, [r.id])
+
+  const score = menuCount !== null ? profileScore(r, menuCount) : null
+  const color = score === null ? '#8892a4' : score >= 80 ? '#4ade80' : score >= 50 ? '#f59e0b' : '#f87171'
+
+  return (
+    <div className="relative w-10 h-10 mx-auto">
+      <svg viewBox="0 0 36 36" className="w-10 h-10 -rotate-90">
+        <circle cx="18" cy="18" r="14" fill="none" stroke="#ffffff10" strokeWidth="3" />
+        {score !== null && (
+          <circle cx="18" cy="18" r="14" fill="none" stroke={color} strokeWidth="3"
+            strokeDasharray={`${(score / 100) * 87.96} 87.96`}
+            strokeLinecap="round" />
+        )}
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold" style={{ color }}>
+        {score !== null ? `${score}%` : '…'}
+      </span>
+    </div>
+  )
+}
+
+// ─── Section 4: Galerie (dishes) ───────────────────────────────────────────────
+
+const DISH_FORM_INIT = {
+  name: '', country: '', flag: '', cuisine: '', tag: '',
+  description: '', gradient: '', accent: '', size: 'small',
+  sort_order: 0, is_active: true,
+}
+
+function SectionGallery() {
+  const [dishes, setDishes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editingDish, setEditingDish] = useState(null)
+  const [form, setForm] = useState(DISH_FORM_INIT)
+  const [saving, setSaving] = useState(false)
+
+  const fetchDishes = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase.from('dishes').select('*').order('sort_order')
+      if (err) throw err
+      setDishes(data || [])
+    } catch (err) {
+      setError(err.message || 'Erreur lors du chargement')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchDishes() }, [fetchDishes])
+
+  const openAdd = () => {
+    setEditingDish(null)
+    setForm(DISH_FORM_INIT)
+    setShowForm(true)
+  }
+
+  const openEdit = (dish) => {
+    setEditingDish(dish)
+    setForm({
+      name: dish.name || '', country: dish.country || '', flag: dish.flag || '',
+      cuisine: dish.cuisine || '', tag: dish.tag || '', description: dish.description || '',
+      gradient: dish.gradient || '', accent: dish.accent || '', size: dish.size || 'small',
+      sort_order: dish.sort_order ?? 0, is_active: dish.is_active ?? true,
+    })
+    setShowForm(true)
+  }
+
+  const cancelForm = () => { setShowForm(false); setEditingDish(null); setForm(DISH_FORM_INIT) }
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target
+    setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+  }
+
+  const handleSave = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const payload = {
+        name: form.name, country: form.country, flag: form.flag,
+        cuisine: form.cuisine, tag: form.tag, description: form.description,
+        gradient: form.gradient, accent: form.accent, size: form.size,
+        sort_order: Number(form.sort_order), is_active: form.is_active,
+      }
+      let err
+      if (editingDish) {
+        ({ error: err } = await supabase.from('dishes').update(payload).eq('id', editingDish.id))
+      } else {
+        ({ error: err } = await supabase.from('dishes').insert(payload))
+      }
+      if (err) throw err
+      cancelForm()
+      await fetchDishes()
+    } catch (err) {
+      alert(err.message || 'Erreur')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteDish = async (dish) => {
+    if (!window.confirm(`Supprimer le plat "${dish.name}" ?`)) return
+    try {
+      const { error: err } = await supabase.from('dishes').delete().eq('id', dish.id)
+      if (err) throw err
+      await fetchDishes()
+    } catch (err) {
+      alert(err.message || 'Erreur')
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-serif text-[#f9f5f0]">Galerie (plats)</h2>
+        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-[#f4a828] text-[#1a1a2e] rounded-lg font-semibold text-sm hover:bg-[#f4a828]/90 transition-colors">
+          <Plus className="w-4 h-4" />
+          Ajouter un plat
+        </button>
+      </div>
+
+      {/* Inline form */}
+      {showForm && (
+        <form onSubmit={handleSave} className="bg-[#16213e] rounded-xl border border-[#f4a828]/30 p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <h3 className="col-span-full font-semibold text-[#f9f5f0] mb-1">
+            {editingDish ? 'Modifier le plat' : 'Nouveau plat'}
+          </h3>
+          {[
+            { name: 'name', label: 'Nom *', required: true },
+            { name: 'country', label: 'Pays *', required: true },
+            { name: 'flag', label: 'Drapeau *', required: true, placeholder: '🇸🇳' },
+            { name: 'cuisine', label: 'Cuisine *', required: true },
+            { name: 'tag', label: 'Tag *', required: true },
+            { name: 'gradient', label: 'Gradient CSS' },
+            { name: 'accent', label: 'Accent (couleur)' },
+          ].map(({ name, label, required, placeholder }) => (
+            <div key={name} className="flex flex-col gap-1">
+              <label className="text-xs text-[#8892a4]">{label}</label>
+              <input
+                type="text"
+                name={name}
+                value={form[name]}
+                onChange={handleChange}
+                required={required}
+                placeholder={placeholder || ''}
+                className="bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#f9f5f0] placeholder-[#8892a4] focus:outline-none focus:border-[#f4a828]/50"
+              />
+            </div>
+          ))}
+          <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-3">
+            <label className="text-xs text-[#8892a4]">Description</label>
+            <textarea
+              name="description"
+              value={form.description}
+              onChange={handleChange}
+              rows={2}
+              className="bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#f9f5f0] placeholder-[#8892a4] focus:outline-none focus:border-[#f4a828]/50 resize-none"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-[#8892a4]">Taille</label>
+            <select
+              name="size"
+              value={form.size}
+              onChange={handleChange}
+              className="bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#f9f5f0] focus:outline-none focus:border-[#f4a828]/50"
+            >
+              <option value="small">small</option>
+              <option value="large">large</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-[#8892a4]">Ordre</label>
+            <input
+              type="number"
+              name="sort_order"
+              value={form.sort_order}
+              onChange={handleChange}
+              className="bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#f9f5f0] focus:outline-none focus:border-[#f4a828]/50"
+            />
+          </div>
+          <div className="flex items-center gap-2 self-end pb-1">
+            <input
+              type="checkbox"
+              id="dish_active"
+              name="is_active"
+              checked={form.is_active}
+              onChange={handleChange}
+              className="w-4 h-4 accent-[#f4a828]"
+            />
+            <label htmlFor="dish_active" className="text-sm text-[#8892a4]">Actif</label>
+          </div>
+          <div className="col-span-full flex gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-5 py-2 bg-[#f4a828] text-[#1a1a2e] rounded-lg font-semibold text-sm hover:bg-[#f4a828]/90 disabled:opacity-60 transition-colors"
+            >
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+            <button type="button" onClick={cancelForm} className="px-5 py-2 bg-white/5 text-[#8892a4] rounded-lg text-sm hover:bg-white/10 transition-colors">
+              Annuler
+            </button>
+          </div>
+        </form>
+      )}
+
+      {error && <ErrorMsg msg={error} />}
+      {loading ? <Spinner /> : dishes.length === 0 ? (
+        <EmptyState text="Aucun plat dans la galerie" />
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-white/5">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[#16213e] text-[#8892a4] text-left">
+                <th className="px-4 py-3 font-medium">Nom</th>
+                <th className="px-4 py-3 font-medium">Pays</th>
+                <th className="px-4 py-3 font-medium">Cuisine</th>
+                <th className="px-4 py-3 font-medium">Tag</th>
+                <th className="px-4 py-3 font-medium">Taille</th>
+                <th className="px-4 py-3 font-medium">Ordre</th>
+                <th className="px-4 py-3 font-medium">Actif</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {dishes.map((d) => (
+                <tr key={d.id} className="bg-[#16213e]/60 hover:bg-[#16213e] transition-colors">
+                  <td className="px-4 py-3 text-[#f9f5f0] font-medium">{d.name}</td>
+                  <td className="px-4 py-3 text-[#8892a4]">{d.flag} {d.country}</td>
+                  <td className="px-4 py-3 text-[#8892a4]">{d.cuisine}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#f4a828]/15 text-[#f4a828]">{d.tag}</span>
+                  </td>
+                  <td className="px-4 py-3 text-[#8892a4]">{d.size}</td>
+                  <td className="px-4 py-3 text-[#8892a4]">{d.sort_order}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block w-3 h-3 rounded-full ${d.is_active ? 'bg-green-400' : 'bg-red-400'}`} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button onClick={() => openEdit(d)} className="p-1.5 rounded text-[#f4a828] hover:bg-[#f4a828]/10 transition-colors" title="Modifier">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => deleteDish(d)} className="p-1.5 rounded text-red-400 hover:bg-red-900/30 transition-colors" title="Supprimer">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Section 5: Équipe ─────────────────────────────────────────────────────────
+
+const TEAM_FORM_INIT = {
+  initials: '', name: '', role: '', origin: '',
+  bio: '', avatar_bg: '', sort_order: 0, is_active: true,
+}
+
+function SectionTeam() {
+  const [members, setMembers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editingMember, setEditingMember] = useState(null)
+  const [form, setForm] = useState(TEAM_FORM_INIT)
+  const [saving, setSaving] = useState(false)
+
+  const fetchMembers = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase.from('team').select('*').order('sort_order')
+      if (err) throw err
+      setMembers(data || [])
+    } catch (err) {
+      setError(err.message || 'Erreur lors du chargement')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchMembers() }, [fetchMembers])
+
+  const openAdd = () => {
+    setEditingMember(null)
+    setForm(TEAM_FORM_INIT)
+    setShowForm(true)
+  }
+
+  const openEdit = (m) => {
+    setEditingMember(m)
+    setForm({
+      initials: m.initials || '', name: m.name || '', role: m.role || '',
+      origin: m.origin || '', bio: m.bio || '', avatar_bg: m.avatar_bg || '',
+      sort_order: m.sort_order ?? 0, is_active: m.is_active ?? true,
+    })
+    setShowForm(true)
+  }
+
+  const cancelForm = () => { setShowForm(false); setEditingMember(null); setForm(TEAM_FORM_INIT) }
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target
+    setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+  }
+
+  const handleSave = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const payload = {
+        initials: form.initials.slice(0, 2), name: form.name, role: form.role,
+        origin: form.origin, bio: form.bio, avatar_bg: form.avatar_bg,
+        sort_order: Number(form.sort_order), is_active: form.is_active,
+      }
+      let err
+      if (editingMember) {
+        ({ error: err } = await supabase.from('team').update(payload).eq('id', editingMember.id))
+      } else {
+        ({ error: err } = await supabase.from('team').insert(payload))
+      }
+      if (err) throw err
+      cancelForm()
+      await fetchMembers()
+    } catch (err) {
+      alert(err.message || 'Erreur')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteMember = async (m) => {
+    if (!window.confirm(`Supprimer "${m.name}" de l'équipe ?`)) return
+    try {
+      const { error: err } = await supabase.from('team').delete().eq('id', m.id)
+      if (err) throw err
+      await fetchMembers()
+    } catch (err) {
+      alert(err.message || 'Erreur')
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-serif text-[#f9f5f0]">Équipe</h2>
+        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-[#f4a828] text-[#1a1a2e] rounded-lg font-semibold text-sm hover:bg-[#f4a828]/90 transition-colors">
+          <Plus className="w-4 h-4" />
+          Ajouter un membre
+        </button>
+      </div>
+
+      {/* Inline form */}
+      {showForm && (
+        <form onSubmit={handleSave} className="bg-[#16213e] rounded-xl border border-[#f4a828]/30 p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <h3 className="col-span-full font-semibold text-[#f9f5f0] mb-1">
+            {editingMember ? 'Modifier le membre' : 'Nouveau membre'}
+          </h3>
+          {[
+            { name: 'initials', label: 'Initiales * (2 car.)', required: true, maxLength: 2 },
+            { name: 'name', label: 'Nom *', required: true },
+            { name: 'role', label: 'Rôle *', required: true },
+            { name: 'origin', label: 'Origine' },
+            { name: 'avatar_bg', label: 'Gradient avatar (CSS)' },
+          ].map(({ name, label, required, maxLength }) => (
+            <div key={name} className="flex flex-col gap-1">
+              <label className="text-xs text-[#8892a4]">{label}</label>
+              <input
+                type="text"
+                name={name}
+                value={form[name]}
+                onChange={handleChange}
+                required={required}
+                maxLength={maxLength}
+                className="bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#f9f5f0] placeholder-[#8892a4] focus:outline-none focus:border-[#f4a828]/50"
+              />
+            </div>
+          ))}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-[#8892a4]">Ordre</label>
+            <input
+              type="number"
+              name="sort_order"
+              value={form.sort_order}
+              onChange={handleChange}
+              className="bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#f9f5f0] focus:outline-none focus:border-[#f4a828]/50"
+            />
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-3">
+            <label className="text-xs text-[#8892a4]">Bio</label>
+            <textarea
+              name="bio"
+              value={form.bio}
+              onChange={handleChange}
+              rows={3}
+              className="bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#f9f5f0] placeholder-[#8892a4] focus:outline-none focus:border-[#f4a828]/50 resize-none"
+            />
+          </div>
+          <div className="flex items-center gap-2 self-center">
+            <input
+              type="checkbox"
+              id="team_active"
+              name="is_active"
+              checked={form.is_active}
+              onChange={handleChange}
+              className="w-4 h-4 accent-[#f4a828]"
+            />
+            <label htmlFor="team_active" className="text-sm text-[#8892a4]">Actif</label>
+          </div>
+          <div className="col-span-full flex gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-5 py-2 bg-[#f4a828] text-[#1a1a2e] rounded-lg font-semibold text-sm hover:bg-[#f4a828]/90 disabled:opacity-60 transition-colors"
+            >
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+            <button type="button" onClick={cancelForm} className="px-5 py-2 bg-white/5 text-[#8892a4] rounded-lg text-sm hover:bg-white/10 transition-colors">
+              Annuler
+            </button>
+          </div>
+        </form>
+      )}
+
+      {error && <ErrorMsg msg={error} />}
+      {loading ? <Spinner /> : members.length === 0 ? (
+        <EmptyState text="Aucun membre dans l'équipe" />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {members.map((m) => (
+            <div key={m.id} className="bg-[#16213e] rounded-xl border border-white/5 p-5 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0"
+                  style={{ background: m.avatar_bg || 'linear-gradient(135deg, #f4a828, #e8631a)' }}
+                >
+                  {m.initials || '?'}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-[#f9f5f0] truncate">{m.name}</p>
+                  <p className="text-xs text-[#f4a828]">{m.role}</p>
+                </div>
+              </div>
+              {m.origin && <p className="text-xs text-[#8892a4]">{m.origin}</p>}
+              {m.bio && <p className="text-sm text-[#8892a4] line-clamp-2">{m.bio}</p>}
+              <div className="flex gap-2 mt-auto pt-2 border-t border-white/5">
+                <button onClick={() => openEdit(m)} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs text-[#f4a828] bg-[#f4a828]/10 hover:bg-[#f4a828]/20 transition-colors">
+                  <Pencil className="w-3 h-3" />
+                  Modifier
+                </button>
+                <button onClick={() => deleteMember(m)} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs text-red-400 bg-red-900/20 hover:bg-red-900/40 transition-colors">
+                  <Trash2 className="w-3 h-3" />
+                  Supprimer
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Sidebar ───────────────────────────────────────────────────────────────────
+
+const NAV_ITEMS = [
+  { key: 'overview', label: 'Vue globale', icon: LayoutDashboard },
+  { key: 'users', label: 'Utilisateurs', icon: Users },
+  { key: 'restaurants', label: 'Restaurants', icon: Store },
+  { key: 'gallery', label: 'Galerie', icon: ImageIcon },
+  { key: 'team', label: 'Équipe', icon: Users2 },
+]
+
+function Sidebar({ active, setActive, onSignOut, user, mobileOpen, setMobileOpen, collapsed, setCollapsed }) {
+  const initials = (user?.full_name || user?.email || 'A')
+    .split(' ')
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+
+  const content = (
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <div className={`${collapsed ? 'px-2 py-5 justify-center' : 'px-6 py-5'} flex items-center justify-between border-b border-white/10`}>
+        <div className="flex items-center gap-2">
+          <Globe className="w-5 h-5 text-[#f4a828] shrink-0" />
+          {!collapsed && (
+            <>
+              <span className="text-lg font-serif text-[#f9f5f0]">
+                Dia<span className="text-[#f4a828]">Table</span>
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 bg-red-600 text-white rounded font-semibold tracking-wide">Admin</span>
+            </>
+          )}
+        </div>
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="lg:hidden text-[#8892a4] hover:text-[#f9f5f0]"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Avatar */}
+      <div className={`${collapsed ? 'px-2 py-5 justify-center' : 'px-6 py-5'} flex items-center gap-3 border-b border-white/10`}>
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#f4a828] to-[#e8631a] flex items-center justify-center text-[#1a1a2e] font-bold text-sm shrink-0">
+          {initials}
+        </div>
+        {!collapsed && (
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[#f9f5f0] truncate">{user?.full_name || 'Administrateur'}</p>
+            <p className="text-xs text-[#8892a4] truncate">{user?.email || ''}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 space-y-1">
+        {NAV_ITEMS.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => { setActive(key); setMobileOpen(false) }}
+            title={collapsed ? label : undefined}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-left
+              ${collapsed ? 'justify-center px-0' : ''}
+              ${active === key
+                ? 'bg-[#f4a828]/15 text-[#f4a828] font-semibold'
+                : 'text-[#8892a4] hover:bg-white/5 hover:text-[#f9f5f0]'
+              }`}
+          >
+            <Icon className="w-4 h-4 shrink-0" />
+            {!collapsed && label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Sign out */}
+      <div className="px-3 pb-3">
+        <button
+          onClick={onSignOut}
+          title={collapsed ? "Se déconnecter" : undefined}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#8892a4] hover:bg-red-900/20 hover:text-red-400 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+        >
+          <LogOut className="w-4 h-4 shrink-0" />
+          {!collapsed && 'Se déconnecter'}
+        </button>
+      </div>
+
+      {/* Collapse toggle (desktop only) */}
+      <button
+        onClick={() => setCollapsed(v => !v)}
+        className="hidden lg:flex w-full items-center justify-center py-3 text-[#8892a4] hover:text-[#f9f5f0] transition-colors border-t border-white/10 mt-auto"
+        title={collapsed ? "Agrandir" : "Réduire"}
+      >
+        <ChevronLeft className={`w-4 h-4 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} />
+      </button>
+    </div>
+  )
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className={`hidden lg:flex flex-col min-h-screen bg-[#1a1a2e] border-r border-white/5 fixed left-0 top-0 bottom-0 z-30 transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}>
+        {content}
+      </aside>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-40 flex">
+          <div className="fixed inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
+          <aside className="relative w-64 bg-[#1a1a2e] flex flex-col z-50">
+            {content}
+          </aside>
+        </div>
+      )}
+    </>
   )
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
-  const { user, profile, signOut } = useAuth()
+  const [activeSection, setActiveSection] = useState('overview')
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
 
-  const adminName = profile?.full_name || user?.user_metadata?.full_name || "Admin"
-
-  const [activeSection, setActiveSection]   = useState('vue-globale')
-  const [sidebarOpen, setSidebarOpen]       = useState(false)
-  const [userFilter, setUserFilter]         = useState('Tous')
-  const [userSearch, setUserSearch]         = useState('')
-  const [restFilter, setRestFilter]         = useState('Tous')
-  const [restSearch, setRestSearch]         = useState('')
-  const [avisFilter, setAvisFilter]         = useState('Tous')
-  const [pendingRests, setPendingRests]     = useState(PENDING_RESTAURANTS)
-  const [signalements, setSignalements]     = useState(SIGNALEMENTS_DATA)
-  const [settings, setSettings]            = useState({
-    inscriptionsOuvertes: true,
-    confirmationEmail: false,
-    modeMaintenance: false,
-    commission: "5",
-    emailSupport: "support@datable.ma",
-  })
-
-  function handleSignOut() {
-    signOut()
+  const handleSignOut = async () => {
+    await signOut()
     navigate('/')
   }
 
-  function approuverRest(id) {
-    setPendingRests(prev => prev.filter(r => r.id !== id))
-  }
-
-  function refuserRest(id) {
-    setPendingRests(prev => prev.filter(r => r.id !== id))
-  }
-
-  function resolveSignalement(id) {
-    setSignalements(prev => prev.filter(s => s.id !== id))
-  }
-
-  function nav(section) {
-    setActiveSection(section)
-    setSidebarOpen(false)
-  }
-
-  // ── Sidebar ────────────────────────────────────────────────────────────────
-
-  const sidebarContent = (
-    <div className="flex flex-col h-full">
-      <div className="px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <span className="font-serif text-2xl font-bold text-white">DiaTable</span>
-          <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full font-semibold">Admin</span>
-        </div>
-        <p className="text-white/40 text-xs mt-0.5">Panneau d'administration</p>
-      </div>
-
-      <div className="px-6 py-4 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-            {adminName.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="text-white text-sm font-medium truncate">{adminName}</p>
-            <span className="text-xs bg-red-500/30 text-red-300 px-2 py-0.5 rounded-full">Administrateur</span>
-          </div>
-        </div>
-      </div>
-
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <NavItem icon={LayoutDashboard} label="Vue globale"       active={activeSection === 'vue-globale'}   onClick={() => nav('vue-globale')}   />
-        <NavItem icon={Users}          label="Utilisateurs"       active={activeSection === 'utilisateurs'}  onClick={() => nav('utilisateurs')}  />
-        <NavItem icon={Store}          label="Restaurants"        active={activeSection === 'restaurants'}   onClick={() => nav('restaurants')}   />
-        <NavItem icon={Star}           label="Avis & Modération"  active={activeSection === 'avis'}          onClick={() => nav('avis')}          />
-        <NavItem icon={Flag}           label="Signalements"       active={activeSection === 'signalements'}  onClick={() => nav('signalements')}  />
-        <NavItem icon={Settings}       label="Paramètres"         active={activeSection === 'parametres'}    onClick={() => nav('parametres')}    />
-      </nav>
-
-      <div className="px-3 py-4 border-t border-white/10">
-        <button
-          onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:bg-red-500/20 hover:text-red-300 transition-all"
-        >
-          <LogOut size={18} />
-          <span>Déconnexion</span>
-        </button>
-      </div>
-    </div>
-  )
-
-  // ── Sections ───────────────────────────────────────────────────────────────
-
-  function renderVueGlobale() {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-serif font-bold text-dark">Vue globale</h1>
-          <p className="text-gray-500 text-sm mt-1">Aperçu de la plateforme DiaTable</p>
-        </div>
-
-        {/* KPI cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          {GLOBAL_KPIS.map((kpi, i) => (
-            <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-light">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${kpi.color}`}>
-                <kpi.icon size={20} />
-              </div>
-              <p className="text-2xl font-serif font-bold text-dark">{kpi.value}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{kpi.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Recent activity table */}
-        <div className="bg-white rounded-xl shadow-sm border border-light overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-dark">Activité récente</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-                <tr>
-                  <th className="px-4 py-3 text-left">Événement</th>
-                  <th className="px-4 py-3 text-left">Utilisateur</th>
-                  <th className="px-4 py-3 text-left">Date</th>
-                  <th className="px-4 py-3 text-left">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {RECENT_ACTIVITY.map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-dark font-medium">{row.event}</td>
-                    <td className="px-4 py-3 text-gray-600">{row.user}</td>
-                    <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{row.date}</td>
-                    <td className="px-4 py-3"><StatutBadge statut={row.statut} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Pending restaurants */}
-        <div className="bg-white rounded-xl shadow-sm border border-light overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-dark">Restaurants en attente d'approbation</h2>
-          </div>
-          {pendingRests.length === 0 ? (
-            <div className="px-5 py-8 text-center text-gray-400 text-sm">Aucun restaurant en attente.</div>
-          ) : (
-            <div className="p-5 grid gap-4 md:grid-cols-3">
-              {pendingRests.map(r => (
-                <div key={r.id} className="border border-gray-100 rounded-xl overflow-hidden">
-                  <div className={`h-16 bg-gradient-to-br ${r.gradient}`} />
-                  <div className="p-4">
-                    <p className="font-semibold text-dark text-sm">{r.nom}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{r.cuisine} — {r.ville}</p>
-                    <p className="text-xs text-gray-500 mt-1">Propriétaire : {r.owner}</p>
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={() => approuverRest(r.id)}
-                        className="flex-1 flex items-center justify-center gap-1 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        <CheckCircle size={13} /> Approuver
-                      </button>
-                      <button
-                        onClick={() => refuserRest(r.id)}
-                        className="flex-1 flex items-center justify-center gap-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        <XCircle size={13} /> Refuser
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  function renderUtilisateurs() {
-    const roleFilters = ['Tous', 'Clients', 'Vendeurs', 'Admins']
-    const roleMap = { Clients: 'client', Vendeurs: 'vendor', Admins: 'admin' }
-
-    const filtered = USERS_DATA.filter(u => {
-      const matchRole   = userFilter === 'Tous' || u.role === roleMap[userFilter]
-      const matchSearch = !userSearch || u.nom.toLowerCase().includes(userSearch.toLowerCase()) || u.email.toLowerCase().includes(userSearch.toLowerCase())
-      return matchRole && matchSearch
-    })
-
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-serif font-bold text-dark">Utilisateurs</h1>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={userSearch}
-              onChange={e => setUserSearch(e.target.value)}
-              placeholder="Rechercher un utilisateur..."
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400/40"
-            />
-          </div>
-          <select
-            value={userFilter}
-            onChange={e => setUserFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400/40 bg-white"
-          >
-            {roleFilters.map(f => <option key={f}>{f}</option>)}
-          </select>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-light overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-                <tr>
-                  <th className="px-4 py-3 text-left">Nom</th>
-                  <th className="px-4 py-3 text-left">Email</th>
-                  <th className="px-4 py-3 text-left">Rôle</th>
-                  <th className="px-4 py-3 text-left">Ville</th>
-                  <th className="px-4 py-3 text-left">Inscrit le</th>
-                  <th className="px-4 py-3 text-left">Statut</th>
-                  <th className="px-4 py-3 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filtered.map(u => (
-                  <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-dark flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                          {u.nom.charAt(0)}
-                        </div>
-                        <span className="font-medium text-dark whitespace-nowrap">{u.nom}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{u.email}</td>
-                    <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
-                    <td className="px-4 py-3 text-gray-500">{u.ville}</td>
-                    <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{u.inscrit}</td>
-                    <td className="px-4 py-3"><StatutBadge statut={u.statut} /></td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button className="text-gray-400 hover:text-dark transition-colors" title="Voir profil"><Eye size={15} /></button>
-                        <button className="text-gray-400 hover:text-red-500 transition-colors" title="Suspendre"><Ban size={15} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {/* Pagination */}
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-xs text-gray-400">{filtered.length} utilisateurs</p>
-            <div className="flex items-center gap-1">
-              <button className="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:bg-gray-100"><ChevronLeft size={14} /></button>
-              {[1, 2, 3].map(p => (
-                <button key={p} className={`w-7 h-7 rounded text-xs font-medium ${p === 1 ? "bg-dark text-white" : "text-gray-500 hover:bg-gray-100"}`}>{p}</button>
-              ))}
-              <span className="text-gray-400 text-xs px-1">...</span>
-              <button className="w-7 h-7 rounded text-xs font-medium text-gray-500 hover:bg-gray-100">47</button>
-              <button className="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:bg-gray-100"><ChevronRight size={14} /></button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  function renderRestaurants() {
-    const statusFilters = ['Tous', 'Vérifiés', 'En attente', 'Inactifs']
-    const statusMap = { Vérifiés: 'vérifié', 'En attente': 'en attente', Inactifs: 'inactif' }
-
-    const filtered = RESTAURANTS_DATA.filter(r => {
-      const matchStatus = restFilter === 'Tous' || r.statut === statusMap[restFilter]
-      const matchSearch = !restSearch || r.nom.toLowerCase().includes(restSearch.toLowerCase()) || r.ville.toLowerCase().includes(restSearch.toLowerCase())
-      return matchStatus && matchSearch
-    })
-
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-serif font-bold text-dark">Restaurants</h1>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={restSearch}
-              onChange={e => setRestSearch(e.target.value)}
-              placeholder="Rechercher un restaurant..."
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400/40"
-            />
-          </div>
-          <select
-            value={restFilter}
-            onChange={e => setRestFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400/40 bg-white"
-          >
-            {statusFilters.map(f => <option key={f}>{f}</option>)}
-          </select>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-light overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-                <tr>
-                  <th className="px-4 py-3 text-left">Restaurant</th>
-                  <th className="px-4 py-3 text-left">Cuisine</th>
-                  <th className="px-4 py-3 text-left">Ville</th>
-                  <th className="px-4 py-3 text-left">Propriétaire</th>
-                  <th className="px-4 py-3 text-left">Note</th>
-                  <th className="px-4 py-3 text-left">Statut</th>
-                  <th className="px-4 py-3 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filtered.map(r => (
-                  <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${r.gradient} flex-shrink-0`} />
-                        <span className="font-medium text-dark whitespace-nowrap">{r.nom}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.cuisine}</td>
-                    <td className="px-4 py-3 text-gray-500">{r.ville}</td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.owner}</td>
-                    <td className="px-4 py-3">
-                      <span className="flex items-center gap-1 text-xs font-medium">
-                        <Star size={12} className="text-yellow-400 fill-yellow-400" />
-                        {r.note}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3"><StatutBadge statut={r.statut} /></td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button className="text-gray-400 hover:text-dark transition-colors" title="Voir"><Eye size={14} /></button>
-                        <button className="text-gray-400 hover:text-green-600 transition-colors" title="Approuver"><CheckCircle size={14} /></button>
-                        <button className="text-gray-400 hover:text-orange-500 transition-colors" title="Rejeter"><XCircle size={14} /></button>
-                        <button className="text-gray-400 hover:text-red-500 transition-colors" title="Supprimer"><Trash2 size={14} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  function renderAvis() {
-    const filters = ['Tous', 'Signalés', 'En attente']
-    const filterMap = { Signalés: 'signalé', 'En attente': 'en attente' }
-
-    const filtered = AVIS_DATA.filter(a =>
-      avisFilter === 'Tous' || a.statut === filterMap[avisFilter]
-    )
-
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-serif font-bold text-dark">Avis & Modération</h1>
-
-        <div className="flex gap-2 flex-wrap">
-          {filters.map(f => (
-            <button
-              key={f}
-              onClick={() => setAvisFilter(f)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                avisFilter === f
-                  ? "bg-dark text-white"
-                  : "bg-white text-gray-500 border border-gray-200 hover:border-dark"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-4">
-          {filtered.map(a => (
-            <div key={a.id} className="bg-white rounded-xl p-5 shadow-sm border border-light">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-dark flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                  {a.initials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-dark">{a.auteur}</p>
-                      <p className="text-xs text-gray-400">sur {a.restaurant}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <StatutBadge statut={a.statut} />
-                      <span className="text-xs text-gray-400">{a.date}</span>
-                    </div>
-                  </div>
-                  <Stars count={a.note} />
-                  <p className="text-sm text-dark/80 mt-2 leading-relaxed">{a.comment}</p>
-                  <div className="flex items-center gap-3 mt-3">
-                    <button className="flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-700 transition-colors">
-                      <CheckCircle size={13} /> Approuver
-                    </button>
-                    <button className="flex items-center gap-1 text-xs font-medium text-orange-500 hover:text-orange-600 transition-colors">
-                      <XCircle size={13} /> Masquer
-                    </button>
-                    <button className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-600 transition-colors">
-                      <Flag size={13} /> Signaler
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  function renderSignalements() {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-serif font-bold text-dark">Signalements</h1>
-
-        <div className="bg-white rounded-xl shadow-sm border border-light overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-                <tr>
-                  <th className="px-4 py-3 text-left">Type</th>
-                  <th className="px-4 py-3 text-left">Contenu</th>
-                  <th className="px-4 py-3 text-left">Signalé par</th>
-                  <th className="px-4 py-3 text-left">Date</th>
-                  <th className="px-4 py-3 text-left">Priorité</th>
-                  <th className="px-4 py-3 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {signalements.map(s => (
-                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{s.type}</span>
-                    </td>
-                    <td className="px-4 py-3 text-dark">{s.contenu}</td>
-                    <td className="px-4 py-3 text-gray-500">{s.signale_par}</td>
-                    <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{s.date}</td>
-                    <td className="px-4 py-3"><PrioriteBadge priorite={s.priorite} /></td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => resolveSignalement(s.id)}
-                          className="text-xs font-medium text-green-600 hover:text-green-700 flex items-center gap-1 transition-colors"
-                        >
-                          <CheckCircle size={13} /> Résoudre
-                        </button>
-                        <button
-                          onClick={() => resolveSignalement(s.id)}
-                          className="text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
-                        >
-                          Ignorer
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {signalements.length === 0 && (
-              <div className="py-8 text-center text-gray-400 text-sm">Aucun signalement en cours.</div>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  function Toggle({ value, onChange, label }) {
-    return (
-      <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-        <span className="text-sm text-dark">{label}</span>
-        <button
-          onClick={() => onChange(!value)}
-          className={`relative w-11 h-6 rounded-full transition-colors ${value ? "bg-green-500" : "bg-gray-200"}`}
-        >
-          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${value ? "translate-x-5" : "translate-x-0"}`} />
-        </button>
-      </div>
-    )
-  }
-
-  function renderParametres() {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-serif font-bold text-dark">Paramètres de la plateforme</h1>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-light space-y-2">
-          <h2 className="text-base font-semibold text-dark mb-4">Configuration générale</h2>
-
-          <Toggle
-            label="Inscriptions ouvertes"
-            value={settings.inscriptionsOuvertes}
-            onChange={v => setSettings(p => ({ ...p, inscriptionsOuvertes: v }))}
-          />
-          <Toggle
-            label="Confirmation email requise"
-            value={settings.confirmationEmail}
-            onChange={v => setSettings(p => ({ ...p, confirmationEmail: v }))}
-          />
-          <Toggle
-            label="Mode maintenance"
-            value={settings.modeMaintenance}
-            onChange={v => setSettings(p => ({ ...p, modeMaintenance: v }))}
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Commission plateforme (%)</label>
-              <input
-                type="number"
-                value={settings.commission}
-                onChange={e => setSettings(p => ({ ...p, commission: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400/40"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Email support</label>
-              <input
-                type="email"
-                value={settings.emailSupport}
-                onChange={e => setSettings(p => ({ ...p, emailSupport: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400/40"
-              />
-            </div>
-          </div>
-
-          <div className="pt-4">
-            <button className="bg-dark text-white font-semibold px-5 py-2 rounded-lg text-sm hover:bg-dark/90 transition-colors">
-              Enregistrer les paramètres
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-red-100">
-          <h2 className="text-base font-semibold text-red-600 mb-2">Zone de danger</h2>
-          <p className="text-sm text-gray-500 mb-4">Cette action supprime le cache Redis et peut affecter temporairement les performances.</p>
-          <button className="border border-red-400 text-red-500 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors flex items-center gap-2">
-            <AlertTriangle size={15} /> Vider le cache
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  function renderSection() {
+  const renderSection = () => {
     switch (activeSection) {
-      case 'vue-globale':   return renderVueGlobale()
-      case 'utilisateurs':  return renderUtilisateurs()
-      case 'restaurants':   return renderRestaurants()
-      case 'avis':          return renderAvis()
-      case 'signalements':  return renderSignalements()
-      case 'parametres':    return renderParametres()
-      default:              return renderVueGlobale()
+      case 'overview':     return <SectionOverview />
+      case 'users':        return <SectionUsers />
+      case 'restaurants':  return <SectionRestaurants />
+      case 'gallery':      return <SectionGallery />
+      case 'team':         return <SectionTeam />
+      default:             return <SectionOverview />
     }
   }
 
   return (
-    <div className="flex h-screen bg-cream overflow-hidden">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`
-          fixed top-0 left-0 h-full w-64 z-30 flex-shrink-0
-          transform transition-transform duration-300
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 lg:static lg:z-auto
-        `}
-        style={{ backgroundColor: '#1a1a2e' }}
-      >
-        {sidebarContent}
-      </aside>
+    <div className="min-h-screen bg-[#1a1a2e] font-sans">
+      <DashboardTopbar variant="admin" />
+      <div style={{ paddingTop: '56px' }}>
+      <Sidebar
+        active={activeSection}
+        setActive={setActiveSection}
+        onSignOut={handleSignOut}
+        user={user}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+      />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile topbar */}
-        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 flex-shrink-0">
-          <button onClick={() => setSidebarOpen(true)} className="p-1 text-dark">
-            <Menu size={22} />
+      <div className={`min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'lg:pl-16' : 'lg:pl-64'}`}>
+        {/* Mobile top bar */}
+        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#16213e] border-b border-white/5 sticky top-0 z-20">
+          <button onClick={() => setMobileOpen(true)} className="text-[#8892a4] hover:text-[#f9f5f0]">
+            <Menu className="w-6 h-6" />
           </button>
-          <div className="flex items-center gap-2">
-            <span className="font-serif font-bold text-dark">DiaTable</span>
-            <span className="text-xs bg-red-500 text-white px-1.5 py-0.5 rounded font-semibold">Admin</span>
-          </div>
-          <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold">
-            {adminName.charAt(0).toUpperCase()}
-          </div>
+          <span className="text-base font-serif text-[#f9f5f0]">
+            Dia<span className="text-[#f4a828]">Table</span>
+            <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-red-600 text-white rounded font-semibold tracking-wide align-middle">Admin</span>
+          </span>
+          <div className="w-6" />
         </div>
 
-        {/* Scrollable content */}
-        <main className="flex-1 overflow-y-auto p-5 lg:p-8">
-          <div className="max-w-6xl mx-auto">
-            {renderSection()}
-          </div>
+        {/* Page content */}
+        <main className="flex-1 p-6 lg:p-8">
+          {renderSection()}
         </main>
       </div>
+    </div>
     </div>
   )
 }

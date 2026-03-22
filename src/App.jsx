@@ -57,14 +57,14 @@ export default function App() {
             <ProtectedRoute><VendorOnboarding /></ProtectedRoute>
           } />
 
-          {/* Protected: vendor dashboard */}
+          {/* Protected: vendor dashboard (pas de navbar/footer) */}
           <Route path="/tableau-de-bord" element={
-            <ProtectedRoute><Layout noFooter><VendorDashboard /></Layout></ProtectedRoute>
+            <ProtectedRoute><VendorDashboard /></ProtectedRoute>
           } />
 
-          {/* Protected: admin dashboard */}
+          {/* Protected: admin dashboard (pas de navbar/footer) */}
           <Route path="/admin" element={
-            <AdminRoute><Layout noFooter><AdminDashboard /></Layout></AdminRoute>
+            <AdminRoute><AdminDashboard /></AdminRoute>
           } />
 
           {/* 404 */}

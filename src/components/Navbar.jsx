@@ -1,22 +1,27 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Globe, X, ChevronDown, LogOut, User, BarChart2, Utensils } from 'lucide-react'
+import { Globe, X, ChevronDown, LogOut, User, BarChart2, Utensils, ShieldCheck, Image, MapPin } from 'lucide-react'
 
 const NAV_LINKS = [
-  { label: 'Accueil',      to: '/' },
-  { label: 'Restaurants',  to: '/restaurants' },
-  { label: 'Cuisines',     to: '/cuisines' },
-  { label: 'Galerie',      to: '/galerie' },
-  { label: 'À propos',     to: '/a-propos' },
-  { label: 'Contact',      to: '/contact' },
+  { label: 'Accueil',  to: '/' },
+  { label: 'À propos', to: '/a-propos' },
+  { label: 'Contact',  to: '/contact' },
+]
+
+const EXPLORER_LINKS = [
+  { label: 'Restaurants', to: '/restaurants',  icon: Utensils,  desc: 'Tous les restaurants' },
+  { label: 'Cuisines',    to: '/cuisines',      icon: MapPin,    desc: 'Par type de cuisine' },
+  { label: 'Galerie',     to: '/galerie',       icon: Image,     desc: 'Plats & photos' },
 ]
 
 export default function Navbar() {
-  const { user, profile, signOut } = useAuth()
-  const [scrolled,   setScrolled]  = useState(false)
-  const [menuOpen,   setMenuOpen]  = useState(false)
-  const [userMenu,   setUserMenu]  = useState(false)
+  const { user, profile, signOut, isAdmin } = useAuth()
+  const [scrolled,    setScrolled]   = useState(false)
+  const [menuOpen,    setMenuOpen]   = useState(false)
+  const [userMenu,    setUserMenu]   = useState(false)
+  const [explorerOpen, setExplorerOpen] = useState(false)
+  const explorerRef = useRef(null)
   const navigate = useNavigate()
 
   const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || ''
@@ -33,13 +38,16 @@ export default function Navbar() {
     return () => { document.body.style.overflow = '' }
   }, [menuOpen])
 
-  // Close user menu on outside click
+  // Close menus on outside click
   useEffect(() => {
-    if (!userMenu) return
-    const close = () => setUserMenu(false)
+    if (!userMenu && !explorerOpen) return
+    const close = (e) => {
+      if (explorerRef.current && !explorerRef.current.contains(e.target)) setExplorerOpen(false)
+      setUserMenu(false)
+    }
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
-  }, [userMenu])
+  }, [userMenu, explorerOpen])
 
   async function handleSignOut() {
     await signOut()
@@ -63,7 +71,53 @@ export default function Navbar() {
 
           {/* Desktop links */}
           <ul className="hidden md:flex items-center gap-1 list-none">
-            {NAV_LINKS.map((l) => (
+            {NAV_LINKS.slice(0, 1).map((l) => (
+              <li key={l.to}>
+                <NavLink to={l.to}
+                  className={({ isActive }) =>
+                    `text-sm font-medium px-3.5 py-2 rounded-lg transition-all duration-200
+                     ${isActive ? 'text-white bg-white/10' : 'text-white/80 hover:text-white hover:bg-white/10'}`
+                  }
+                >
+                  {l.label}
+                </NavLink>
+              </li>
+            ))}
+
+            {/* Explorer dropdown */}
+            <li ref={explorerRef} className="relative">
+              <button
+                onClick={() => setExplorerOpen(v => !v)}
+                className={`flex items-center gap-1.5 text-sm font-medium px-3.5 py-2 rounded-lg transition-all duration-200
+                  ${explorerOpen ? 'text-white bg-white/10' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+              >
+                Explorer
+                <ChevronDown size={14} className={`transition-transform duration-200 ${explorerOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {explorerOpen && (
+                <div className="absolute top-full left-0 mt-2 w-52 bg-dark2 border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden z-50">
+                  {EXPLORER_LINKS.map(({ label, to, icon: Icon, desc }) => (
+                    <NavLink key={to} to={to}
+                      onClick={() => setExplorerOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-3 transition-all
+                         ${isActive ? 'bg-white/10 text-white' : 'text-white/80 hover:text-white hover:bg-white/[0.06]'}`
+                      }
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-white/[0.07] flex items-center justify-center flex-shrink-0">
+                        <Icon size={15} className="text-gold" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium leading-none mb-0.5">{label}</div>
+                        <div className="text-xs text-white/40">{desc}</div>
+                      </div>
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </li>
+
+            {NAV_LINKS.slice(1).map((l) => (
               <li key={l.to}>
                 <NavLink to={l.to}
                   className={({ isActive }) =>
@@ -105,6 +159,12 @@ export default function Navbar() {
                         <Link to="/tableau-de-bord" onClick={() => setUserMenu(false)}
                           className="flex items-center gap-2 px-4 py-2.5 text-white/80 text-sm hover:text-white hover:bg-white/[0.06] transition-all">
                           <BarChart2 size={15} /> Tableau de bord
+                        </Link>
+                      )}
+                      {isAdmin && (
+                        <Link to="/admin" onClick={() => setUserMenu(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-gold text-sm hover:text-white hover:bg-gold/10 transition-all">
+                          <ShieldCheck size={15} /> Administration
                         </Link>
                       )}
                       <Link to="/restaurants" onClick={() => setUserMenu(false)}
@@ -152,7 +212,7 @@ export default function Navbar() {
             <X size={20} />
           </button>
 
-          {NAV_LINKS.map((l) => (
+          {[...NAV_LINKS.slice(0,1), ...EXPLORER_LINKS, ...NAV_LINKS.slice(1)].map((l) => (
             <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}
               className="font-serif text-3xl text-white font-semibold hover:text-gold transition-colors">
               {l.label}
