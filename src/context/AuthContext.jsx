@@ -48,6 +48,16 @@ export function AuthProvider({ children }) {
       return { error: null }
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      const msg = error.message?.toLowerCase() || ''
+      if (msg.includes('invalid login credentials') || msg.includes('invalid_credentials')) {
+        return { data, error: { message: 'Email ou mot de passe incorrect.' } }
+      }
+      if (msg.includes('email not confirmed')) {
+        return { data, error: { message: 'Veuillez confirmer votre email avant de vous connecter.' } }
+      }
+      return { data, error: { message: error.message || 'Erreur de connexion.' } }
+    }
     return { data, error }
   }
 
@@ -63,9 +73,20 @@ export function AuthProvider({ children }) {
     if (error) {
       // Erreur 500 = confirmation email activée sans SMTP, ou tables manquantes
       if (error.status === 500 || error.message?.includes('500')) {
-        return { error: { message: "Erreur serveur Supabase (500). Dans le dashboard Supabase : Authentication → Configuration → désactivez \"Enable email confirmations\", puis vérifiez que le schéma SQL a bien été exécuté." } }
+        return { error: { message: "Une erreur serveur est survenue. Veuillez réessayer dans quelques instants." } }
       }
-      return { error }
+      // Map common Supabase errors to user-friendly French messages
+      const msg = error.message?.toLowerCase() || ''
+      if (msg.includes('already registered') || msg.includes('already been registered')) {
+        return { error: { message: "Cette adresse email est déjà utilisée. Essayez de vous connecter." } }
+      }
+      if (msg.includes('password') && msg.includes('short')) {
+        return { error: { message: "Le mot de passe doit contenir au moins 6 caractères." } }
+      }
+      if (msg.includes('invalid') && msg.includes('email')) {
+        return { error: { message: "Adresse email invalide." } }
+      }
+      return { error: { message: error.message || "Une erreur est survenue." } }
     }
     // Le trigger handle_new_user() crée le profil automatiquement
     return { data, error: null }

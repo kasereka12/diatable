@@ -7,6 +7,8 @@ export function CartProvider({ children }) {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [deliveryMode, setDeliveryMode] = useState('delivery') // 'delivery' | 'pickup'
   const [deliveryFeeOverride, setDeliveryFeeOverride] = useState(null)
+  // Restaurant switch confirmation
+  const [pendingSwitch, setPendingSwitch] = useState(null) // { restaurantId, restaurantName, item }
 
   const itemCount = cart.items.reduce((s, i) => s + i.quantity, 0)
   const subtotal = cart.items.reduce((s, i) => s + i.price * i.quantity, 0)
@@ -16,11 +18,9 @@ export function CartProvider({ children }) {
   const addItem = useCallback((restaurantId, restaurantName, item) => {
     setCart(prev => {
       if (prev.restaurantId && prev.restaurantId !== restaurantId) {
-        return {
-          restaurantId,
-          restaurantName,
-          items: [{ ...item, quantity: 1 }],
-        }
+        // Don't silently replace — ask for confirmation
+        setPendingSwitch({ restaurantId, restaurantName, item })
+        return prev
       }
 
       const existing = prev.items.find(i => i.menuItemId === item.menuItemId)
@@ -45,6 +45,22 @@ export function CartProvider({ children }) {
       }
     })
     setIsCartOpen(true)
+  }, [])
+
+  const confirmSwitch = useCallback(() => {
+    if (!pendingSwitch) return
+    const { restaurantId, restaurantName, item } = pendingSwitch
+    setCart({
+      restaurantId,
+      restaurantName,
+      items: [{ ...item, quantity: 1 }],
+    })
+    setPendingSwitch(null)
+    setIsCartOpen(true)
+  }, [pendingSwitch])
+
+  const cancelSwitch = useCallback(() => {
+    setPendingSwitch(null)
   }, [])
 
   const removeItem = useCallback((menuItemId) => {
@@ -84,6 +100,7 @@ export function CartProvider({ children }) {
       deliveryFeeOverride, setDeliveryFeeOverride,
       addItem, removeItem, updateQuantity, clearCart,
       isCartOpen, setIsCartOpen,
+      pendingSwitch, confirmSwitch, cancelSwitch,
     }}>
       {children}
     </CartContext.Provider>

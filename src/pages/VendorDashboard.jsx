@@ -914,8 +914,15 @@ export default function VendorDashboard() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-yellow-400/50 bg-white"
               >
                 <option value="">— Choisir un quartier —</option>
-                {['Maarif', 'Bourgogne', 'Gauthier', 'Racine', 'Anfa', 'Ain Diab', 'Ain Sebaa', 'Sidi Bernoussi', 'Hay Hassani', 'Hay Mohammadi', 'Sbata', 'Sidi Moumen', 'Ben M\'Sick', 'Mers Sultan', 'Derb Sultan', 'Habous', 'Oasis', 'Palmier', 'Belvedere', 'CIL', '2 Mars', 'Bd Zerktouni', 'Triangle d\'Or', 'Casa Port', 'Bouskoura', 'Dar Bouazza']
-                  .filter(q => !deliveryZones.some(z => z.quartier === q))
+                {[
+                  'Maârif', 'Bourgogne', 'Gauthier', 'Racine', 'Anfa', 'Aïn Diab',
+                  'Aïn Sebaâ', 'Sidi Bernoussi', 'Hay Hassani', 'Hay Mohammadi',
+                  'Sbata', 'Sidi Moumen', "Ben M'Sick", 'Mers Sultan', 'Derb Sultan',
+                  'Habous', 'Oasis', 'Palmier', 'Belvédère', 'C.I.L.', '2 Mars',
+                  "Triangle d'Or", 'Casa Port', 'Bouskoura', 'Dar Bouazza',
+                  'Sidi Belyout', 'Hay El Qods', 'Hay Oulfa', 'Al Fida', 'Roches Noires',
+                  'Bernoussi', 'Maârif Extension', 'Val Fleuri', 'Californie', 'Beauséjour',
+                ].filter(q => !deliveryZones.some(z => z.quartier === q))
                   .map(q => <option key={q} value={q}>{q}</option>)
                 }
               </select>

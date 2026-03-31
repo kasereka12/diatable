@@ -37,55 +37,89 @@ const PAYMENT_METHODS = [
 function AddressAutocomplete({ value, onChange, onPlaceSelect }) {
   const inputRef = useRef(null)
   const autocompleteRef = useRef(null)
+  // Always keep a ref to the latest callbacks so the listener never captures stale closures
+  const onPlaceSelectRef = useRef(onPlaceSelect)
+  const onChangeRef = useRef(onChange)
+  useEffect(() => { onPlaceSelectRef.current = onPlaceSelect }, [onPlaceSelect])
+  useEffect(() => { onChangeRef.current = onChange }, [onChange])
 
-  useEffect(() => {
-    if (!window.google?.maps?.places || autocompleteRef.current) return
+  function initAutocomplete() {
+    if (autocompleteRef.current || !inputRef.current) return
 
     autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
       componentRestrictions: { country: 'ma' },
-      fields: ['formatted_address', 'geometry', 'name', 'address_components'],
-      types: ['address'],
+      fields: ['formatted_address', 'geometry', 'address_components'],
     })
 
     autocompleteRef.current.addListener('place_changed', () => {
       const place = autocompleteRef.current.getPlace()
-      if (place?.formatted_address) {
-        onChange(place.formatted_address)
+      if (!place?.geometry) return
 
-        // Extract quartier from address_components
-        let quartier = ''
-        if (place.address_components) {
-          // Try sublocality_level_1 first, then sublocality, then neighborhood, then locality
-          for (const type of ['sublocality_level_1', 'sublocality', 'neighborhood']) {
-            const comp = place.address_components.find(c => c.types.includes(type))
-            if (comp) { quartier = comp.long_name; break }
+      const address = place.formatted_address || inputRef.current.value
+      onChangeRef.current(address)
+
+      const lat = place.geometry.location.lat()
+      const lng = place.geometry.location.lng()
+
+      function extractQuartier(components) {
+        if (!components) return ''
+        for (const type of ['sublocality_level_1', 'sublocality', 'neighborhood', 'administrative_area_level_3']) {
+          const comp = components.find(c => c.types.includes(type))
+          if (comp) return comp.long_name
+        }
+        return ''
+      }
+
+      let quartier = extractQuartier(place.address_components)
+
+      if (quartier) {
+        onPlaceSelectRef.current?.({ address, lat, lng, quartier })
+      } else {
+        const geocoder = new window.google.maps.Geocoder()
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+          if (status === 'OK' && results.length > 0) {
+            for (const result of results) {
+              const q = extractQuartier(result.address_components)
+              if (q) { quartier = q; break }
+            }
           }
-        }
-
-        if (place.geometry?.location && onPlaceSelect) {
-          onPlaceSelect({
-            address: place.formatted_address,
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-            quartier,
-          })
-        }
+          onPlaceSelectRef.current?.({ address, lat, lng, quartier })
+        })
       }
     })
-  }, [onChange, onPlaceSelect])
+  }
+
+  useEffect(() => {
+    // If already loaded, init immediately
+    if (window.google?.maps?.places) {
+      initAutocomplete()
+      return
+    }
+
+    // Poll until Google Maps script is ready
+    const interval = setInterval(() => {
+      if (window.google?.maps?.places) {
+        clearInterval(interval)
+        initAutocomplete()
+      }
+    }, 200)
+
+    return () => clearInterval(interval)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gold">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gold pointer-events-none">
         <Navigation size={16} />
       </span>
       <input
         ref={inputRef}
         type="text"
-        value={value}
+        defaultValue={value}
         onChange={e => onChange(e.target.value)}
-        placeholder="Recherchez votre adresse sur Google Maps..."
+        placeholder="Ex: 12 Rue Mohammed V, Casablanca..."
         required
+        autoComplete="off"
         className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-gold/50"
       />
     </div>
@@ -137,6 +171,8 @@ export default function Checkout() {
   const [clientCoords, setClientCoords] = useState(null)
   const [restaurantCoords, setRestaurantCoords] = useState(null)
   const [estimatedTime, setEstimatedTime] = useState(null)
+  const [rawQuartier, setRawQuartier] = useState(null) // raw quartier name from Google
+  const [rawAddress, setRawAddress] = useState('')
   const [detectedQuartier, setDetectedQuartier] = useState(null) // { name, matched, zone }
 
   const isPickup = deliveryMode === 'pickup'
@@ -195,42 +231,36 @@ export default function Checkout() {
     setEstimatedTime({ prep: maxPrepTime, travel: travelMin, total: maxPrepTime + travelMin, distance: distKm.toFixed(1) })
   }, [clientCoords, restaurantCoords, maxPrepTime])
 
+  // handlePlaceSelect only stores raw data — no matching here
   const handlePlaceSelect = useCallback((place) => {
     setClientCoords({ lat: place.lat, lng: place.lng })
+    setRawQuartier(place.quartier || '')
+    setRawAddress(place.address || '')
+  }, [])
 
-    // Auto-detect quartier from address
-    if (place.quartier && deliveryZones.length > 0) {
-      // Try exact match first, then partial/includes match
-      const exactMatch = deliveryZones.find(z =>
-        z.quartier.toLowerCase() === place.quartier.toLowerCase()
-      )
-      const partialMatch = !exactMatch && deliveryZones.find(z =>
-        place.quartier.toLowerCase().includes(z.quartier.toLowerCase()) ||
-        z.quartier.toLowerCase().includes(place.quartier.toLowerCase()) ||
-        place.address.toLowerCase().includes(z.quartier.toLowerCase())
-      )
-      const match = exactMatch || partialMatch
+  // Match quartier against delivery zones — runs whenever zones or quartier changes
+  useEffect(() => {
+    if (rawQuartier === null) return // no address selected yet
+
+    function norm(s) {
+      return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '')
+    }
+
+    if (deliveryZones.length > 0) {
+      const haystack = norm(rawAddress + ' ' + rawQuartier)
+      const match = deliveryZones.find(z => {
+        const needle = norm(z.quartier)
+        return haystack.includes(needle) || norm(rawQuartier).includes(needle)
+      })
       setDetectedQuartier({
-        name: place.quartier,
+        name: rawQuartier,
         matched: !!match,
         zone: match || null,
       })
-    } else if (place.quartier) {
-      setDetectedQuartier({ name: place.quartier, matched: false, zone: null })
     } else {
-      // Try matching address text against zone names
-      if (deliveryZones.length > 0) {
-        const addrMatch = deliveryZones.find(z =>
-          place.address.toLowerCase().includes(z.quartier.toLowerCase())
-        )
-        if (addrMatch) {
-          setDetectedQuartier({ name: addrMatch.quartier, matched: true, zone: addrMatch })
-        } else {
-          setDetectedQuartier({ name: '', matched: false, zone: null })
-        }
-      }
+      setDetectedQuartier({ name: rawQuartier, matched: false, zone: null })
     }
-  }, [deliveryZones])
+  }, [rawQuartier, rawAddress, deliveryZones])
 
   function updateForm(key, value) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -243,6 +273,12 @@ export default function Checkout() {
 
     if (!form.name.trim() || !form.phone.trim()) {
       setError('Veuillez remplir votre nom et téléphone.')
+      return
+    }
+    // Validate Moroccan phone number: 06/07/05 or +212 6/7/5
+    const cleanPhone = form.phone.replace(/[\s\-\.]/g, '')
+    if (!/^(\+212|0)(5|6|7)\d{8}$/.test(cleanPhone)) {
+      setError('Numéro de téléphone invalide. Format attendu : 06 XX XX XX XX ou +212 6XX XX XX XX')
       return
     }
     if (!isPickup && !form.address.trim()) {
@@ -285,7 +321,7 @@ export default function Checkout() {
       .single()
 
     if (orderErr) {
-      setError('Erreur lors de la création de la commande : ' + orderErr.message)
+      setError('Impossible de passer la commande. Vérifiez votre connexion et réessayez.')
       setSubmitting(false)
       return
     }
@@ -303,7 +339,7 @@ export default function Checkout() {
       .insert(orderItems)
 
     if (itemsErr) {
-      setError('Commande créée mais erreur sur les articles : ' + itemsErr.message)
+      setError('Votre commande a été créée mais un problème est survenu avec les détails. Contactez le restaurant.')
       setSubmitting(false)
       return
     }
@@ -405,15 +441,13 @@ export default function Checkout() {
                   <button
                     type="button"
                     onClick={() => setDeliveryMode('delivery')}
-                    className={`flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all ${
-                      deliveryMode === 'delivery'
-                        ? 'border-gold bg-gold/5'
-                        : 'border-gray-100 hover:border-gold/50'
-                    }`}
+                    className={`flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all ${deliveryMode === 'delivery'
+                      ? 'border-gold bg-gold/5'
+                      : 'border-gray-100 hover:border-gold/50'
+                      }`}
                   >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      deliveryMode === 'delivery' ? 'bg-gold/20' : 'bg-cream'
-                    }`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${deliveryMode === 'delivery' ? 'bg-gold/20' : 'bg-cream'
+                      }`}>
                       <Truck size={24} className={deliveryMode === 'delivery' ? 'text-gold-dark' : 'text-muted'} />
                     </div>
                     <div className="text-center">
@@ -421,24 +455,19 @@ export default function Checkout() {
                         Livraison
                       </p>
                       <p className="text-xs text-muted mt-0.5">Le vendeur livre chez vous</p>
-                      <p className="text-xs font-semibold text-gold-dark mt-1">
-                        {hasZones ? 'Selon quartier' : 'À confirmer'}
-                      </p>
                     </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setDeliveryMode('pickup')}
-                    className={`flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all ${
-                      deliveryMode === 'pickup'
-                        ? 'border-gold bg-gold/5'
-                        : 'border-gray-100 hover:border-gold/50'
-                    }`}
+                    className={`flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all ${deliveryMode === 'pickup'
+                      ? 'border-gold bg-gold/5'
+                      : 'border-gray-100 hover:border-gold/50'
+                      }`}
                   >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      deliveryMode === 'pickup' ? 'bg-gold/20' : 'bg-cream'
-                    }`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${deliveryMode === 'pickup' ? 'bg-gold/20' : 'bg-cream'
+                      }`}>
                       <Store size={24} className={deliveryMode === 'pickup' ? 'text-gold-dark' : 'text-muted'} />
                     </div>
                     <div className="text-center">
@@ -539,9 +568,7 @@ export default function Checkout() {
                               <div className="flex items-center gap-2">
                                 <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
                                 <div>
-                                  <p className="text-sm font-semibold text-green-800">
-                                    Quartier détecté : {detectedQuartier.zone.quartier}
-                                  </p>
+
                                   <p className="text-xs text-green-600 mt-0.5">Livraison disponible dans votre zone</p>
                                 </div>
                               </div>
@@ -627,13 +654,12 @@ export default function Checkout() {
                   {PAYMENT_METHODS.map(method => (
                     <label
                       key={method.id}
-                      className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                        !method.available
-                          ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50'
-                          : paymentMethod === method.id
-                            ? 'border-gold bg-gold/5'
-                            : 'border-gray-100 hover:border-gold/50'
-                      }`}
+                      className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${!method.available
+                        ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50'
+                        : paymentMethod === method.id
+                          ? 'border-gold bg-gold/5'
+                          : 'border-gray-100 hover:border-gold/50'
+                        }`}
                     >
                       <input
                         type="radio"
@@ -670,9 +696,8 @@ export default function Checkout() {
                 <h2 className="font-serif font-bold text-dark text-lg mb-5">Résumé</h2>
 
                 {/* Mode badge */}
-                <div className={`flex items-center gap-2 mb-4 px-3 py-2 rounded-lg text-xs font-bold ${
-                  isPickup ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'
-                }`}>
+                <div className={`flex items-center gap-2 mb-4 px-3 py-2 rounded-lg text-xs font-bold ${isPickup ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'
+                  }`}>
                   {isPickup ? <Store size={14} /> : <Truck size={14} />}
                   {isPickup ? 'Retrait sur place' : detectedQuartier?.matched ? `Livraison — ${detectedQuartier.zone.quartier}` : 'Livraison à domicile'}
                 </div>

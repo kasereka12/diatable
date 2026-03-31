@@ -3,11 +3,13 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
 import { NotificationProvider } from './context/NotificationContext'
+import { ToastProvider } from './context/ToastContext'
 import Layout         from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute     from './components/AdminRoute'
 import ErrorBoundary  from './components/ErrorBoundary'
-import CartDrawer     from './components/CartDrawer'
+import CartDrawer       from './components/CartDrawer'
+import CartSwitchDialog from './components/CartSwitchDialog'
 
 // Eager-loaded pages (critical path)
 import Home              from './pages/Home'
@@ -59,9 +61,11 @@ export default function App() {
       <AuthProvider>
         <CartProvider>
           <NotificationProvider>
+          <ToastProvider>
             <ErrorBoundary>
-              {/* Cart drawer (always available) */}
+              {/* Cart drawer + switch confirmation (always available) */}
               <CartDrawer />
+              <CartSwitchDialog />
 
               <Routes>
                 {/* Public pages with shared Layout (Navbar + Footer) */}
@@ -139,6 +143,7 @@ export default function App() {
                 } />
               </Routes>
             </ErrorBoundary>
+          </ToastProvider>
           </NotificationProvider>
         </CartProvider>
       </AuthProvider>

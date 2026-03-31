@@ -174,7 +174,7 @@ export default function Navbar() {
                   <button
                     onClick={() => setNotifOpen(v => !v)}
                     className="relative p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all"
-                    aria-label="Notifications"
+                    aria-label="Notifications" aria-expanded={notifOpen}
                   >
                     <Bell size={18} />
                     {unreadCount > 0 && (
@@ -184,13 +184,14 @@ export default function Navbar() {
                     )}
                   </button>
                   {notifOpen && (
-                    <NotifDropdown onClose={() => setNotifOpen(false)} />
+                    <NotifDropdown onClose={() => setNotifOpen(false)} navigate={navigate} />
                   )}
                 </div>
 
                 {/* User menu */}
                 <div className="relative" onMouseDown={e => e.stopPropagation()}>
                   <button onClick={() => setUserMenu(v => !v)}
+                    aria-label="Menu utilisateur" aria-expanded={userMenu}
                     className="flex items-center gap-2 bg-white/[0.07] hover:bg-white/10 border border-white/10 rounded-full pl-2 pr-3 py-1.5 transition-all">
                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-dark text-xs font-black"
                       style={{ background: 'linear-gradient(135deg,#f4a828,#c8841a)' }}>
@@ -298,7 +299,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="fixed inset-0 z-[999] bg-dark flex flex-col items-center justify-center gap-7">
+        <div className="fixed inset-0 z-[999] bg-dark flex flex-col items-center justify-center gap-7" role="dialog" aria-modal="true" aria-label="Menu de navigation">
           <button className="absolute top-6 right-6 text-white flex items-center justify-center"
             onClick={() => setMenuOpen(false)} aria-label="Fermer le menu">
             <X size={20} />
@@ -335,7 +336,7 @@ export default function Navbar() {
 }
 
 // Notification dropdown component
-function NotifDropdown({ onClose }) {
+function NotifDropdown({ onClose, navigate }) {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
 
   const typeIcons = {
@@ -371,7 +372,7 @@ function NotifDropdown({ onClose }) {
             return (
               <button
                 key={n.id}
-                onClick={() => { markAsRead(n.id); if (n.link) window.location.href = n.link; onClose() }}
+                onClick={() => { markAsRead(n.id); if (n.link && n.link.startsWith('/')) navigate(n.link); onClose() }}
                 className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-all hover:bg-white/[0.05] ${
                   !n.is_read ? 'bg-white/[0.03]' : ''
                 }`}
