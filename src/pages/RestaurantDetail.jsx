@@ -1,44 +1,55 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { useRestaurantDetail } from '../hooks/useRestaurantDetail'
 import { useAuth } from '../context/AuthContext'
+import { useCart } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
+import { getGradient } from '../lib/gradients'
 import StarRating from '../components/ui/StarRating'
 import { getCuisineIcon } from '../lib/cuisineIcons'
 import {
   ArrowLeft, MapPin, Clock, Phone, CreditCard,
   MessageCircle, ShieldCheck, Star, Facebook, Instagram, Utensils,
-  Heart, Send, Pencil, Trash2
+  Heart, Send, Pencil, Trash2, ShoppingBag, Plus, Check
 } from 'lucide-react'
 
-const GRAD_STYLES = {
-  'grad-senegal':   'linear-gradient(135deg,#e8521a,#c8841a 50%,#f4a828)',
-  'grad-chinese':   'linear-gradient(135deg,#b71c1c,#e53935)',
-  'grad-lebanese':  'linear-gradient(135deg,#1b5e20,#43a047)',
-  'grad-syrian':    'linear-gradient(135deg,#4a148c,#7b1fa2)',
-  'grad-french':    'linear-gradient(135deg,#0d47a1,#1565c0)',
-  'grad-italian':   'linear-gradient(135deg,#c62828,#1b5e20)',
-  'grad-nigerian':  'linear-gradient(135deg,#1b5e20,#f9a825)',
-  'grad-indian':    'linear-gradient(135deg,#e65100,#fbc02d)',
-  'grad-brazilian': 'linear-gradient(135deg,#1b5e20,#0d47a1)',
-}
+function MenuItem({ item, onAddToCart }) {
+  const [added, setAdded] = useState(false)
 
-function MenuItem({ item }) {
+  function handleAdd() {
+    onAddToCart(item)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 1500)
+  }
+
   return (
     <div className="flex items-start justify-between gap-4 py-4 border-b border-black/[0.06] last:border-0">
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-0.5">
           <span className="font-semibold text-dark text-sm">{item.name}</span>
-          {item.popular && (
+          {item.is_popular && (
             <span className="bg-gold/15 text-gold-dark text-[0.65rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
               Populaire
             </span>
           )}
         </div>
-        {item.desc && <p className="text-muted text-xs leading-relaxed">{item.desc}</p>}
+        {item.description && <p className="text-muted text-xs leading-relaxed">{item.description}</p>}
       </div>
-      <span className="font-bold text-dark text-sm flex-shrink-0">{item.price} MAD</span>
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <span className="font-bold text-dark text-sm">{item.price} MAD</span>
+        <button
+          onClick={handleAdd}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+            added
+              ? 'bg-green-500 text-white shadow-[0_2px_8px_rgba(34,197,94,0.3)]'
+              : 'bg-gold text-dark hover:bg-gold-light shadow-[0_2px_8px_rgba(244,168,40,0.3)]'
+          }`}
+          aria-label={`Ajouter ${item.name} au panier`}
+        >
+          {added ? <><Check size={14} /> Ajouté</> : <><Plus size={14} /> Ajouter</>}
+        </button>
+      </div>
     </div>
   )
 }
@@ -74,6 +85,7 @@ function StarSelector({ value, hover, onRate, onHover, onLeave }) {
           onClick={() => onRate(n)}
           onMouseEnter={() => onHover(n)}
           className="transition-transform hover:scale-110"
+          aria-label={`${n} étoile${n > 1 ? 's' : ''}`}
         >
           <Star
             size={28}
@@ -88,6 +100,8 @@ function StarSelector({ value, hover, onRate, onHover, onLeave }) {
 export default function RestaurantDetail() {
   const { id } = useParams()
   const { user } = useAuth()
+  const { addItem } = useCart()
+  const navigate = useNavigate()
   const { restaurant, menuByCategory, reviews, loading } = useRestaurantDetail(id)
   const ref = useScrollReveal()
   const [activeCategory, setActiveCategory] = useState(0)
@@ -147,6 +161,38 @@ export default function RestaurantDetail() {
         })
     }
   }, [id, user])
+
+  function handleAddToCart(item) {
+    addItem(restaurant.id, restaurant.name, {
+      menuItemId: item.id,
+      name: item.name,
+      price: Number(item.price),
+    })
+  }
+
+  async function startConversation() {
+    if (!user || !supabase || !restaurant) return
+    // Check if conversation already exists
+    const { data: existing } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('customer_id', user.id)
+      .eq('restaurant_id', restaurant.id)
+      .maybeSingle()
+
+    if (existing) {
+      navigate('/messages')
+      return
+    }
+
+    // Create new conversation
+    await supabase.from('conversations').insert({
+      customer_id: user.id,
+      vendor_id: restaurant.owner_id,
+      restaurant_id: restaurant.id,
+    })
+    navigate('/messages')
+  }
 
   async function toggleLike() {
     if (!user || !supabase) return
@@ -230,13 +276,6 @@ export default function RestaurantDetail() {
   )
 
   const CuisineIcon = getCuisineIcon(restaurant.cuisine)
-  const waLink = restaurant.whatsapp
-    ? `https://wa.me/${restaurant.whatsapp.replace(/\D/g, '')}`
-    : 'https://wa.me/212600000000'
-  const telLink = restaurant.phone
-    ? `tel:${restaurant.phone.replace(/\s/g, '')}`
-    : 'tel:+212600000000'
-  const phoneDisplay = restaurant.phone || '+212 6 00 00 00 00'
   const address = restaurant.address || 'Casablanca, Maroc'
   const hours = restaurant.hours || 'Lun–Sam : 11h30 – 22h00'
 
@@ -244,9 +283,9 @@ export default function RestaurantDetail() {
     <div className="bg-cream min-h-screen" ref={ref}>
       {/* Hero banner */}
       <div className="relative h-72 md:h-96 overflow-hidden"
-        style={!restaurant.image_url ? { background: GRAD_STYLES[restaurant.gradient] || 'linear-gradient(135deg,#1a1a2e,#f4a828)' } : {}}>
+        style={!restaurant.image_url ? { background: getGradient(restaurant.gradient) } : {}}>
         {restaurant.image_url ? (
-          <img src={restaurant.image_url} alt={restaurant.name} className="w-full h-full object-cover" />
+          <img src={restaurant.image_url} alt={restaurant.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <CuisineIcon size={96} className="text-white/90 drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]" />
@@ -305,18 +344,19 @@ export default function RestaurantDetail() {
                       ? 'bg-pink-500/20 border border-pink-500/40 text-pink-400 hover:bg-pink-500/30'
                       : 'bg-white/10 backdrop-blur border border-white/20 text-white hover:bg-white/20'
                     }`}
+                  aria-label={userLiked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                 >
                   <Heart size={16} className={userLiked ? 'fill-pink-400' : ''} />
                   {likesCount > 0 && <span>{likesCount}</span>}
                 </button>
-                <a href={waLink} target="_blank" rel="noreferrer"
-                  className="btn bg-green-500 hover:bg-green-400 text-white text-sm px-5 py-2.5 flex items-center gap-2">
-                  <MessageCircle size={16} /> WhatsApp
-                </a>
-                <a href={telLink}
-                  className="btn bg-white/10 backdrop-blur border border-white/20 text-white hover:bg-white/20 text-sm px-5 py-2.5 flex items-center gap-2">
-                  <Phone size={16} /> Appeler
-                </a>
+                {/* Message vendor */}
+                <button
+                  onClick={user ? startConversation : () => navigate('/connexion')}
+                  className="btn bg-white/10 backdrop-blur border border-white/20 text-white hover:bg-white/20 text-sm px-5 py-2.5 flex items-center gap-2"
+                  aria-label="Contacter le vendeur"
+                >
+                  <MessageCircle size={16} /> Message
+                </button>
               </div>
             </div>
           </div>
@@ -349,7 +389,9 @@ export default function RestaurantDetail() {
 
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05]" data-reveal>
               {currentItems.length > 0 ? (
-                currentItems.map(item => <MenuItem key={item.id} item={item} />)
+                currentItems.map(item => (
+                  <MenuItem key={item.id} item={item} onAddToCart={handleAddToCart} />
+                ))
               ) : (
                 <p className="text-muted text-sm text-center py-6">Aucun plat dans cette catégorie.</p>
               )}
@@ -383,19 +425,18 @@ export default function RestaurantDetail() {
                 </div>
               )}
 
-              {/* ── Review form ─────────────────────────────────────────────── */}
+              {/* Review form */}
               <div className="mt-8" data-reveal>
                 {!user ? (
                   <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05] text-center">
                     <Star size={28} className="text-gold mx-auto mb-3" />
                     <p className="text-dark font-semibold mb-1">Partagez votre expérience</p>
                     <p className="text-muted text-sm mb-4">Connectez-vous pour laisser un avis</p>
-                    <Link to="/login" className="btn btn-gold px-6 py-2.5 text-sm inline-flex items-center gap-1.5">
+                    <Link to="/connexion" className="btn btn-gold px-6 py-2.5 text-sm inline-flex items-center gap-1.5">
                       Se connecter
                     </Link>
                   </div>
                 ) : isOwner ? null : (userReview && !editingReview) ? (
-                  /* User's existing review (read mode) */
                   <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div>
@@ -405,12 +446,12 @@ export default function RestaurantDetail() {
                       <div className="flex gap-1">
                         <button onClick={() => setEditingReview(true)}
                           className="p-1.5 rounded-lg hover:bg-amber-100 text-amber-700 transition-colors"
-                          title="Modifier">
+                          title="Modifier" aria-label="Modifier votre avis">
                           <Pencil size={15} />
                         </button>
                         <button onClick={deleteReview}
                           className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors"
-                          title="Supprimer">
+                          title="Supprimer" aria-label="Supprimer votre avis">
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -421,7 +462,6 @@ export default function RestaurantDetail() {
                     {submitMsg && <p className="text-xs text-green-600 mt-2">{submitMsg}</p>}
                   </div>
                 ) : canReview ? (
-                  /* Review form (new or edit) */
                   <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05]">
                     <h3 className="font-semibold text-dark mb-4">
                       {editingReview ? 'Modifier votre avis' : 'Laisser un avis'}
@@ -494,39 +534,40 @@ export default function RestaurantDetail() {
                   <Phone size={16} className="text-gold flex-shrink-0 mt-0.5" />
                   <div>
                     <div className="font-semibold text-dark">Téléphone</div>
-                    <div className="text-muted">{phoneDisplay}</div>
+                    <div className="text-muted">{restaurant.phone || '+212 6 00 00 00 00'}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CreditCard size={16} className="text-gold flex-shrink-0 mt-0.5" />
                   <div>
                     <div className="font-semibold text-dark">Paiement</div>
-                    <div className="text-muted">Espèces, carte bancaire</div>
+                    <div className="text-muted">Espèces à la livraison</div>
                   </div>
                 </div>
               </div>
               <div className="mt-5 pt-4 border-t border-black/[0.06] space-y-2.5">
-                <a href={waLink} target="_blank" rel="noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-500 hover:bg-green-400 text-white font-semibold text-sm transition-all">
-                  <MessageCircle size={16} /> Commander via WhatsApp
-                </a>
-                <a href={telLink}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-dark hover:bg-dark2 text-white font-semibold text-sm transition-all">
-                  <Phone size={16} /> Réserver une table
-                </a>
+                <button
+                  onClick={user ? startConversation : () => navigate('/connexion')}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gold hover:bg-gold-light text-dark font-semibold text-sm transition-all"
+                >
+                  <MessageCircle size={16} /> Contacter le vendeur
+                </button>
               </div>
             </div>
 
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-black/[0.05]" data-reveal>
               <h3 className="font-serif font-bold text-dark text-sm mb-3">Partager</h3>
               <div className="flex gap-2">
-                <button className="flex-1 py-2 rounded-lg bg-cream text-xs font-medium text-dark hover:bg-gold/10 transition-all flex items-center justify-center gap-1">
+                <button className="flex-1 py-2 rounded-lg bg-cream text-xs font-medium text-dark hover:bg-gold/10 transition-all flex items-center justify-center gap-1"
+                  aria-label="Partager sur Facebook">
                   <Facebook size={14} /> Facebook
                 </button>
-                <button className="flex-1 py-2 rounded-lg bg-cream text-xs font-medium text-dark hover:bg-gold/10 transition-all flex items-center justify-center gap-1">
+                <button className="flex-1 py-2 rounded-lg bg-cream text-xs font-medium text-dark hover:bg-gold/10 transition-all flex items-center justify-center gap-1"
+                  aria-label="Partager sur Instagram">
                   <Instagram size={14} /> Instagram
                 </button>
-                <button className="flex-1 py-2 rounded-lg bg-cream text-xs font-medium text-dark hover:bg-gold/10 transition-all flex items-center justify-center gap-1">
+                <button className="flex-1 py-2 rounded-lg bg-cream text-xs font-medium text-dark hover:bg-gold/10 transition-all flex items-center justify-center gap-1"
+                  aria-label="Partager sur WhatsApp">
                   <MessageCircle size={14} /> WhatsApp
                 </button>
               </div>

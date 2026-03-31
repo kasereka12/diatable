@@ -44,15 +44,6 @@ export default function Hero() {
 
           {/* Text */}
           <div>
-            <div
-              className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30
-                         text-gold text-[0.72rem] font-bold tracking-[0.12em] uppercase
-                         px-4 py-2 rounded-full mb-7"
-              style={{ animation: 'fadeInUp 0.6s ease forwards' }}
-            >
-              <Sparkles size={12} />
-              La Plateforme Food de la Diaspora au Maroc
-            </div>
 
             <h1
               className="font-serif font-black text-white leading-[1.1] tracking-tight mb-6"

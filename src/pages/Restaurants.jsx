@@ -6,21 +6,10 @@ import { TABS } from '../data/restaurants'
 import StarRating from '../components/ui/StarRating'
 import { getCuisineIcon } from '../lib/cuisineIcons'
 import { Search, MapPin, ShieldCheck, ArrowRight, Utensils } from 'lucide-react'
+import { getGradient } from '../lib/gradients'
 
 const VILLES  = ['Toutes', 'Casablanca', 'Rabat', 'Marrakech', 'Tanger']
 const NOTES   = [{ label: 'Toutes', val: 0 }, { label: '4.5+', val: 4.5 }, { label: '4.8+', val: 4.8 }]
-
-const GRAD_STYLES = {
-  'grad-senegal':   'linear-gradient(135deg,#e8521a,#f4a828)',
-  'grad-chinese':   'linear-gradient(135deg,#b71c1c,#e53935)',
-  'grad-lebanese':  'linear-gradient(135deg,#1b5e20,#43a047)',
-  'grad-syrian':    'linear-gradient(135deg,#4a148c,#7b1fa2)',
-  'grad-french':    'linear-gradient(135deg,#0d47a1,#1565c0)',
-  'grad-italian':   'linear-gradient(135deg,#c62828,#1b5e20)',
-  'grad-nigerian':  'linear-gradient(135deg,#1b5e20,#f9a825)',
-  'grad-indian':    'linear-gradient(135deg,#e65100,#fbc02d)',
-  'grad-brazilian': 'linear-gradient(135deg,#1b5e20,#0d47a1)',
-}
 
 export default function Restaurants() {
   const { restaurants, loading } = useRestaurants()
@@ -133,9 +122,9 @@ export default function Restaurants() {
                              border border-black/5 transition-all duration-300 block
                              hover:-translate-y-1.5 hover:shadow-[0_16px_48px_rgba(0,0,0,0.15)]"
                 >
-                  <div className="h-44 relative overflow-hidden" style={!r.image_url ? { background: GRAD_STYLES[r.gradient] } : {}}>
+                  <div className="h-44 relative overflow-hidden" style={!r.image_url ? { background: getGradient(r.gradient) } : {}}>
                     {r.image_url ? (
-                      <img src={r.image_url} alt={r.name} className="w-full h-full object-cover" />
+                      <img src={r.image_url} alt={r.name} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-lg">
                         <CuisineIcon size={52} className="text-white/90" />

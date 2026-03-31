@@ -6,10 +6,11 @@ import {
   Eye, LogOut, TrendingUp, TrendingDown, Minus, Phone,
   Instagram, Menu, ChevronRight, ChevronLeft, Edit2, Trash2, Plus,
   CheckCircle, AlertCircle, MessageSquare, Lock, ImageIcon, X as XIcon,
-  Heart
+  Heart, Package, MessageCircle, Crown, Sparkles, Zap, MapPin
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import VendorOrders from '../components/vendor/VendorOrders'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -117,7 +118,7 @@ export default function VendorDashboard() {
   const [menuCategory, setMenuCategory]     = useState("Plats Principaux")
   const [showAddForm, setShowAddForm]       = useState(false)
   const [editingDish, setEditingDish]       = useState(null)
-  const [newDish, setNewDish]               = useState({ nom: '', prix: '', description: '', categorie: 'Plats Principaux', populaire: false })
+  const [newDish, setNewDish]               = useState({ nom: '', prix: '', description: '', categorie: 'Plats Principaux', populaire: false, prepTime: '15' })
   const [readIds, setReadIds] = useState(new Set())
   const [restaurantForm, setRestaurantForm] = useState({
     nom: '',
@@ -130,6 +131,19 @@ export default function VendorDashboard() {
     description: '',
     horaires: '',
   })
+  const [bankForm, setBankForm] = useState({ rib: '', bank_name: '', account_name: '' })
+  const [savingBank, setSavingBank] = useState(false)
+  const [bankMsg, setBankMsg] = useState('')
+  const [subscription, setSubscription] = useState(null)
+  const [deliveryZones, setDeliveryZones] = useState([])
+  const [newZone, setNewZone] = useState({ quartier: '', price: '' })
+  const [savingZone, setSavingZone] = useState(false)
+  const [upgradingPlan, setUpgradingPlan] = useState(null) // plan being upgraded to
+  const [paymentForm, setPaymentForm] = useState({ bank: '', reference: '', sender_name: '' })
+  const [receiptFile, setReceiptFile] = useState(null)
+  const [receiptPreview, setReceiptPreview] = useState(null)
+  const [submittingPayment, setSubmittingPayment] = useState(false)
+  const [paymentMsg, setPaymentMsg] = useState('')
 
   // ── Supabase state ──────────────────────────────────────────────────────────
   const [restaurant, setRestaurant] = useState(null)
@@ -265,7 +279,34 @@ export default function VendorDashboard() {
           .select('*', { count: 'exact', head: true })
           .eq('restaurant_id', rest.id)
         setLikesCount(lCount || 0)
+
+        // Fetch delivery zones
+        const { data: zones } = await supabase
+          .from('delivery_zones')
+          .select('*')
+          .eq('restaurant_id', rest.id)
+          .order('quartier')
+        setDeliveryZones(zones || [])
       }
+
+      // Fetch banking info from profile
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('rib, bank_name, account_name')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (prof) {
+        setBankForm({ rib: prof.rib || '', bank_name: prof.bank_name || '', account_name: prof.account_name || '' })
+      }
+
+      // Fetch subscription
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('vendor_id', user.id)
+        .maybeSingle()
+      if (sub) setSubscription(sub)
+
       setDbLoading(false)
     }
     load()
@@ -370,6 +411,102 @@ export default function VendorDashboard() {
     setTimeout(() => setSaveMsg(''), 3000)
   }
 
+  async function saveBank() {
+    if (!supabase || !user) return
+    setSavingBank(true)
+    setBankMsg('')
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        rib:          bankForm.rib,
+        bank_name:    bankForm.bank_name,
+        account_name: bankForm.account_name,
+      })
+      .eq('id', user.id)
+    setSavingBank(false)
+    setBankMsg(error ? 'Erreur lors de la sauvegarde.' : 'Informations bancaires enregistrées !')
+    setTimeout(() => setBankMsg(''), 3000)
+  }
+
+  function startUpgrade(plan) {
+    if (plan === 'free') {
+      // Downgrade to free — direct
+      if (!supabase || !user) return
+      supabase.from('subscriptions').update({ plan: 'free' }).eq('vendor_id', user.id)
+        .then(() => setSubscription(prev => prev ? { ...prev, plan: 'free' } : null))
+      return
+    }
+    setUpgradingPlan(plan)
+    setPaymentForm({ bank: '', reference: '', sender_name: '' })
+    setReceiptFile(null)
+    setReceiptPreview(null)
+    setPaymentMsg('')
+  }
+
+  async function submitPayment() {
+    if (!supabase || !user || !upgradingPlan) return
+    if (!paymentForm.bank || !paymentForm.reference.trim() || !paymentForm.sender_name.trim()) {
+      setPaymentMsg('Veuillez remplir tous les champs.')
+      return
+    }
+
+    setSubmittingPayment(true)
+    setPaymentMsg('')
+
+    // Upload receipt if provided
+    let receiptUrl = null
+    if (receiptFile) {
+      const ext = receiptFile.name.split('.').pop()
+      const path = `${user.id}/receipt_${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('subscription-receipts').upload(path, receiptFile, { upsert: true })
+      if (!upErr) {
+        const { data } = supabase.storage.from('subscription-receipts').getPublicUrl(path)
+        receiptUrl = data?.publicUrl || null
+      }
+    }
+
+    const { error } = await supabase.from('subscription_payments').insert({
+      vendor_id: user.id,
+      plan: upgradingPlan,
+      bank: paymentForm.bank,
+      reference: paymentForm.reference.trim(),
+      sender_name: paymentForm.sender_name.trim(),
+      receipt_url: receiptUrl,
+      status: 'pending',
+    })
+
+    setSubmittingPayment(false)
+
+    if (error) {
+      setPaymentMsg('Erreur : ' + error.message)
+      return
+    }
+
+    setPaymentMsg('Demande envoyée ! Votre abonnement sera activé après vérification du paiement.')
+    setUpgradingPlan(null)
+  }
+
+  async function addDeliveryZone() {
+    if (!supabase || !restaurant || !newZone.quartier.trim() || !newZone.price) return
+    setSavingZone(true)
+    const { data, error } = await supabase
+      .from('delivery_zones')
+      .insert({ restaurant_id: restaurant.id, quartier: newZone.quartier.trim(), price: parseFloat(newZone.price) })
+      .select()
+      .single()
+    setSavingZone(false)
+    if (!error && data) {
+      setDeliveryZones(prev => [...prev, data].sort((a, b) => a.quartier.localeCompare(b.quartier)))
+      setNewZone({ quartier: '', price: '' })
+    }
+  }
+
+  async function removeDeliveryZone(zoneId) {
+    if (!supabase) return
+    await supabase.from('delivery_zones').delete().eq('id', zoneId)
+    setDeliveryZones(prev => prev.filter(z => z.id !== zoneId))
+  }
+
   function handleDishImageSelect(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -413,6 +550,7 @@ export default function VendorDashboard() {
           description: newDish.description,
           category:    cat,
           is_popular:  newDish.populaire,
+          prep_time_min: parseInt(newDish.prepTime) || 15,
           ...(imageUrl ? { image_url: imageUrl } : {}),
         }).eq('id', editingDish)
       }
@@ -430,6 +568,7 @@ export default function VendorDashboard() {
           category:      cat,
           is_popular:    newDish.populaire,
           is_available:  true,
+          prep_time_min: parseInt(newDish.prepTime) || 15,
         }).select().single()
         if (data) {
           // Upload image if selected
@@ -461,7 +600,7 @@ export default function VendorDashboard() {
 
   function startEdit(dish) {
     setEditingDish(dish.id)
-    setNewDish({ nom: dish.name, prix: String(dish.price), description: dish.description, categorie: dish.category || menuCategory, populaire: dish.is_popular })
+    setNewDish({ nom: dish.name, prix: String(dish.price), description: dish.description, categorie: dish.category || menuCategory, populaire: dish.is_popular, prepTime: String(dish.prep_time_min || 15) })
     clearDishImage()
     setDishImagePreview(dish.image_url || null)
     setShowAddForm(true)
@@ -504,10 +643,13 @@ export default function VendorDashboard() {
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <NavItem icon={LayoutDashboard} label="Aperçu"        active={activeSection === 'apercu'}     onClick={() => navigate_to('apercu')}     collapsed={collapsed} />
+        <NavItem icon={Package}        label="Commandes"     active={activeSection === 'commandes'}  onClick={() => navigate_to('commandes')}  collapsed={collapsed} />
+        <NavItem icon={MessageCircle}  label="Messages"      active={activeSection === 'messages'}   onClick={() => navigate_to('messages')}   collapsed={collapsed} />
         <NavItem icon={Store}          label="Mon Restaurant" active={activeSection === 'restaurant'} onClick={() => navigate_to('restaurant')} collapsed={collapsed} />
         <NavItem icon={Utensils}       label="Carte & Menu"   active={activeSection === 'menu'}       onClick={() => navigate_to('menu')}       collapsed={collapsed} />
         <NavItem icon={Star}           label="Avis clients"   active={activeSection === 'avis'}       onClick={() => navigate_to('avis')}       collapsed={collapsed} />
         <NavItem icon={BarChart2}      label="Statistiques"   active={activeSection === 'stats'}      onClick={() => navigate_to('stats')}      collapsed={collapsed} />
+        <NavItem icon={Crown}          label="Abonnement"     active={activeSection === 'abonnement'} onClick={() => navigate_to('abonnement')} collapsed={collapsed} />
         <NavItem icon={Bell}           label="Notifications"  active={activeSection === 'notifs'}     onClick={() => navigate_to('notifs')}     badge={unreadCount > 0 ? unreadCount : null} collapsed={collapsed} />
       </nav>
 
@@ -738,6 +880,104 @@ export default function VendorDashboard() {
           )}
         </div>
 
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-light">
+          <h2 className="text-base font-semibold text-dark mb-2">Zones de livraison & Tarifs</h2>
+          <p className="text-sm text-gray-400 mb-5">Configurez les prix de livraison par quartier de Casablanca. Ces prix seront affichés au client lors du checkout.</p>
+
+          {/* Existing zones */}
+          {deliveryZones.length > 0 && (
+            <div className="space-y-2 mb-5">
+              {deliveryZones.map(zone => (
+                <div key={zone.id} className="flex items-center justify-between bg-cream rounded-lg px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <MapPin size={14} className="text-gold flex-shrink-0" />
+                    <span className="text-sm font-medium text-dark">{zone.quartier}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-gold-dark">{Number(zone.price).toFixed(2)} MAD</span>
+                    <button onClick={() => removeDeliveryZone(zone.id)} className="text-red-400 hover:text-red-600 transition-colors" title="Supprimer">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add new zone */}
+          <div className="flex gap-3 items-end flex-wrap">
+            <div className="flex-1 min-w-[160px]">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Quartier</label>
+              <select
+                value={newZone.quartier}
+                onChange={e => setNewZone(p => ({ ...p, quartier: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-yellow-400/50 bg-white"
+              >
+                <option value="">— Choisir un quartier —</option>
+                {['Maarif', 'Bourgogne', 'Gauthier', 'Racine', 'Anfa', 'Ain Diab', 'Ain Sebaa', 'Sidi Bernoussi', 'Hay Hassani', 'Hay Mohammadi', 'Sbata', 'Sidi Moumen', 'Ben M\'Sick', 'Mers Sultan', 'Derb Sultan', 'Habous', 'Oasis', 'Palmier', 'Belvedere', 'CIL', '2 Mars', 'Bd Zerktouni', 'Triangle d\'Or', 'Casa Port', 'Bouskoura', 'Dar Bouazza']
+                  .filter(q => !deliveryZones.some(z => z.quartier === q))
+                  .map(q => <option key={q} value={q}>{q}</option>)
+                }
+              </select>
+            </div>
+            <div className="w-32">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Prix (MAD)</label>
+              <input
+                type="number" min="0" step="1"
+                value={newZone.price}
+                onChange={e => setNewZone(p => ({ ...p, price: e.target.value }))}
+                placeholder="15"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-yellow-400/50"
+              />
+            </div>
+            <button
+              onClick={addDeliveryZone}
+              disabled={savingZone || !newZone.quartier || !newZone.price}
+              className="bg-yellow-400 text-gray-900 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-yellow-500 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <Plus size={14} /> Ajouter
+            </button>
+          </div>
+
+          {deliveryZones.length === 0 && (
+            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 flex items-start gap-2">
+              <AlertCircle size={14} className="text-amber-500 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-700">Ajoutez au moins une zone de livraison pour que vos clients puissent choisir la livraison.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-light">
+          <h2 className="text-base font-semibold text-dark mb-2">Informations bancaires (RIB)</h2>
+          <p className="text-sm text-gray-400 mb-5">Pour recevoir vos paiements par virement bancaire après livraison.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Nom de la banque</label>
+              <input type="text" value={bankForm.bank_name} onChange={e => setBankForm(p => ({ ...p, bank_name: e.target.value }))}
+                placeholder="Ex: Attijariwafa Bank"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-yellow-400/50" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Titulaire du compte</label>
+              <input type="text" value={bankForm.account_name} onChange={e => setBankForm(p => ({ ...p, account_name: e.target.value }))}
+                placeholder="Nom complet du titulaire"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-yellow-400/50" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-gray-500 mb-1">RIB / IBAN</label>
+              <input type="text" value={bankForm.rib} onChange={e => setBankForm(p => ({ ...p, rib: e.target.value }))}
+                placeholder="Ex: MA00 0000 0000 0000 0000 0000 000"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-yellow-400/50 font-mono tracking-wide" />
+            </div>
+          </div>
+          <button onClick={saveBank} disabled={savingBank} className="mt-5 btn btn-gold text-sm disabled:opacity-50">
+            {savingBank ? 'Enregistrement…' : 'Enregistrer les informations bancaires'}
+          </button>
+          {bankMsg && (
+            <p className={`text-sm mt-2 ${bankMsg.includes('Erreur') ? 'text-red-500' : 'text-green-600'}`}>{bankMsg}</p>
+          )}
+        </div>
+
         <div className="bg-white rounded-xl p-6 shadow-sm border border-red-100">
           <h2 className="text-base font-semibold text-red-600 mb-2">Zone de danger</h2>
           <p className="text-sm text-gray-500 mb-4">La désactivation rendra votre fiche invisible pour les utilisateurs. Vous pourrez la réactiver à tout moment.</p>
@@ -839,6 +1079,17 @@ export default function VendorDashboard() {
                     : <option>Plats Principaux</option>
                   }
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Temps de préparation (minutes)</label>
+                <input
+                  type="number" min="1" max="180"
+                  value={newDish.prepTime}
+                  onChange={e => setNewDish(p => ({ ...p, prepTime: e.target.value }))}
+                  placeholder="15"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/50"
+                />
+                <p className="text-xs text-gray-400 mt-1">Utilisé pour estimer le temps de livraison total</p>
               </div>
               <div className="flex items-center gap-2 mt-5">
                 <input
@@ -1133,6 +1384,291 @@ export default function VendorDashboard() {
     )
   }
 
+  function renderMessages() {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h1 className="text-2xl font-serif font-bold text-dark flex items-center gap-2">
+            <MessageCircle size={24} className="text-gold" /> Messages
+          </h1>
+          <Link to="/messages" className="text-sm text-yellow-600 hover:underline font-medium">
+            Ouvrir la messagerie complète →
+          </Link>
+        </div>
+        <div className="bg-white rounded-xl p-8 shadow-sm border border-light text-center">
+          <MessageCircle size={40} className="text-gray-200 mx-auto mb-3" />
+          <p className="font-semibold text-dark mb-2">Messagerie intégrée</p>
+          <p className="text-sm text-gray-400 mb-5 max-w-md mx-auto">
+            Communiquez directement avec vos clients sans quitter la plateforme. Les conversations sont créées automatiquement lors d'une commande.
+          </p>
+          <Link to="/messages" className="btn btn-gold text-sm inline-flex items-center gap-2">
+            <MessageCircle size={16} /> Accéder aux messages
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  function renderSubscription() {
+    const currentPlan = subscription?.plan || 'free'
+    const plans = [
+      {
+        id: 'free', name: 'Gratuit', price: '0', period: '/mois',
+        icon: Zap, color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200',
+        features: [
+          'Fiche restaurant visible',
+          'Jusqu\'à 10 plats au menu',
+          'Messagerie avec clients',
+          'Commandes illimitées',
+        ],
+        limits: [
+          'Pas de mise en avant',
+          'Commission 5% par commande',
+        ],
+      },
+      {
+        id: 'pro', name: 'Pro', price: '299', period: 'MAD/mois',
+        icon: Sparkles, color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-300',
+        popular: true,
+        features: [
+          'Tout du plan Gratuit',
+          'Plats illimités au menu',
+          'Badge "Pro" sur votre fiche',
+          'Mise en avant dans les recherches',
+          'Commission réduite à 2%',
+          'Statistiques avancées',
+        ],
+        limits: [],
+      },
+      {
+        id: 'premium', name: 'Premium', price: '499', period: 'MAD/mois',
+        icon: Crown, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-300',
+        features: [
+          'Tout du plan Pro',
+          'Badge "Premium" doré',
+          'Position prioritaire en page d\'accueil',
+          '0% commission',
+          'Support prioritaire 24/7',
+          'Promotions & codes promo',
+          'Analytique détaillée',
+        ],
+        limits: [],
+      },
+    ]
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-serif font-bold text-dark flex items-center gap-2">
+            <Crown size={24} className="text-gold" /> Abonnement
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">Choisissez le plan adapté à votre activité</p>
+        </div>
+
+        {/* Current plan banner */}
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-light flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-sm text-gray-500">Plan actuel</p>
+            <p className="text-lg font-bold text-dark capitalize">{currentPlan === 'free' ? 'Gratuit' : currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</p>
+          </div>
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${
+            subscription?.status === 'active' ? 'bg-green-50 text-green-600 border border-green-200' :
+            'bg-gray-100 text-gray-500 border border-gray-200'
+          }`}>
+            {subscription?.status === 'active' ? 'Actif' : subscription?.status === 'expired' ? 'Expiré' : 'Actif'}
+          </span>
+        </div>
+
+        {/* Plan cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {plans.map(plan => {
+            const PlanIcon = plan.icon
+            const isCurrent = currentPlan === plan.id
+            return (
+              <div key={plan.id} className={`relative bg-white rounded-xl shadow-sm border-2 overflow-hidden transition-all ${
+                isCurrent ? plan.border + ' ring-2 ring-offset-2 ring-yellow-400/30' : 'border-gray-100 hover:border-gray-300'
+              }`}>
+                {plan.popular && (
+                  <div className="bg-yellow-400 text-gray-900 text-xs font-bold text-center py-1">
+                    Le plus populaire
+                  </div>
+                )}
+                <div className="p-6">
+                  <div className={`w-12 h-12 rounded-xl ${plan.bg} flex items-center justify-center mb-4`}>
+                    <PlanIcon size={24} className={plan.color} />
+                  </div>
+                  <h3 className="font-serif font-bold text-dark text-lg">{plan.name}</h3>
+                  <div className="flex items-baseline gap-1 mt-2 mb-5">
+                    <span className="text-3xl font-black text-dark">{plan.price}</span>
+                    <span className="text-sm text-gray-400">{plan.period}</span>
+                  </div>
+                  <ul className="space-y-2.5 mb-6">
+                    {plan.features.map(f => (
+                      <li key={f} className="flex items-start gap-2 text-sm text-dark">
+                        <CheckCircle size={14} className="text-green-500 mt-0.5 flex-shrink-0" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                    {plan.limits.map(l => (
+                      <li key={l} className="flex items-start gap-2 text-sm text-gray-400">
+                        <XIcon size={14} className="text-gray-300 mt-0.5 flex-shrink-0" />
+                        <span>{l}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {isCurrent ? (
+                    <div className="w-full text-center py-2.5 rounded-lg bg-gray-100 text-gray-500 text-sm font-semibold">
+                      Plan actuel
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => startUpgrade(plan.id)}
+                      className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                        plan.popular
+                          ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500'
+                          : 'border border-gray-200 text-dark hover:border-yellow-400 hover:bg-yellow-50'
+                      }`}
+                    >
+                      {plan.id === 'free' ? 'Rétrograder' : 'Passer au ' + plan.name}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Payment message */}
+        {paymentMsg && !upgradingPlan && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+            <CheckCircle size={18} className="text-green-500 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-green-800 font-medium">{paymentMsg}</p>
+          </div>
+        )}
+
+        {/* Payment form overlay */}
+        {upgradingPlan && (
+          <div className="bg-white rounded-xl p-6 shadow-sm border-2 border-gold">
+            <h3 className="font-serif font-bold text-dark text-lg mb-1">
+              Passer au plan {upgradingPlan.charAt(0).toUpperCase() + upgradingPlan.slice(1)}
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Effectuez un virement bancaire puis remplissez les informations ci-dessous
+            </p>
+
+            {/* Bank RIBs info */}
+            <div className="bg-cream rounded-xl p-4 mb-6">
+              <p className="text-xs font-bold text-dark uppercase tracking-wider mb-3">Comptes bancaires DiaTable</p>
+              <div className="space-y-2 text-sm">
+                {[
+                  { bank: 'CIH Bank', rib: '230 780 0123456789012345 67' },
+                  { bank: 'Attijariwafa Bank', rib: '007 780 0123456789012345 89' },
+                  { bank: 'Bank of Africa', rib: '011 780 0123456789012345 23' },
+                  { bank: 'Wafacash', rib: 'Point de vente — référence DiaTable' },
+                ].map(b => (
+                  <div key={b.bank} className="flex justify-between items-center bg-white rounded-lg px-3 py-2">
+                    <span className="font-semibold text-dark">{b.bank}</span>
+                    <span className="text-muted font-mono text-xs">{b.rib}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Banque utilisée <span className="text-red-400">*</span></label>
+                <select
+                  value={paymentForm.bank}
+                  onChange={e => setPaymentForm(p => ({ ...p, bank: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-yellow-400/50 bg-white"
+                >
+                  <option value="">— Choisir la banque —</option>
+                  <option value="CIH Bank">CIH Bank</option>
+                  <option value="Attijariwafa Bank">Attijariwafa Bank</option>
+                  <option value="Bank of Africa">Bank of Africa</option>
+                  <option value="Wafacash">Wafacash</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Nom de l'expéditeur <span className="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  value={paymentForm.sender_name}
+                  onChange={e => setPaymentForm(p => ({ ...p, sender_name: e.target.value }))}
+                  placeholder="Nom complet sur le virement"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-yellow-400/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Référence du virement <span className="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  value={paymentForm.reference}
+                  onChange={e => setPaymentForm(p => ({ ...p, reference: e.target.value }))}
+                  placeholder="Numéro de référence / transaction"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-yellow-400/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Reçu de virement (photo/PDF)</label>
+                {receiptPreview ? (
+                  <div className="relative">
+                    <img src={receiptPreview} alt="Reçu" className="w-full h-24 object-cover rounded-lg border border-gray-200" />
+                    <button
+                      onClick={() => { setReceiptFile(null); setReceiptPreview(null) }}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    >
+                      <XIcon size={10} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center h-[42px] border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-yellow-400 transition-colors">
+                    <span className="text-xs text-gray-400">Téléverser le reçu</span>
+                    <input type="file" accept="image/*,.pdf" className="hidden" onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (f) { setReceiptFile(f); setReceiptPreview(URL.createObjectURL(f)) }
+                    }} />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {paymentMsg && (
+              <p className="text-sm text-red-500 mb-3">{paymentMsg}</p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={submitPayment}
+                disabled={submittingPayment}
+                className="bg-yellow-400 text-gray-900 font-semibold px-6 py-2.5 rounded-lg text-sm hover:bg-yellow-500 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                <CheckCircle size={14} />
+                {submittingPayment ? 'Envoi en cours…' : 'Envoyer la demande'}
+              </button>
+              <button
+                onClick={() => { setUpgradingPlan(null); setPaymentMsg('') }}
+                className="border border-gray-200 text-gray-500 px-5 py-2.5 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!upgradingPlan && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-amber-800">
+              <p className="font-semibold mb-1">Comment passer au Pro ou Premium ?</p>
+              <p>Cliquez sur le plan souhaité, effectuez un virement bancaire vers l'un de nos comptes, puis téléversez le reçu avec la référence. Votre abonnement sera activé sous 24h après vérification.</p>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   function renderSection() {
     if (dbLoading) {
       return (
@@ -1181,10 +1717,13 @@ export default function VendorDashboard() {
 
     switch (activeSection) {
       case 'apercu':     return renderApercu()
+      case 'commandes':  return <VendorOrders restaurantId={restaurant.id} />
+      case 'messages':   return renderMessages()
       case 'restaurant': return renderRestaurant()
       case 'menu':       return renderMenu()
       case 'avis':       return renderAvis()
       case 'stats':      return renderStats()
+      case 'abonnement': return renderSubscription()
       case 'notifs':     return renderNotifs()
       default:           return renderApercu()
     }
