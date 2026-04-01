@@ -1157,7 +1157,7 @@ export default function VendorDashboard() {
               <div key={dish.id} className="bg-white rounded-xl p-4 shadow-sm border border-light flex items-start gap-4">
                 <div className="w-14 h-14 rounded-xl bg-yellow-50 flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-100">
                   {dish.image_url
-                    ? <img src={dish.image_url} alt={dish.name} className="w-full h-full object-cover" />
+                    ? <img src={dish.image_url} alt={dish.name} className="w-full h-full object-cover" loading="lazy" />
                     : <Utensils size={20} className="text-yellow-400" />
                   }
                 </div>

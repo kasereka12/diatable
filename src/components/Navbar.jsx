@@ -38,7 +38,16 @@ export default function Navbar() {
   const initials    = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2) : '?'
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 60)
+    let ticking = false
+    const handler = () => {
+      if (!ticking) {
+        ticking = true
+        requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 60)
+          ticking = false
+        })
+      }
+    }
     window.addEventListener('scroll', handler, { passive: true })
     return () => window.removeEventListener('scroll', handler)
   }, [])

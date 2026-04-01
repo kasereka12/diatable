@@ -39,7 +39,7 @@ function RestaurantCard({ r, delay = '0s' }) {
         style={!r.image_url ? { background: GRAD_STYLES[r.gradient] } : {}}
       >
         {r.image_url ? (
-          <img src={r.image_url} alt={r.name} className="w-full h-full object-cover" />
+          <img src={r.image_url} alt={r.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-lg">
             <CuisineIcon size={52} className="text-white/90" />
