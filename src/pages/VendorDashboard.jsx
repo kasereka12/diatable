@@ -291,6 +291,16 @@ export default function VendorDashboard() {
     setReadIds(prev => new Set([...prev, id]))
   }
 
+  async function toggleActive() {
+    if (!supabase || !restaurant) return
+    const next = !restaurant.is_active
+    const { error } = await supabase
+      .from('restaurants')
+      .update({ is_active: next })
+      .eq('id', restaurant.id)
+    if (!error) setRestaurant(prev => ({ ...prev, is_active: next }))
+  }
+
   async function createRestaurant() {
     if (!supabase || !createForm.nom.trim() || !createForm.cuisine.trim() || !createForm.ville.trim()) return
     setCreatingRest(true)
@@ -738,12 +748,32 @@ export default function VendorDashboard() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-red-100">
-          <h2 className="text-base font-semibold text-red-600 mb-2">Zone de danger</h2>
-          <p className="text-sm text-gray-500 mb-4">La désactivation rendra votre fiche invisible pour les utilisateurs. Vous pourrez la réactiver à tout moment.</p>
-          <button className="border border-red-400 text-red-500 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors">
-            Désactiver mon restaurant
-          </button>
+        <div className={`bg-white rounded-xl p-6 shadow-sm border ${restaurant?.is_active ? 'border-red-100' : 'border-green-100'}`}>
+          <h2 className={`text-base font-semibold mb-2 ${restaurant?.is_active ? 'text-red-600' : 'text-green-600'}`}>
+            Zone de danger
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            {restaurant?.is_active
+              ? 'La désactivation rendra votre fiche invisible pour les clients. Vous pourrez la réactiver à tout moment.'
+              : 'Votre fiche est actuellement désactivée et invisible pour les clients. Réactivez-la pour réapparaître.'}
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleActive}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                ${restaurant?.is_active
+                  ? 'border border-red-400 text-red-500 hover:bg-red-50'
+                  : 'border border-green-500 text-green-600 hover:bg-green-50'
+                }`}
+            >
+              {restaurant?.is_active ? 'Désactiver mon restaurant' : 'Réactiver mon restaurant'}
+            </button>
+            {!restaurant?.is_active && (
+              <span className="text-xs text-red-400 font-medium bg-red-50 px-3 py-1 rounded-full">
+                Fiche désactivée
+              </span>
+            )}
+          </div>
         </div>
       </div>
     )

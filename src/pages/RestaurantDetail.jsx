@@ -9,7 +9,7 @@ import { getCuisineIcon } from '../lib/cuisineIcons'
 import {
   ArrowLeft, MapPin, Clock, Phone, CreditCard,
   MessageCircle, ShieldCheck, Star, Facebook, Instagram, Utensils,
-  Heart, Send, Pencil, Trash2
+  Heart, Send, Pencil, Trash2, X, ZoomIn
 } from 'lucide-react'
 
 const GRAD_STYLES = {
@@ -24,11 +24,24 @@ const GRAD_STYLES = {
   'grad-brazilian': 'linear-gradient(135deg,#1b5e20,#0d47a1)',
 }
 
-function MenuItem({ item }) {
+function MenuItem({ item, onImageClick }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-4 border-b border-black/[0.06] last:border-0">
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-0.5">
+    <div className="flex items-start gap-3 py-4 border-b border-black/[0.06] last:border-0">
+      {/* Thumbnail */}
+      {item.image_url && (
+        <button
+          onClick={() => onImageClick(item.image_url, item.name)}
+          className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 group"
+          title="Agrandir"
+        >
+          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+            <ZoomIn size={16} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        </button>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <span className="font-semibold text-dark text-sm">{item.name}</span>
           {item.popular && (
             <span className="bg-gold/15 text-gold-dark text-[0.65rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
@@ -38,7 +51,40 @@ function MenuItem({ item }) {
         </div>
         {item.desc && <p className="text-muted text-xs leading-relaxed">{item.desc}</p>}
       </div>
-      <span className="font-bold text-dark text-sm flex-shrink-0">{item.price} MAD</span>
+      <span className="font-bold text-dark text-sm flex-shrink-0 ml-2">{item.price} MAD</span>
+    </div>
+  )
+}
+
+function Lightbox({ src, alt, onClose }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all"
+      >
+        <X size={20} />
+      </button>
+      <img
+        src={src}
+        alt={alt}
+        onClick={e => e.stopPropagation()}
+        className="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain"
+      />
+      {alt && (
+        <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/70 text-sm font-medium bg-black/40 px-4 py-1.5 rounded-full">
+          {alt}
+        </p>
+      )}
     </div>
   )
 }
@@ -91,6 +137,7 @@ export default function RestaurantDetail() {
   const { restaurant, menuByCategory, reviews, loading } = useRestaurantDetail(id)
   const ref = useScrollReveal()
   const [activeCategory, setActiveCategory] = useState(0)
+  const [lightbox, setLightbox] = useState(null) // { src, alt }
 
   // Likes
   const [likesCount, setLikesCount] = useState(0)
@@ -349,7 +396,9 @@ export default function RestaurantDetail() {
 
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05]" data-reveal>
               {currentItems.length > 0 ? (
-                currentItems.map(item => <MenuItem key={item.id} item={item} />)
+                currentItems.map(item => (
+                  <MenuItem key={item.id} item={item} onImageClick={(src, alt) => setLightbox({ src, alt })} />
+                ))
               ) : (
                 <p className="text-muted text-sm text-center py-6">Aucun plat dans cette catégorie.</p>
               )}
@@ -534,6 +583,9 @@ export default function RestaurantDetail() {
           </div>
         </div>
       </div>
+
+      {/* Lightbox */}
+      {lightbox && <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
     </div>
   )
 }

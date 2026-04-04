@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useScrollReveal } from '../hooks/useScrollReveal'
+import { useAuth } from '../context/AuthContext'
 import SectionHeader from '../components/ui/SectionHeader'
 import { supabase } from '../lib/supabase'
 import { Globe, Users, ShieldCheck, Heart } from 'lucide-react'
@@ -13,6 +14,8 @@ const VALUES = [
 
 export default function About() {
   const ref = useScrollReveal()
+  const { profile } = useAuth()
+  const isVendor = profile?.role === 'vendor'
   const [team, setTeam]       = useState([])
   const [teamLoading, setTeamLoading] = useState(true)
 
@@ -140,7 +143,9 @@ export default function About() {
           <p className="text-muted mb-8">Que vous cherchiez de la nourriture ou que vous cuisiniez, votre place est ici.</p>
           <div className="flex flex-wrap justify-center gap-4">
             <a href="/restaurants" className="btn btn-gold">Explorer les cuisines</a>
-            <a href="/inscription?role=vendor" className="btn btn-outline">Devenir vendeur</a>
+            {!isVendor && (
+              <a href="/inscription?role=vendor" className="btn btn-outline">Devenir vendeur</a>
+            )}
           </div>
         </div>
       </section>
