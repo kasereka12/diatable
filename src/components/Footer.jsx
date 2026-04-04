@@ -22,6 +22,7 @@ const CONTACT_LINKS = [
   { label: '+212 6 00 00 00 00',  href: 'tel:+212600000000' },
   { label: 'Casablanca, Maroc',   href: null },
   { label: 'Devenir vendeur',     to: '/devenir-vendeur' },
+  { label: 'Mes commandes',       to: '/mes-commandes' },
   { label: 'Aide & Support',      to: '/aide' },
 ]
 

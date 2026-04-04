@@ -180,14 +180,34 @@ export default function Register() {
                         {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
+                    {/* Password strength indicator */}
+                    {password && (
+                      <div className="mt-2">
+                        <div className="flex gap-1">
+                          {[1,2,3,4].map(level => {
+                            const strength = (password.length >= 6 ? 1 : 0) + (password.length >= 8 ? 1 : 0) + (/[A-Z]/.test(password) && /[a-z]/.test(password) ? 1 : 0) + (/\d/.test(password) || /[^a-zA-Z0-9]/.test(password) ? 1 : 0)
+                            const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-emerald-500']
+                            return <div key={level} className={`h-1 flex-1 rounded-full transition-all ${level <= strength ? colors[strength - 1] : 'bg-white/10'}`} />
+                          })}
+                        </div>
+                        <p className="text-[0.65rem] text-muted mt-1">
+                          {password.length < 6 ? 'Trop court' : password.length < 8 ? 'Acceptable' : 'Bon mot de passe'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-light/70 mb-1.5 uppercase tracking-wide">Confirmer le mot de passe</label>
                     <input
                       type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required
                       placeholder="••••••••"
-                      className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-muted focus:outline-none focus:border-gold focus:bg-white/[0.08] transition-all"
+                      className={`w-full bg-white/[0.06] border rounded-xl px-4 py-3 text-white text-sm placeholder-muted focus:outline-none focus:bg-white/[0.08] transition-all ${
+                        confirm && confirm !== password ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-gold'
+                      }`}
                     />
+                    {confirm && confirm !== password && (
+                      <p className="text-red-400 text-xs mt-1">Les mots de passe ne correspondent pas</p>
+                    )}
                   </div>
 
                   {error && (
