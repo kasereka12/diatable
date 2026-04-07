@@ -27,13 +27,15 @@ const INFO_ITEMS = [
 
 export default function Contact() {
   const ref = useScrollReveal()
-  const isVendor = profile?.role === 'vendor'
-  const REASONS = isVendor ? REASONS_VENDOR : REASONS_DEFAULT
   const [form, setForm] = useState({ name: '', email: '', reason: '', message: '' })
   const [submitted, setSubmit] = useState(false)
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
+  const [isVendor, setIsVendor] = useState(false)
+  const REASONS = isVendor ? REASONS_VENDOR : REASONS_DEFAULT
+
+
 
 
   async function fetchProfile(userId) {
@@ -44,6 +46,7 @@ export default function Contact() {
       .eq('id', userId)
       .single()
     setProfile(data)
+    setIsVendor(data?.role === 'vendor')
   }
   useEffect(() => {
     if (user) {

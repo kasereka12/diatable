@@ -20,13 +20,13 @@ function timeAgo(iso) {
   if (!iso) return ''
   const diff = Date.now() - new Date(iso).getTime()
   const m = Math.floor(diff / 60000)
-  if (m < 1)  return "À l'instant"
+  if (m < 1) return "À l'instant"
   if (m < 60) return `Il y a ${m} min`
   const h = Math.floor(m / 60)
   if (h < 24) return `Il y a ${h}h`
   const d = Math.floor(h / 24)
   if (d === 1) return 'Hier'
-  if (d < 7)  return `Il y a ${d} jours`
+  if (d < 7) return `Il y a ${d} jours`
   return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
@@ -45,7 +45,7 @@ function svgPolyline(data, w = 560, h = 120, pad = 20) {
 function Stars({ count, size = 16 }) {
   return (
     <span className="flex gap-0.5">
-      {[1,2,3,4,5].map(i => (
+      {[1, 2, 3, 4, 5].map(i => (
         <Star key={i} size={size} className={i <= count ? "text-yellow-400 fill-yellow-400" : "text-gray-300"} />
       ))}
     </span>
@@ -59,19 +59,19 @@ function StatCard({ icon: Icon, value, label, trend, up }) {
         <div className="w-10 h-10 rounded-lg bg-dark/5 flex items-center justify-center">
           <Icon size={20} className="text-dark" />
         </div>
-        {up === true  && (
+        {up === true && (
           <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-            <TrendingUp size={12}/>{trend}
+            <TrendingUp size={12} />{trend}
           </span>
         )}
         {up === false && (
           <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-            <TrendingDown size={12}/>{trend}
+            <TrendingDown size={12} />{trend}
           </span>
         )}
         {up === null && (
           <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-            <Minus size={12}/>stable
+            <Minus size={12} />stable
           </span>
         )}
       </div>
@@ -112,13 +112,13 @@ export default function VendorDashboard() {
   const vendorName = profile?.full_name || user?.user_metadata?.full_name || "Votre restaurant"
   const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
-  const [activeSection, setActiveSection]   = useState('apercu')
-  const [sidebarOpen, setSidebarOpen]       = useState(false)
-  const [collapsed, setCollapsed]           = useState(false)
-  const [menuCategory, setMenuCategory]     = useState("Plats Principaux")
-  const [showAddForm, setShowAddForm]       = useState(false)
-  const [editingDish, setEditingDish]       = useState(null)
-  const [newDish, setNewDish]               = useState({ nom: '', prix: '', description: '', categorie: 'Plats Principaux', populaire: false, prepTime: '15' })
+  const [activeSection, setActiveSection] = useState('apercu')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  const [menuCategory, setMenuCategory] = useState("Plats Principaux")
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [editingDish, setEditingDish] = useState(null)
+  const [newDish, setNewDish] = useState({ nom: '', prix: '', description: '', categorie: 'Plats Principaux', populaire: false, prepTime: '15' })
   const [readIds, setReadIds] = useState(new Set())
   const [restaurantForm, setRestaurantForm] = useState({
     nom: '',
@@ -147,13 +147,13 @@ export default function VendorDashboard() {
 
   // ── Supabase state ──────────────────────────────────────────────────────────
   const [restaurant, setRestaurant] = useState(null)
-  const [menuItems,  setMenuItems]  = useState([])
-  const [reviews,    setReviews]    = useState([])
-  const [dbLoading,  setDbLoading]  = useState(true)
-  const [savingRest,    setSavingRest]    = useState(false)
-  const [saveMsg,       setSaveMsg]       = useState('')
-  const [creatingRest,  setCreatingRest]  = useState(false)
-  const [createForm,    setCreateForm]    = useState({ nom: '', cuisine: '', cuisine_label: '', flag: '🍽️', ville: '', description: '' })
+  const [menuItems, setMenuItems] = useState([])
+  const [reviews, setReviews] = useState([])
+  const [dbLoading, setDbLoading] = useState(true)
+  const [savingRest, setSavingRest] = useState(false)
+  const [saveMsg, setSaveMsg] = useState('')
+  const [creatingRest, setCreatingRest] = useState(false)
+  const [createForm, setCreateForm] = useState({ nom: '', cuisine: '', cuisine_label: '', flag: '🍽️', ville: '', description: '' })
   const [dishImageFile, setDishImageFile] = useState(null)
   const [dishImagePreview, setDishImagePreview] = useState(null)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -166,15 +166,15 @@ export default function VendorDashboard() {
   // ── Computed metrics ──────────────────────────────────────────────────────────
   const avgRating = useMemo(() =>
     reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null
-  , [reviews])
+    , [reviews])
 
   const starDist = useMemo(() =>
-    [5,4,3,2,1].map(n => ({
+    [5, 4, 3, 2, 1].map(n => ({
       stars: n,
       count: reviews.filter(r => r.rating === n).length,
       pct: reviews.length > 0 ? Math.round(reviews.filter(r => r.rating === n).length / reviews.length * 100) : 0,
     }))
-  , [reviews])
+    , [reviews])
 
   // Reviews per day of week (last 30 days)
   const reviewsByDay = useMemo(() => {
@@ -221,15 +221,15 @@ export default function VendorDashboard() {
         if (rest.image_url) setRestImagePreview(rest.image_url)
         // Pre-fill restaurant form with real data
         setRestaurantForm({
-          nom:         rest.name          || '',
-          cuisine:     rest.cuisine_label || '',
-          ville:       rest.location      || '',
-          adresse:     rest.address       || '',
-          telephone:   rest.phone         || '',
-          whatsapp:    rest.whatsapp      || '',
-          instagram:   rest.instagram     || '',
-          description: rest.description   || '',
-          horaires:    rest.hours         || '',
+          nom: rest.name || '',
+          cuisine: rest.cuisine_label || '',
+          ville: rest.location || '',
+          adresse: rest.address || '',
+          telephone: rest.phone || '',
+          whatsapp: rest.whatsapp || '',
+          instagram: rest.instagram || '',
+          description: rest.description || '',
+          horaires: rest.hours || '',
         })
 
         // Fetch menu items
@@ -258,10 +258,10 @@ export default function VendorDashboard() {
         setReviews((revs || []).map(r => ({
           ...r,
           initials: (r.profiles?.full_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
-          name:     r.profiles?.full_name || 'Utilisateur',
-          stars:    r.rating,
-          date:     new Date(r.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
-          comment:  r.text || '',
+          name: r.profiles?.full_name || 'Utilisateur',
+          stars: r.rating,
+          date: new Date(r.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+          comment: r.text || '',
         })))
 
         // Fetch views this month
@@ -348,16 +348,16 @@ export default function VendorDashboard() {
     const { data, error } = await supabase
       .from('restaurants')
       .insert({
-        owner_id:      user.id,
-        name:          createForm.nom,
-        cuisine:       createForm.cuisine.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ''),
+        owner_id: user.id,
+        name: createForm.nom,
+        cuisine: createForm.cuisine.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ''),
         cuisine_label: createForm.cuisine,
-        flag:          createForm.flag,
-        emoji:         createForm.flag,
-        gradient:      'linear-gradient(135deg,#f4a828,#c8841a)',
-        location:      createForm.ville,
-        description:   createForm.description,
-        is_active:     false,
+        flag: createForm.flag,
+        emoji: createForm.flag,
+        gradient: 'linear-gradient(135deg,#f4a828,#c8841a)',
+        location: createForm.ville,
+        description: createForm.description,
+        is_active: false,
       })
       .select()
       .single()
@@ -365,15 +365,15 @@ export default function VendorDashboard() {
     if (!error && data) {
       setRestaurant(data)
       setRestaurantForm({
-        nom:         data.name          || '',
-        cuisine:     data.cuisine_label || '',
-        ville:       data.location      || '',
-        adresse:     data.address       || '',
-        telephone:   data.phone         || '',
-        whatsapp:    data.whatsapp      || '',
-        instagram:   data.instagram     || '',
-        description: data.description   || '',
-        horaires:    data.hours         || '',
+        nom: data.name || '',
+        cuisine: data.cuisine_label || '',
+        ville: data.location || '',
+        adresse: data.address || '',
+        telephone: data.phone || '',
+        whatsapp: data.whatsapp || '',
+        instagram: data.instagram || '',
+        description: data.description || '',
+        horaires: data.hours || '',
       })
       setActiveSection('restaurant')
     }
@@ -405,15 +405,15 @@ export default function VendorDashboard() {
     const { error } = await supabase
       .from('restaurants')
       .update({
-        name:          restaurantForm.nom,
+        name: restaurantForm.nom,
         cuisine_label: restaurantForm.cuisine,
-        location:      restaurantForm.ville,
-        address:       restaurantForm.adresse,
-        phone:         restaurantForm.telephone,
-        whatsapp:      restaurantForm.whatsapp,
-        instagram:     restaurantForm.instagram,
-        description:   restaurantForm.description,
-        hours:         restaurantForm.horaires,
+        location: restaurantForm.ville,
+        address: restaurantForm.adresse,
+        phone: restaurantForm.telephone,
+        whatsapp: restaurantForm.whatsapp,
+        instagram: restaurantForm.instagram,
+        description: restaurantForm.description,
+        hours: restaurantForm.horaires,
       })
       .eq('id', restaurant.id)
     setSavingRest(false)
@@ -428,8 +428,8 @@ export default function VendorDashboard() {
     const { error } = await supabase
       .from('profiles')
       .update({
-        rib:          bankForm.rib,
-        bank_name:    bankForm.bank_name,
+        rib: bankForm.rib,
+        bank_name: bankForm.bank_name,
         account_name: bankForm.account_name,
       })
       .eq('id', user.id)
@@ -555,11 +555,11 @@ export default function VendorDashboard() {
         let imageUrl = null
         if (dishImageFile) imageUrl = await uploadDishImage(editingDish)
         await supabase.from('menu_items').update({
-          name:        newDish.nom,
-          price:       parseFloat(newDish.prix) || 0,
+          name: newDish.nom,
+          price: parseFloat(newDish.prix) || 0,
           description: newDish.description,
-          category:    cat,
-          is_popular:  newDish.populaire,
+          category: cat,
+          is_popular: newDish.populaire,
           prep_time_min: parseInt(newDish.prepTime) || 15,
           ...(imageUrl ? { image_url: imageUrl } : {}),
         }).eq('id', editingDish)
@@ -572,12 +572,12 @@ export default function VendorDashboard() {
       if (supabase) {
         const { data } = await supabase.from('menu_items').insert({
           restaurant_id: restaurant.id,
-          name:          newDish.nom,
-          price:         parseFloat(newDish.prix) || 0,
-          description:   newDish.description,
-          category:      cat,
-          is_popular:    newDish.populaire,
-          is_available:  true,
+          name: newDish.nom,
+          price: parseFloat(newDish.prix) || 0,
+          description: newDish.description,
+          category: cat,
+          is_popular: newDish.populaire,
+          is_available: true,
           prep_time_min: parseInt(newDish.prepTime) || 15,
         }).select().single()
         if (data) {
@@ -652,15 +652,15 @@ export default function VendorDashboard() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <NavItem icon={LayoutDashboard} label="Aperçu"        active={activeSection === 'apercu'}     onClick={() => navigate_to('apercu')}     collapsed={collapsed} />
-        <NavItem icon={Package}        label="Commandes"     active={activeSection === 'commandes'}  onClick={() => navigate_to('commandes')}  collapsed={collapsed} />
-        <NavItem icon={MessageCircle}  label="Messages"      active={activeSection === 'messages'}   onClick={() => navigate_to('messages')}   collapsed={collapsed} />
-        <NavItem icon={Store}          label="Mon Restaurant" active={activeSection === 'restaurant'} onClick={() => navigate_to('restaurant')} collapsed={collapsed} />
-        <NavItem icon={Utensils}       label="Carte & Menu"   active={activeSection === 'menu'}       onClick={() => navigate_to('menu')}       collapsed={collapsed} />
-        <NavItem icon={Star}           label="Avis clients"   active={activeSection === 'avis'}       onClick={() => navigate_to('avis')}       collapsed={collapsed} />
-        <NavItem icon={BarChart2}      label="Statistiques"   active={activeSection === 'stats'}      onClick={() => navigate_to('stats')}      collapsed={collapsed} />
-        <NavItem icon={Crown}          label="Abonnement"     active={activeSection === 'abonnement'} onClick={() => navigate_to('abonnement')} collapsed={collapsed} />
-        <NavItem icon={Bell}           label="Notifications"  active={activeSection === 'notifs'}     onClick={() => navigate_to('notifs')}     badge={unreadCount > 0 ? unreadCount : null} collapsed={collapsed} />
+        <NavItem icon={LayoutDashboard} label="Aperçu" active={activeSection === 'apercu'} onClick={() => navigate_to('apercu')} collapsed={collapsed} />
+        <NavItem icon={Package} label="Commandes" active={activeSection === 'commandes'} onClick={() => navigate_to('commandes')} collapsed={collapsed} />
+        <NavItem icon={MessageCircle} label="Messages" active={activeSection === 'messages'} onClick={() => navigate_to('messages')} collapsed={collapsed} />
+        <NavItem icon={Store} label="Mon Restaurant" active={activeSection === 'restaurant'} onClick={() => navigate_to('restaurant')} collapsed={collapsed} />
+        <NavItem icon={Utensils} label="Carte & Menu" active={activeSection === 'menu'} onClick={() => navigate_to('menu')} collapsed={collapsed} />
+        <NavItem icon={Star} label="Avis clients" active={activeSection === 'avis'} onClick={() => navigate_to('avis')} collapsed={collapsed} />
+        <NavItem icon={BarChart2} label="Statistiques" active={activeSection === 'stats'} onClick={() => navigate_to('stats')} collapsed={collapsed} />
+        <NavItem icon={Crown} label="Abonnement" active={activeSection === 'abonnement'} onClick={() => navigate_to('abonnement')} collapsed={collapsed} />
+        <NavItem icon={Bell} label="Notifications" active={activeSection === 'notifs'} onClick={() => navigate_to('notifs')} badge={unreadCount > 0 ? unreadCount : null} collapsed={collapsed} />
       </nav>
 
       <div className="px-3 py-4 border-t border-white/10 space-y-1">
@@ -706,10 +706,10 @@ export default function VendorDashboard() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={Eye}           value={viewsThisMonth}   label="Vues ce mois"  trend={viewsThisMonth > 0 ? 'profil consulté' : 'aucune vue'} up={viewsThisMonth > 0 ? true : null} />
-          <StatCard icon={Star}          value={avgRating ?? '—'} label="Note moyenne"  trend={avgRating ? 'réel' : 'aucun avis'} up={null} />
-          <StatCard icon={MessageSquare} value={reviews.length}   label="Avis publiés"  trend={reviews.length > 0 ? `+${reviews.filter(r => Date.now() - new Date(r.created_at).getTime() < 30*86400000).length} ce mois` : 'aucun'} up={reviews.length > 0 ? true : null} />
-          <StatCard icon={Heart}         value={likesCount}       label="J'aime"        trend={likesCount > 0 ? 'favoris' : 'aucun like'} up={likesCount > 0 ? true : null} />
+          <StatCard icon={Eye} value={viewsThisMonth} label="Vues ce mois" trend={viewsThisMonth > 0 ? 'profil consulté' : 'aucune vue'} up={viewsThisMonth > 0 ? true : null} />
+          <StatCard icon={Star} value={avgRating ?? '—'} label="Note moyenne" trend={avgRating ? 'réel' : 'aucun avis'} up={null} />
+          <StatCard icon={MessageSquare} value={reviews.length} label="Avis publiés" trend={reviews.length > 0 ? `+${reviews.filter(r => Date.now() - new Date(r.created_at).getTime() < 30 * 86400000).length} ce mois` : 'aucun'} up={reviews.length > 0 ? true : null} />
+          <StatCard icon={Heart} value={likesCount} label="J'aime" trend={likesCount > 0 ? 'favoris' : 'aucun like'} up={likesCount > 0 ? true : null} />
         </div>
 
         <div className="bg-white rounded-xl p-5 shadow-sm border border-light">
@@ -772,12 +772,12 @@ export default function VendorDashboard() {
           <h2 className="text-base font-semibold text-dark mb-5">Informations générales</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
-              { label: "Nom du restaurant", key: "nom",       type: "text" },
-              { label: "Ville",             key: "ville",     type: "text" },
-              { label: "Téléphone",         key: "telephone", type: "tel"  },
-              { label: "WhatsApp",          key: "whatsapp",  type: "tel"  },
-              { label: "Instagram",         key: "instagram", type: "text" },
-              { label: "Horaires",          key: "horaires",  type: "text" },
+              { label: "Nom du restaurant", key: "nom", type: "text" },
+              { label: "Ville", key: "ville", type: "text" },
+              { label: "Téléphone", key: "telephone", type: "tel" },
+              { label: "WhatsApp", key: "whatsapp", type: "tel" },
+              { label: "Instagram", key: "instagram", type: "text" },
+              { label: "Horaires", key: "horaires", type: "text" },
             ].map(({ label, key, type }) => (
               <div key={key}>
                 <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
@@ -1039,11 +1039,10 @@ export default function VendorDashboard() {
               <button
                 key={cat}
                 onClick={() => { setMenuCategory(cat); setShowAddForm(false) }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  menuCategory === cat
-                    ? "bg-dark text-yellow-400"
-                    : "bg-white text-gray-500 border border-gray-200 hover:border-yellow-400 hover:text-dark"
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${menuCategory === cat
+                  ? "bg-dark text-yellow-400"
+                  : "bg-white text-gray-500 border border-gray-200 hover:border-yellow-400 hover:text-dark"
+                  }`}
               >
                 {cat}
               </button>
@@ -1271,10 +1270,10 @@ export default function VendorDashboard() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Note moyenne',      value: avgRating ?? '—' },
-            { label: 'Total avis',        value: reviews.length },
-            { label: 'Plats au menu',     value: menuItems.length },
-            { label: 'Catégories menu',   value: menuCategories.length },
+            { label: 'Note moyenne', value: avgRating ?? '—' },
+            { label: 'Total avis', value: reviews.length },
+            { label: 'Plats au menu', value: menuItems.length },
+            { label: 'Catégories menu', value: menuCategories.length },
           ].map((s, i) => (
             <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-light">
               <p className="text-2xl font-serif font-bold text-dark">{s.value}</p>
@@ -1488,10 +1487,9 @@ export default function VendorDashboard() {
             <p className="text-sm text-gray-500">Plan actuel</p>
             <p className="text-lg font-bold text-dark capitalize">{currentPlan === 'free' ? 'Gratuit' : currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</p>
           </div>
-          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${
-            subscription?.status === 'active' ? 'bg-green-50 text-green-600 border border-green-200' :
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${subscription?.status === 'active' ? 'bg-green-50 text-green-600 border border-green-200' :
             'bg-gray-100 text-gray-500 border border-gray-200'
-          }`}>
+            }`}>
             {subscription?.status === 'active' ? 'Actif' : subscription?.status === 'expired' ? 'Expiré' : 'Actif'}
           </span>
         </div>
@@ -1502,9 +1500,8 @@ export default function VendorDashboard() {
             const PlanIcon = plan.icon
             const isCurrent = currentPlan === plan.id
             return (
-              <div key={plan.id} className={`relative bg-white rounded-xl shadow-sm border-2 overflow-hidden transition-all ${
-                isCurrent ? plan.border + ' ring-2 ring-offset-2 ring-yellow-400/30' : 'border-gray-100 hover:border-gray-300'
-              }`}>
+              <div key={plan.id} className={`relative bg-white rounded-xl shadow-sm border-2 overflow-hidden transition-all ${isCurrent ? plan.border + ' ring-2 ring-offset-2 ring-yellow-400/30' : 'border-gray-100 hover:border-gray-300'
+                }`}>
                 {plan.popular && (
                   <div className="bg-yellow-400 text-gray-900 text-xs font-bold text-center py-1">
                     Le plus populaire
@@ -1540,11 +1537,10 @@ export default function VendorDashboard() {
                   ) : (
                     <button
                       onClick={() => startUpgrade(plan.id)}
-                      className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                        plan.popular
-                          ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500'
-                          : 'border border-gray-200 text-dark hover:border-yellow-400 hover:bg-yellow-50'
-                      }`}
+                      className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-all ${plan.popular
+                        ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500'
+                        : 'border border-gray-200 text-dark hover:border-yellow-400 hover:bg-yellow-50'
+                        }`}
                     >
                       {plan.id === 'free' ? 'Rétrograder' : 'Passer au ' + plan.name}
                     </button>
@@ -1715,9 +1711,9 @@ export default function VendorDashboard() {
           </div>
           <div className="mt-10 grid grid-cols-3 gap-4 text-center">
             {[
-              { icon: Store,    label: 'Fiche restaurant', done: false },
-              { icon: Utensils, label: 'Carte & Menu',     done: false },
-              { icon: Star,     label: 'Premiers avis',    done: false },
+              { icon: Store, label: 'Fiche restaurant', done: false },
+              { icon: Utensils, label: 'Carte & Menu', done: false },
+              { icon: Star, label: 'Premiers avis', done: false },
             ].map(({ icon: Icon, label, done }, i) => (
               <div key={label} className={`rounded-xl p-4 ${done ? 'bg-green-50' : i === 0 ? 'bg-amber-50' : 'bg-cream'}`}>
                 <Icon size={24} className={`mx-auto mb-2 ${done ? 'text-green-500' : i === 0 ? 'text-amber-500' : 'text-muted'}`} />
@@ -1733,88 +1729,88 @@ export default function VendorDashboard() {
     }
 
     switch (activeSection) {
-      case 'apercu':     return renderApercu()
-      case 'commandes':  return <VendorOrders restaurantId={restaurant.id} />
-      case 'messages':   return renderMessages()
+      case 'apercu': return renderApercu()
+      case 'commandes': return <VendorOrders restaurantId={restaurant.id} />
+      case 'messages': return renderMessages()
       case 'restaurant': return renderRestaurant()
-      case 'menu':       return renderMenu()
-      case 'avis':       return renderAvis()
-      case 'stats':      return renderStats()
+      case 'menu': return renderMenu()
+      case 'avis': return renderAvis()
+      case 'stats': return renderStats()
       case 'abonnement': return renderSubscription()
-      case 'notifs':     return renderNotifs()
-      default:           return renderApercu()
+      case 'notifs': return renderNotifs()
+      default: return renderApercu()
     }
   }
 
   return (
     <div className="flex flex-col h-screen bg-cream overflow-hidden">
       <DashboardTopbar variant="vendor" />
-    <div className="flex flex-1 overflow-hidden" style={{ marginTop: '56px' }}>
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <div className="flex flex-1 overflow-hidden" style={{ marginTop: '56px' }}>
+        {/* Mobile overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
-      {/* Sidebar */}
-      <aside
-        className={`
+        {/* Sidebar */}
+        <aside
+          className={`
           fixed top-0 left-0 h-full w-64 z-30 flex-shrink-0
           transform transition-all duration-300
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0 lg:static lg:z-auto
           ${collapsed ? 'lg:w-16' : 'lg:w-64'}
         `}
-        style={{ backgroundColor: '#1a1a2e' }}
-      >
-        {sidebarContent}
-      </aside>
+          style={{ backgroundColor: '#1a1a2e' }}
+        >
+          {sidebarContent}
+        </aside>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile topbar */}
-        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 flex-shrink-0">
-          <button onClick={() => setSidebarOpen(true)} className="p-1 text-dark">
-            <Menu size={22} />
-          </button>
-          <span className="font-serif font-bold text-dark">DiaTable</span>
-          <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-gray-900 text-xs font-bold">
-            {vendorName.charAt(0).toUpperCase()}
+        {/* Main content */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Mobile topbar */}
+          <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 flex-shrink-0">
+            <button onClick={() => setSidebarOpen(true)} className="p-1 text-dark">
+              <Menu size={22} />
+            </button>
+            <span className="font-serif font-bold text-dark">DiaTable</span>
+            <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-gray-900 text-xs font-bold">
+              {vendorName.charAt(0).toUpperCase()}
+            </div>
           </div>
+
+          {/* Scrollable content area */}
+          <main className={`flex-1 overflow-y-auto transition-all duration-300 ${collapsed ? 'lg:pl-16' : 'lg:pl-8'}`}>
+            {/* Persistent alerts */}
+            {!dbLoading && restaurant && !restaurant.is_verified && (
+              <div className="flex items-center gap-3 bg-amber-50 border-b border-amber-200 px-5 py-3 lg:px-8">
+                <AlertCircle size={16} className="text-amber-500 flex-shrink-0" />
+                <p className="text-sm text-amber-800 font-medium">
+                  Votre fiche est <strong>en attente de vérification</strong> par notre équipe. Elle ne sera pas visible publiquement avant validation.
+                </p>
+              </div>
+            )}
+            {!dbLoading && restaurant && menuItems.length === 0 && (
+              <div className="flex items-center gap-3 bg-red-50 border-b border-red-200 px-5 py-3 lg:px-8">
+                <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
+                <p className="text-sm text-red-800 font-medium">
+                  Votre carte est vide — les clients ne peuvent pas voir ce que vous proposez.{' '}
+                  <button onClick={() => setActiveSection('menu')} className="underline font-bold hover:text-red-900">
+                    Ajouter des plats →
+                  </button>
+                </p>
+              </div>
+            )}
+            <div className="p-5 lg:p-8">
+              <div className="max-w-5xl mx-auto">
+                {renderSection()}
+              </div>
+            </div>
+          </main>
         </div>
-
-        {/* Scrollable content area */}
-        <main className={`flex-1 overflow-y-auto transition-all duration-300 ${collapsed ? 'lg:pl-16' : 'lg:pl-8'}`}>
-          {/* Persistent alerts */}
-          {restaurant && !restaurant.is_verified && (
-            <div className="flex items-center gap-3 bg-amber-50 border-b border-amber-200 px-5 py-3 lg:px-8">
-              <AlertCircle size={16} className="text-amber-500 flex-shrink-0" />
-              <p className="text-sm text-amber-800 font-medium">
-                Votre fiche est <strong>en attente de vérification</strong> par notre équipe. Elle ne sera pas visible publiquement avant validation.
-              </p>
-            </div>
-          )}
-          {restaurant && menuItems.length === 0 && (
-            <div className="flex items-center gap-3 bg-red-50 border-b border-red-200 px-5 py-3 lg:px-8">
-              <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
-              <p className="text-sm text-red-800 font-medium">
-                Votre carte est vide — les clients ne peuvent pas voir ce que vous proposez.{' '}
-                <button onClick={() => setActiveSection('menu')} className="underline font-bold hover:text-red-900">
-                  Ajouter des plats →
-                </button>
-              </p>
-            </div>
-          )}
-          <div className="p-5 lg:p-8">
-            <div className="max-w-5xl mx-auto">
-              {renderSection()}
-            </div>
-          </div>
-        </main>
       </div>
-    </div>
     </div>
   )
 }
