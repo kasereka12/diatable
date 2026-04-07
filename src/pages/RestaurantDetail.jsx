@@ -9,9 +9,9 @@ import { getGradient } from '../lib/gradients'
 import StarRating from '../components/ui/StarRating'
 import { getCuisineIcon } from '../lib/cuisineIcons'
 import {
-  ArrowLeft, MapPin, Clock, Phone, CreditCard,
+  ArrowLeft, MapPin, Clock, CreditCard,
   MessageCircle, ShieldCheck, Star, Facebook, Instagram, Utensils,
-  Heart, Send, Pencil, Trash2, ShoppingBag, Plus, Check
+  Heart, Send, Pencil, Trash2, Plus, Check, ZoomIn
 } from 'lucide-react'
 
 function MenuItem({ item, onAddToCart }) {
