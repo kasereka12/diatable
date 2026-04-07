@@ -2,33 +2,33 @@ import { Link } from 'react-router-dom'
 import { Facebook, Instagram, MessageCircle, Heart, Globe } from 'lucide-react'
 
 const ABOUT_LINKS = [
-  { label: 'Notre histoire',      to: '/a-propos' },
-  { label: 'Comment ça marche',   to: '/comment-ca-marche' },
-  { label: 'Presse',              to: '/presse' },
-  { label: 'Carrières',           to: '/carrieres' },
+  { label: 'Notre histoire', to: '/a-propos' },
+  { label: 'Comment ça marche', to: '/comment-ca-marche' },
+  { label: 'Presse', to: '/presse' },
+  { label: 'Carrières', to: '/carrieres' },
 ]
 
 const CUISINE_LINKS = [
-  { label: '🇸🇳 Sénégalaise',      to: '/restaurants?cuisine=senegalaise' },
-  { label: '🇱🇧 Libanaise',         to: '/restaurants?cuisine=libanaise' },
-  { label: '🇨🇳 Chinoise',          to: '/restaurants?cuisine=chinoise' },
-  { label: '🇳🇬 Nigériane',         to: '/restaurants?cuisine=nigeriane' },
-  { label: 'Toutes les cuisines',  to: '/cuisines' },
+  { label: '🇸🇳 Sénégalaise', to: '/restaurants?cuisine=senegalaise' },
+  { label: '🇱🇧 Libanaise', to: '/restaurants?cuisine=libanaise' },
+  { label: '🇨🇳 Chinoise', to: '/restaurants?cuisine=chinoise' },
+  { label: '🇳🇬 Nigériane', to: '/restaurants?cuisine=nigeriane' },
+  { label: 'Toutes les cuisines', to: '/cuisines' },
 ]
 
 const CONTACT_LINKS = [
-  { label: 'hello@datable.ma',    href: 'mailto:hello@datable.ma' },
-  { label: '+212 6 00 00 00 00',  href: 'tel:+212600000000' },
-  { label: 'Casablanca, Maroc',   href: null },
-  { label: 'Devenir vendeur',     to: '/devenir-vendeur' },
-  { label: 'Mes commandes',       to: '/mes-commandes' },
-  { label: 'Aide & Support',      to: '/aide' },
+  { label: 'contact@datable.ma', href: 'mailto:contact@datable.ma' },
+  { label: '+212 76 18 41 41', href: 'tel:+21276184141' },
+  { label: 'Casablanca, Maroc', href: null },
+  { label: 'Devenir vendeur', to: '/devenir-vendeur' },
+  { label: 'Mes commandes', to: '/mes-commandes' },
+  { label: 'Aide & Support', to: '/aide' },
 ]
 
 const SOCIAL = [
-  { Icon: Facebook,      title: 'Facebook',  href: '#' },
-  { Icon: Instagram,     title: 'Instagram', href: '#' },
-  { Icon: MessageCircle, title: 'WhatsApp',  href: '#' },
+  { Icon: Facebook, title: 'Facebook', href: '#' },
+  { Icon: Instagram, title: 'Instagram', href: '#' },
+  { Icon: MessageCircle, title: 'WhatsApp', href: '#' },
 ]
 
 function FooterCol({ title, links }) {
@@ -81,17 +81,14 @@ export default function Footer() {
             </div>
           </div>
 
-          <FooterCol title="À propos"  links={ABOUT_LINKS} />
-          <FooterCol title="Cuisines"  links={CUISINE_LINKS} />
-          <FooterCol title="Contact"   links={CONTACT_LINKS} />
+          <FooterCol title="À propos" links={ABOUT_LINKS} />
+          <FooterCol title="Cuisines" links={CUISINE_LINKS} />
+          <FooterCol title="Contact" links={CONTACT_LINKS} />
         </div>
 
         {/* Bottom bar */}
         <div className="border-t border-white/[0.06] py-6 flex flex-wrap items-center justify-between gap-3">
           <span className="text-muted text-xs">© 2026 DiaTable. Tous droits réservés.</span>
-          <span className="text-muted text-xs flex items-center gap-1">
-            Fait avec <Heart size={14} className="text-red-400 fill-red-400" /> pour la diaspora au Maroc 🇲🇦
-          </span>
         </div>
       </div>
     </footer>

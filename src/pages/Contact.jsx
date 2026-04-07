@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { Mail, MessageCircle, MapPin, Clock, CheckCircle, Send } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 const REASONS = [
   'Question générale',
@@ -11,17 +13,35 @@ const REASONS = [
 ]
 
 const INFO_ITEMS = [
-  { Icon: Mail,           title: 'Email',    val: 'hello@datable.ma' },
-  { Icon: MessageCircle,  title: 'WhatsApp', val: '+212 6 00 00 00 00' },
-  { Icon: MapPin,         title: 'Bureau',   val: 'Casablanca, Maroc' },
-  { Icon: Clock,          title: 'Horaires', val: 'Lun–Ven, 9h–18h' },
+  { Icon: Mail, title: 'Email', val: 'contact@datable.ma' },
+  { Icon: MessageCircle, title: 'WhatsApp', val: '+212 76 18 41 41' },
+  { Icon: MapPin, title: 'Bureau', val: 'Casablanca, Maroc' },
+  { Icon: Clock, title: 'Horaires', val: 'Lun–Ven, 9h–18h' },
 ]
 
 export default function Contact() {
   const ref = useScrollReveal()
-  const [form, setForm]       = useState({ name: '', email: '', reason: '', message: '' })
+  const [form, setForm] = useState({ name: '', email: '', reason: '', message: '' })
   const [submitted, setSubmit] = useState(false)
-  const [loading, setLoading]  = useState(false)
+  const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
+  const [profile, setProfile] = useState(null)
+
+
+  async function fetchProfile(userId) {
+    if (!supabase) return
+    const { data } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single()
+    setProfile(data)
+  }
+  useEffect(() => {
+    if (user) {
+      fetchProfile(user.id)
+    }
+  }, [user])
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
@@ -63,13 +83,14 @@ export default function Contact() {
                 </div>
               </div>
             ))}
-
-            <div className="bg-dark rounded-2xl p-5 text-center">
-              <p className="text-white/70 text-sm mb-3">Envie de rejoindre DiaTable en tant que vendeur ?</p>
-              <a href="/inscription?role=vendor" className="btn btn-gold text-sm w-full justify-center">
-                Devenir vendeur →
-              </a>
-            </div>
+            {profile?.role !== 'vendor' && (
+              <div className="bg-dark rounded-2xl p-5 text-center">
+                <p className="text-white/70 text-sm mb-3">Envie de rejoindre DiaTable en tant que vendeur ?</p>
+                <a href="/inscription?role=vendor" className="btn btn-gold text-sm w-full justify-center">
+                  Devenir vendeur →
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Form */}

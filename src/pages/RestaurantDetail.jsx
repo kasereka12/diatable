@@ -40,11 +40,10 @@ function MenuItem({ item, onAddToCart }) {
         <span className="font-bold text-dark text-sm">{item.price} MAD</span>
         <button
           onClick={handleAdd}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-            added
-              ? 'bg-green-500 text-white shadow-[0_2px_8px_rgba(34,197,94,0.3)]'
-              : 'bg-gold text-dark hover:bg-gold-light shadow-[0_2px_8px_rgba(244,168,40,0.3)]'
-          }`}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${added
+            ? 'bg-green-500 text-white shadow-[0_2px_8px_rgba(34,197,94,0.3)]'
+            : 'bg-gold text-dark hover:bg-gold-light shadow-[0_2px_8px_rgba(244,168,40,0.3)]'
+            }`}
           aria-label={`Ajouter ${item.name} au panier`}
         >
           {added ? <><Check size={14} /> Ajouté</> : <><Plus size={14} /> Ajouter</>}
@@ -123,30 +122,30 @@ export default function RestaurantDetail() {
   const currentItems = menuByCategory[categories[activeCategory]] || []
 
   // Track page view
-  useEffect(() => {
-    if (!id || !supabase) return
-    supabase.from('restaurant_views').insert({ restaurant_id: id })
-  }, [id])
+  /* useEffect(() => {
+     if (!id || !supabase) return
+     supabase.from('restaurant_views').insert({ restaurant_id: id })
+   }, [id])*/
 
   // Fetch likes count + user-specific data
   useEffect(() => {
     if (!id || !supabase) return
 
-    supabase
+    /*supabase
       .from('restaurant_likes')
       .select('*', { count: 'exact', head: true })
       .eq('restaurant_id', id)
-      .then(({ count }) => setLikesCount(count || 0))
+      .then(({ count }) => setLikesCount(count || 0))*/
 
     if (user) {
-      supabase
+      /*supabase
         .from('restaurant_likes')
         .select('id')
         .eq('restaurant_id', id)
         .eq('user_id', user.id)
         .maybeSingle()
         .then(({ data }) => setUserLiked(!!data))
-
+      */
       supabase
         .from('reviews')
         .select('*')
@@ -530,13 +529,7 @@ export default function RestaurantDetail() {
                     <div className="text-muted">{hours}</div>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Phone size={16} className="text-gold flex-shrink-0 mt-0.5" />
-                  <div>
-                    <div className="font-semibold text-dark">Téléphone</div>
-                    <div className="text-muted">{restaurant.phone || '+212 6 00 00 00 00'}</div>
-                  </div>
-                </div>
+
                 <div className="flex items-start gap-3">
                   <CreditCard size={16} className="text-gold flex-shrink-0 mt-0.5" />
                   <div>
