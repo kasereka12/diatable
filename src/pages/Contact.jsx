@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useScrollReveal } from '../hooks/useScrollReveal'
+import { useAuth } from '../context/AuthContext'
 import { Mail, MessageCircle, MapPin, Clock, CheckCircle, Send } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
-const REASONS = [
+const REASONS_DEFAULT = [
   'Question générale',
   'Devenir vendeur',
+  'Signaler un problème',
+  'Partenariat / Presse',
+  'Autre',
+]
+const REASONS_VENDOR = [
+  'Question générale',
   'Signaler un problème',
   'Partenariat / Presse',
   'Autre',
@@ -21,7 +28,10 @@ const INFO_ITEMS = [
 
 export default function Contact() {
   const ref = useScrollReveal()
-  const [form, setForm] = useState({ name: '', email: '', reason: '', message: '' })
+  const { profile } = useAuth()
+  const isVendor = profile?.role === 'vendor'
+  const REASONS = isVendor ? REASONS_VENDOR : REASONS_DEFAULT
+  const [form, setForm]       = useState({ name: '', email: '', reason: '', message: '' })
   const [submitted, setSubmit] = useState(false)
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
@@ -83,7 +93,8 @@ export default function Contact() {
                 </div>
               </div>
             ))}
-            {profile?.role !== 'vendor' && (
+
+            {!isVendor && (
               <div className="bg-dark rounded-2xl p-5 text-center">
                 <p className="text-white/70 text-sm mb-3">Envie de rejoindre DiaTable en tant que vendeur ?</p>
                 <a href="/inscription?role=vendor" className="btn btn-gold text-sm w-full justify-center">

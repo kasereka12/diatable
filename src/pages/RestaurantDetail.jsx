@@ -24,9 +24,22 @@ function MenuItem({ item, onAddToCart }) {
   }
 
   return (
-    <div className="flex items-start justify-between gap-4 py-4 border-b border-black/[0.06] last:border-0">
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-0.5">
+    <div className="flex items-start gap-3 py-4 border-b border-black/[0.06] last:border-0">
+      {/* Thumbnail */}
+      {item.image_url && (
+        <button
+          onClick={() => onImageClick(item.image_url, item.name)}
+          className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 group"
+          title="Agrandir"
+        >
+          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+            <ZoomIn size={16} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        </button>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <span className="font-semibold text-dark text-sm">{item.name}</span>
           {item.is_popular && (
             <span className="bg-gold/15 text-gold-dark text-[0.65rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
@@ -104,6 +117,7 @@ export default function RestaurantDetail() {
   const { restaurant, menuByCategory, reviews, loading } = useRestaurantDetail(id)
   const ref = useScrollReveal()
   const [activeCategory, setActiveCategory] = useState(0)
+  const [lightbox, setLightbox] = useState(null) // { src, alt }
 
   // Likes
   const [likesCount, setLikesCount] = useState(0)
@@ -568,6 +582,9 @@ export default function RestaurantDetail() {
           </div>
         </div>
       </div>
+
+      {/* Lightbox */}
+      {lightbox && <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
     </div>
   )
 }

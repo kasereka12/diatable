@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import { Facebook, Instagram, MessageCircle, Heart, Globe } from 'lucide-react'
 
 const ABOUT_LINKS = [
@@ -52,6 +53,11 @@ function FooterCol({ title, links }) {
 }
 
 export default function Footer() {
+  const { profile } = useAuth()
+  const isVendor = profile?.role === 'vendor'
+  const contactLinks = isVendor
+    ? CONTACT_LINKS.filter(l => l.label !== 'Devenir vendeur')
+    : CONTACT_LINKS
   return (
     <footer id="contact" className="bg-dark border-t border-white/[0.05] pt-18 pb-0">
       <div className="max-w-6xl mx-auto px-6">
@@ -81,9 +87,9 @@ export default function Footer() {
             </div>
           </div>
 
-          <FooterCol title="À propos" links={ABOUT_LINKS} />
-          <FooterCol title="Cuisines" links={CUISINE_LINKS} />
-          <FooterCol title="Contact" links={CONTACT_LINKS} />
+          <FooterCol title="À propos"  links={ABOUT_LINKS} />
+          <FooterCol title="Cuisines"  links={CUISINE_LINKS} />
+          <FooterCol title="Contact"   links={contactLinks} />
         </div>
 
         {/* Bottom bar */}

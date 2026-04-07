@@ -1,4 +1,5 @@
 import { useCounter } from '../hooks/useCounter'
+import { useAuth } from '../context/AuthContext'
 import { Sparkles, Utensils, UtensilsCrossed, ChefHat, Coffee } from 'lucide-react'
 
 const STATS = [
@@ -31,6 +32,8 @@ function FoodOrb({ icon: Icon, className, delay }) {
 }
 
 export default function Hero() {
+  const { profile } = useAuth()
+  const isVendor = profile?.role === 'vendor'
   return (
     <section id="home" className="min-h-screen bg-dark relative overflow-hidden flex flex-col">
       {/* Background glow + zellige */}
@@ -75,9 +78,11 @@ export default function Hero() {
               <a href="#restaurants" className="btn btn-gold">
                 Explorer les Cuisines
               </a>
-              <a href="#vendor" className="btn btn-outline">
-                Référencer mon Restaurant
-              </a>
+              {!isVendor && (
+                <a href="#vendor" className="btn btn-outline">
+                  Référencer mon Restaurant
+                </a>
+              )}
             </div>
           </div>
 

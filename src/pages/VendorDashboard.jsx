@@ -332,6 +332,16 @@ export default function VendorDashboard() {
     setReadIds(prev => new Set([...prev, id]))
   }
 
+  async function toggleActive() {
+    if (!supabase || !restaurant) return
+    const next = !restaurant.is_active
+    const { error } = await supabase
+      .from('restaurants')
+      .update({ is_active: next })
+      .eq('id', restaurant.id)
+    if (!error) setRestaurant(prev => ({ ...prev, is_active: next }))
+  }
+
   async function createRestaurant() {
     if (!supabase || !createForm.nom.trim() || !createForm.cuisine.trim() || !createForm.ville.trim()) return
     setCreatingRest(true)

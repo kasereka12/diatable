@@ -1,8 +1,11 @@
 import { useScrollReveal } from '../hooks/useScrollReveal'
+import { useAuth } from '../context/AuthContext'
 import { ChefHat } from 'lucide-react'
 
 export default function VendorCTA() {
   const ref = useScrollReveal()
+  const { profile } = useAuth()
+  if (profile?.role === 'vendor') return null
 
   return (
     <section
