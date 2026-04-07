@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { useAuth } from '../context/AuthContext'
 import { Mail, MessageCircle, MapPin, Clock, CheckCircle, Send } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
 const REASONS_DEFAULT = [
