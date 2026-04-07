@@ -28,10 +28,9 @@ const INFO_ITEMS = [
 
 export default function Contact() {
   const ref = useScrollReveal()
-  const { profile } = useAuth()
   const isVendor = profile?.role === 'vendor'
   const REASONS = isVendor ? REASONS_VENDOR : REASONS_DEFAULT
-  const [form, setForm]       = useState({ name: '', email: '', reason: '', message: '' })
+  const [form, setForm] = useState({ name: '', email: '', reason: '', message: '' })
   const [submitted, setSubmit] = useState(false)
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
