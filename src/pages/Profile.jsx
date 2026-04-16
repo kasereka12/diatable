@@ -30,7 +30,8 @@ const STATUS_COLORS = {
 export default function Profile() {
   const { user, profile, signOut } = useAuth()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('commandes')
+const isCustomer = !profile?.role || profile?.role === 'customer'
+const [activeTab, setActiveTab] = useState(isCustomer ? 'commandes' : 'favoris')
   const [orders, setOrders] = useState([])
   const [favorites, setFavorites] = useState([])
   const [loadingOrders, setLoadingOrders] = useState(true)
@@ -73,11 +74,12 @@ export default function Profile() {
     navigate('/')
   }
 
-  const TABS = [
-    { id: 'commandes', label: 'Commandes', Icon: Package },
-    { id: 'favoris',   label: 'Favoris',   Icon: Heart },
-    { id: 'compte',    label: 'Mon Compte', Icon: Settings },
-  ]
+
+const TABS = [
+  ...(isCustomer ? [{ id: 'commandes', label: 'Commandes', Icon: Package }] : []),
+  { id: 'favoris', label: 'Favoris', Icon: Heart },
+  { id: 'compte',  label: 'Mon Compte', Icon: Settings },
+]
 
   return (
     <div className="bg-cream min-h-screen pt-24">
@@ -95,16 +97,23 @@ export default function Profile() {
             <span className="inline-flex items-center gap-1.5 mt-2 bg-gold/15 border border-gold/30 text-gold text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
               {profile?.role === 'vendor'
                 ? <><ChefHat size={12} /> Vendeur</>
+                : profile?.role === 'admin'
+                ? <><Settings size={12} /> Admin</>
                 : <><Utensils size={12} /> Client</>
               }
             </span>
           </div>
-          <div className="ml-auto flex gap-2">
-            {profile?.role === 'vendor' && (
-              <Link to="/tableau-de-bord" className="btn btn-gold text-sm">
-                Tableau de bord
-              </Link>
-            )}
+       <div className="ml-auto flex gap-2">
+          {profile?.role === 'vendor' && (
+            <Link to="/tableau-de-bord" className="btn btn-gold text-sm">
+              Tableau de bord
+            </Link>
+          )}
+          {profile?.role === 'admin' && (
+            <Link to="/admin" className="btn btn-gold text-sm">
+              Dashboard Admin
+            </Link>
+          )}
             <Link to="/messages" className="btn btn-outline text-sm px-4 py-2.5 flex items-center gap-1.5">
               <MessageCircle size={14} /> Messages
             </Link>
@@ -112,7 +121,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 -mt-10">
+      <div className="max-w-4xl mx-auto px-6 mt-4">
         {/* Nav tabs */}
         <div className="bg-white rounded-2xl shadow-sm border border-black/[0.05] p-1.5 flex gap-1 mb-8">
           {TABS.map(t => (
@@ -125,8 +134,8 @@ export default function Profile() {
         </div>
 
         {/* Commandes */}
-        {activeTab === 'commandes' && (
-          <div className="space-y-4 pb-12">
+        {activeTab === 'commandes' && isCustomer && (
+            <div className="space-y-4 pb-12">
             <div className="flex items-center justify-between">
               <h2 className="font-serif text-xl font-bold text-dark">Dernières commandes</h2>
               <Link to="/mes-commandes" className="text-gold text-sm font-semibold flex items-center gap-1 hover:underline">
