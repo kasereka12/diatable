@@ -27,23 +27,24 @@ export default function HowItWorks() {
   const ref = useScrollReveal()
 
   return (
-    <section id="about" className="bg-dark py-24 relative overflow-hidden" ref={ref}>
-      {/* soft center glow */}
+    <section id="about" className="py-24 relative overflow-hidden" style={{ backgroundColor: '#1f1f1f' }} ref={ref}>
+      {/* Glow central terracotta */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-gold/[0.03]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+          style={{ backgroundColor: 'rgba(197,97,26,0.04)' }} />
       </div>
 
       <div className="max-w-6xl mx-auto px-6 relative">
         <SectionHeader label="Simple & Rapide" title="Comment fonctionne <em>DiaTable</em> ?" light />
 
         <div className="relative grid grid-cols-1 md:grid-cols-3 gap-0">
-          {/* Connecting line (desktop) */}
+          {/* Ligne de connexion desktop */}
           <div
             className="hidden md:block absolute top-12 h-px"
             style={{
               left: 'calc(16.66% + 24px)',
               right: 'calc(16.66% + 24px)',
-              background: 'linear-gradient(90deg, #f4a828, rgba(244,168,40,0.2), #f4a828)',
+              background: 'linear-gradient(90deg, #c5611a, rgba(189,159,135,0.25), #c5611a)',
             }}
           />
 
@@ -54,29 +55,45 @@ export default function HowItWorks() {
               data-delay={`${i * 0.15}s`}
               className="text-center px-8 pb-12 pt-0 relative"
             >
-              {/* Giant faded number */}
+              {/* Numéro géant en filigrane */}
               <div
                 className="absolute top-[-20px] left-1/2 -translate-x-1/2 font-serif font-black
-                           text-[4.5rem] leading-none text-gold/10 select-none z-0"
+                           text-[4.5rem] leading-none select-none z-0"
+                style={{ color: 'rgba(197,97,26,0.10)' }}
               >
                 {s.num}
               </div>
 
-              {/* Icon circle */}
+              {/* Cercle icône */}
               <div
                 className="relative z-10 w-24 h-24 rounded-full mx-auto mb-7 flex items-center
-                           justify-center
-                           bg-gold/10 border-2 border-gold/25
-                           transition-all duration-300 hover:bg-gold/20 hover:border-gold hover:scale-110"
+                           justify-center transition-all duration-300 hover:scale-110"
+                style={{
+                  backgroundColor: 'rgba(197,97,26,0.10)',
+                  border: '2px solid rgba(197,97,26,0.28)',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.backgroundColor = 'rgba(197,97,26,0.22)'
+                  e.currentTarget.style.borderColor = '#c5611a'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.backgroundColor = 'rgba(197,97,26,0.10)'
+                  e.currentTarget.style.borderColor = 'rgba(197,97,26,0.28)'
+                }}
               >
-                <s.Icon size={36} className="text-gold" />
+                <s.Icon size={36} style={{ color: '#c5611a' }} />
               </div>
 
-              <div className="text-[0.68rem] font-bold tracking-[0.15em] uppercase text-gold mb-3">
+              <div className="text-[0.68rem] font-bold tracking-[0.15em] uppercase mb-3"
+                style={{ color: '#c5611a' }}>
                 Étape {s.num}
               </div>
-              <h3 className="font-serif font-bold text-white text-[1.3rem] mb-3">{s.title}</h3>
-              <p className="text-muted text-sm leading-[1.75] max-w-[240px] mx-auto">{s.desc}</p>
+              <h3 className="font-serif font-bold text-[1.3rem] mb-3" style={{ color: '#f8f8f8' }}>
+                {s.title}
+              </h3>
+              <p className="text-sm leading-[1.75] max-w-[240px] mx-auto" style={{ color: '#bd9f87' }}>
+                {s.desc}
+              </p>
             </div>
           ))}
         </div>

@@ -104,7 +104,7 @@ export default function CartDrawer() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted">Frais de livraison</span>
-                  <span className="text-dark font-semibold">{deliveryFee.toFixed(2)} MAD</span>
+                  <span className="text-dark font-semibold"> A definir dans la finalisation</span>
                 </div>
                 <div className="flex justify-between text-base pt-2 border-t border-black/[0.06]">
                   <span className="font-bold text-dark">Total</span>

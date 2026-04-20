@@ -25,14 +25,14 @@ export default function Navbar() {
   const { user, profile, signOut, isAdmin } = useAuth()
   const { itemCount, setIsCartOpen } = useCart()
   const { unreadCount } = useNotifications()
-  const [scrolled,    setScrolled]   = useState(false)
-  const [menuOpen,    setMenuOpen]   = useState(false)
-  const [userMenu,    setUserMenu]   = useState(false)
-  const [explorerOpen, setExplorerOpen] = useState(false)
-  const [notifOpen,   setNotifOpen]  = useState(false)
+  const [scrolled,      setScrolled]     = useState(false)
+  const [menuOpen,      setMenuOpen]     = useState(false)
+  const [userMenu,      setUserMenu]     = useState(false)
+  const [explorerOpen,  setExplorerOpen] = useState(false)
+  const [notifOpen,     setNotifOpen]    = useState(false)
   const explorerRef = useRef(null)
-  const notifRef = useRef(null)
-  const navigate = useNavigate()
+  const notifRef    = useRef(null)
+  const navigate    = useNavigate()
 
   const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || ''
   const initials    = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2) : '?'
@@ -57,7 +57,6 @@ export default function Navbar() {
     return () => { document.body.style.overflow = '' }
   }, [menuOpen])
 
-  // Close menus on outside click
   useEffect(() => {
     if (!userMenu && !explorerOpen && !notifOpen) return
     const close = (e) => {
@@ -77,16 +76,17 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? 'bg-dark/95 backdrop-blur-md shadow-[0_2px_24px_rgba(0,0,0,0.3)]'
-          : 'bg-dark/75 backdrop-blur-sm'
-      }`}>
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300`} style={{
+        backgroundColor: scrolled ? 'rgba(31,31,31,0.97)' : 'rgba(31,31,31,0.80)',
+        backdropFilter: 'blur(12px)',
+        boxShadow: scrolled ? '0 2px 24px rgba(0,0,0,0.35)' : 'none',
+      }}>
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between py-5">
+
           {/* Logo */}
-          <Link to="/" className="font-serif text-2xl font-bold text-white tracking-tight flex items-center gap-1.5">
-            Dia<span className="text-gold">Table</span>
-            <Globe size={20} className="text-gold" />
+          <Link to="/" className="font-serif text-2xl font-bold tracking-tight flex items-center gap-1.5" style={{ color: '#f8f8f8' }}>
+            Dia<span style={{ color: '#c5611a' }}>Table</span>
+            <Globe size={20} style={{ color: '#c5611a' }} />
           </Link>
 
           {/* Desktop links */}
@@ -96,8 +96,9 @@ export default function Navbar() {
                 <NavLink to={l.to}
                   className={({ isActive }) =>
                     `text-sm font-medium px-3.5 py-2 rounded-lg transition-all duration-200
-                     ${isActive ? 'text-white bg-white/10' : 'text-white/80 hover:text-white hover:bg-white/10'}`
+                     ${isActive ? 'bg-white/10' : 'hover:bg-white/10'}`
                   }
+                  style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.75)' })}
                 >
                   {l.label}
                 </NavLink>
@@ -108,28 +109,28 @@ export default function Navbar() {
             <li ref={explorerRef} className="relative">
               <button
                 onClick={() => setExplorerOpen(v => !v)}
-                className={`flex items-center gap-1.5 text-sm font-medium px-3.5 py-2 rounded-lg transition-all duration-200
-                  ${explorerOpen ? 'text-white bg-white/10' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                className="flex items-center gap-1.5 text-sm font-medium px-3.5 py-2 rounded-lg transition-all duration-200 hover:bg-white/10"
+                style={{ color: explorerOpen ? '#f8f8f8' : 'rgba(248,248,248,0.75)' }}
               >
                 Explorer
                 <ChevronDown size={14} className={`transition-transform duration-200 ${explorerOpen ? 'rotate-180' : ''}`} />
               </button>
               {explorerOpen && (
-                <div className="absolute top-full left-0 mt-2 w-52 bg-dark2 border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden z-50">
+                <div className="absolute top-full left-0 mt-2 w-52 rounded-2xl overflow-hidden z-50"
+                  style={{ backgroundColor: '#504640', border: '1px solid rgba(248,248,248,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
                   {EXPLORER_LINKS.map(({ label, to, icon: Icon, desc }) => (
                     <NavLink key={to} to={to}
                       onClick={() => setExplorerOpen(false)}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-4 py-3 transition-all
-                         ${isActive ? 'bg-white/10 text-white' : 'text-white/80 hover:text-white hover:bg-white/[0.06]'}`
-                      }
+                      className="flex items-center gap-3 px-4 py-3 transition-all hover:bg-white/[0.08]"
+                      style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.80)' })}
                     >
-                      <div className="w-8 h-8 rounded-lg bg-white/[0.07] flex items-center justify-center flex-shrink-0">
-                        <Icon size={15} className="text-gold" />
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: 'rgba(197,97,26,0.2)' }}>
+                        <Icon size={15} style={{ color: '#c5611a' }} />
                       </div>
                       <div>
                         <div className="text-sm font-medium leading-none mb-0.5">{label}</div>
-                        <div className="text-xs text-white/40">{desc}</div>
+                        <div className="text-xs" style={{ color: 'rgba(189,159,135,0.6)' }}>{desc}</div>
                       </div>
                     </NavLink>
                   ))}
@@ -142,8 +143,9 @@ export default function Navbar() {
                 <NavLink to={l.to}
                   className={({ isActive }) =>
                     `text-sm font-medium px-3.5 py-2 rounded-lg transition-all duration-200
-                     ${isActive ? 'text-white bg-white/10' : 'text-white/80 hover:text-white hover:bg-white/10'}`
+                     ${isActive ? 'bg-white/10' : 'hover:bg-white/10'}`
                   }
+                  style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.75)' })}
                 >
                   {l.label}
                 </NavLink>
@@ -155,24 +157,26 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-2">
             {user ? (
               <>
-                {/* Cart button */}
+                {/* Cart */}
                 <button
                   onClick={() => setIsCartOpen(true)}
-                  className="relative p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all"
+                  className="relative p-2 rounded-lg transition-all hover:bg-white/10"
+                  style={{ color: 'rgba(248,248,248,0.70)' }}
                   aria-label="Ouvrir le panier"
                 >
                   <ShoppingBag size={18} />
                   {itemCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 bg-gold text-dark text-[0.6rem] font-bold w-4.5 h-4.5 min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center">
+                    <span className="absolute -top-0.5 -right-0.5 text-[0.6rem] font-bold min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}>
                       {itemCount}
                     </span>
                   )}
                 </button>
 
-                {/* Messages button */}
-                <Link
-                  to="/messages"
-                  className="relative p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all"
+                {/* Messages */}
+                <Link to="/messages"
+                  className="relative p-2 rounded-lg transition-all hover:bg-white/10"
+                  style={{ color: 'rgba(248,248,248,0.70)' }}
                   aria-label="Messages"
                 >
                   <MessageCircle size={18} />
@@ -182,7 +186,8 @@ export default function Navbar() {
                 <div ref={notifRef} className="relative">
                   <button
                     onClick={() => setNotifOpen(v => !v)}
-                    className="relative p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all"
+                    className="relative p-2 rounded-lg transition-all hover:bg-white/10"
+                    style={{ color: 'rgba(248,248,248,0.70)' }}
                     aria-label="Notifications" aria-expanded={notifOpen}
                   >
                     <Bell size={18} />
@@ -201,51 +206,57 @@ export default function Navbar() {
                 <div className="relative" onMouseDown={e => e.stopPropagation()}>
                   <button onClick={() => setUserMenu(v => !v)}
                     aria-label="Menu utilisateur" aria-expanded={userMenu}
-                    className="flex items-center gap-2 bg-white/[0.07] hover:bg-white/10 border border-white/10 rounded-full pl-2 pr-3 py-1.5 transition-all">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-dark text-xs font-black"
-                      style={{ background: 'linear-gradient(135deg,#f4a828,#c8841a)' }}>
+                    className="flex items-center gap-2 rounded-full pl-2 pr-3 py-1.5 transition-all border"
+                    style={{ backgroundColor: 'rgba(248,248,248,0.06)', borderColor: 'rgba(248,248,248,0.10)' }}>
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black"
+                      style={{ background: 'linear-gradient(135deg, #c5611a, #a04d12)', color: '#f8f8f8' }}>
                       {initials}
                     </div>
-                    <span className="text-white text-xs font-medium max-w-[80px] truncate">{displayName}</span>
-                    <ChevronDown size={14} className="text-white/50" />
+                    <span className="text-xs font-medium max-w-[80px] truncate" style={{ color: '#f8f8f8' }}>{displayName}</span>
+                    <ChevronDown size={14} style={{ color: 'rgba(248,248,248,0.50)' }} />
                   </button>
                   {userMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-52 bg-dark2 border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden z-50">
-                      <div className="px-4 py-3 border-b border-white/[0.07]">
-                        <div className="text-white text-sm font-semibold truncate">{displayName}</div>
-                        <div className="text-muted text-xs truncate">{user.email}</div>
+                    <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl overflow-hidden z-50"
+                      style={{ backgroundColor: '#504640', border: '1px solid rgba(248,248,248,0.10)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+                      <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(248,248,248,0.07)' }}>
+                        <div className="text-sm font-semibold truncate" style={{ color: '#f8f8f8' }}>{displayName}</div>
+                        <div className="text-xs truncate" style={{ color: '#bd9f87' }}>{user.email}</div>
                       </div>
                       <div className="py-1">
-                        <Link to="/profil" onClick={() => setUserMenu(false)}
-                          className="flex items-center gap-2 px-4 py-2.5 text-white/80 text-sm hover:text-white hover:bg-white/[0.06] transition-all">
-                          <User size={15} /> Mon profil
-                        </Link>
-                        <Link to="/mes-commandes" onClick={() => setUserMenu(false)}
-                          className="flex items-center gap-2 px-4 py-2.5 text-white/80 text-sm hover:text-white hover:bg-white/[0.06] transition-all">
-                          <Package size={15} /> Mes commandes
-                        </Link>
-                        <Link to="/messages" onClick={() => setUserMenu(false)}
-                          className="flex items-center gap-2 px-4 py-2.5 text-white/80 text-sm hover:text-white hover:bg-white/[0.06] transition-all">
-                          <MessageCircle size={15} /> Messages
-                        </Link>
+                        {[
+                          { to: '/profil',           icon: User,         label: 'Mon profil' },
+                          { to: '/mes-commandes',    icon: Package,      label: 'Mes commandes' },
+                          { to: '/messages',         icon: MessageCircle, label: 'Messages' },
+                        ].map(({ to, icon: Icon, label }) => (
+                          <Link key={to} to={to} onClick={() => setUserMenu(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm transition-all hover:bg-white/[0.06]"
+                            style={{ color: 'rgba(248,248,248,0.80)' }}>
+                            <Icon size={15} /> {label}
+                          </Link>
+                        ))}
                         {profile?.role === 'vendor' && (
                           <Link to="/tableau-de-bord" onClick={() => setUserMenu(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-white/80 text-sm hover:text-white hover:bg-white/[0.06] transition-all">
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm transition-all hover:bg-white/[0.06]"
+                            style={{ color: 'rgba(248,248,248,0.80)' }}>
                             <BarChart2 size={15} /> Tableau de bord
                           </Link>
                         )}
                         {isAdmin && (
                           <Link to="/admin" onClick={() => setUserMenu(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-gold text-sm hover:text-white hover:bg-gold/10 transition-all">
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm transition-all"
+                            style={{ color: '#c5611a' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(197,97,26,0.12)'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                             <ShieldCheck size={15} /> Administration
                           </Link>
                         )}
                         <Link to="/restaurants" onClick={() => setUserMenu(false)}
-                          className="flex items-center gap-2 px-4 py-2.5 text-white/80 text-sm hover:text-white hover:bg-white/[0.06] transition-all">
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm transition-all hover:bg-white/[0.06]"
+                          style={{ color: 'rgba(248,248,248,0.80)' }}>
                           <Utensils size={15} /> Restaurants
                         </Link>
                       </div>
-                      <div className="border-t border-white/[0.07] py-1">
+                      <div className="py-1" style={{ borderTop: '1px solid rgba(248,248,248,0.07)' }}>
                         <button onClick={handleSignOut}
                           className="w-full flex items-center gap-2 px-4 py-2.5 text-red-400 text-sm hover:bg-red-500/10 transition-all">
                           <LogOut size={15} /> Se déconnecter
@@ -257,21 +268,23 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                {/* Cart button for non-logged users too */}
                 <button
                   onClick={() => setIsCartOpen(true)}
-                  className="relative p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all"
+                  className="relative p-2 rounded-lg transition-all hover:bg-white/10"
+                  style={{ color: 'rgba(248,248,248,0.70)' }}
                   aria-label="Ouvrir le panier"
                 >
                   <ShoppingBag size={18} />
                   {itemCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 bg-gold text-dark text-[0.6rem] font-bold min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center">
+                    <span className="absolute -top-0.5 -right-0.5 text-[0.6rem] font-bold min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}>
                       {itemCount}
                     </span>
                   )}
                 </button>
                 <Link to="/connexion"
-                  className="text-white/80 text-sm font-medium px-4 py-2 rounded-lg hover:text-white hover:bg-white/10 transition-all">
+                  className="text-sm font-medium px-4 py-2 rounded-lg transition-all hover:bg-white/10"
+                  style={{ color: 'rgba(248,248,248,0.80)' }}>
                   Connexion
                 </Link>
                 <Link to="/restaurants" className="btn btn-gold text-sm px-5 py-2.5">
@@ -283,15 +296,16 @@ export default function Navbar() {
 
           {/* Hamburger */}
           <div className="md:hidden flex items-center gap-2">
-            {/* Mobile cart */}
             <button
               onClick={() => setIsCartOpen(true)}
-              className="relative p-2 rounded-lg text-white/70 hover:text-white transition-all"
+              className="relative p-2 rounded-lg transition-all hover:bg-white/10"
+              style={{ color: 'rgba(248,248,248,0.70)' }}
               aria-label="Ouvrir le panier"
             >
               <ShoppingBag size={18} />
               {itemCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-gold text-dark text-[0.6rem] font-bold min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 text-[0.6rem] font-bold min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}>
                   {itemCount}
                 </span>
               )}
@@ -299,7 +313,7 @@ export default function Navbar() {
             <button className="flex flex-col gap-1.5 p-2"
               onClick={() => setMenuOpen(true)} aria-label="Ouvrir le menu">
               {[0, 1, 2].map((i) => (
-                <span key={i} className="block w-6 h-0.5 bg-white rounded-full" />
+                <span key={i} className="block w-6 h-0.5 rounded-full" style={{ backgroundColor: '#f8f8f8' }} />
               ))}
             </button>
           </div>
@@ -308,15 +322,21 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="fixed inset-0 z-[999] bg-dark flex flex-col items-center justify-center gap-7" role="dialog" aria-modal="true" aria-label="Menu de navigation">
-          <button className="absolute top-6 right-6 text-white flex items-center justify-center"
+        <div className="fixed inset-0 z-[999] flex flex-col items-center justify-center gap-7"
+          style={{ backgroundColor: '#1f1f1f' }}
+          role="dialog" aria-modal="true" aria-label="Menu de navigation">
+          <button className="absolute top-6 right-6 flex items-center justify-center"
+            style={{ color: '#f8f8f8' }}
             onClick={() => setMenuOpen(false)} aria-label="Fermer le menu">
             <X size={20} />
           </button>
 
           {[...NAV_LINKS.slice(0,1), ...EXPLORER_LINKS, ...NAV_LINKS.slice(1)].map((l) => (
             <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}
-              className="font-serif text-3xl text-white font-semibold hover:text-gold transition-colors">
+              className="font-serif text-3xl font-semibold transition-colors"
+              style={{ color: '#f8f8f8' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#c5611a'}
+              onMouseLeave={e => e.currentTarget.style.color = '#f8f8f8'}>
               {l.label}
             </Link>
           ))}
@@ -325,8 +345,12 @@ export default function Navbar() {
             {user ? (
               <>
                 <Link to="/profil" onClick={() => setMenuOpen(false)} className="btn btn-gold justify-center">Mon profil</Link>
-                <Link to="/mes-commandes" onClick={() => setMenuOpen(false)} className="text-center text-white/70 text-sm py-2 hover:text-white transition-colors">Mes commandes</Link>
-                <Link to="/messages" onClick={() => setMenuOpen(false)} className="text-center text-white/70 text-sm py-2 hover:text-white transition-colors">Messages</Link>
+                <Link to="/mes-commandes" onClick={() => setMenuOpen(false)}
+                  className="text-center text-sm py-2 transition-colors"
+                  style={{ color: 'rgba(248,248,248,0.70)' }}>Mes commandes</Link>
+                <Link to="/messages" onClick={() => setMenuOpen(false)}
+                  className="text-center text-sm py-2 transition-colors"
+                  style={{ color: 'rgba(248,248,248,0.70)' }}>Messages</Link>
                 <button onClick={() => { handleSignOut(); setMenuOpen(false) }}
                   className="text-red-400 text-sm font-medium py-2">Se déconnecter</button>
               </>
@@ -334,7 +358,8 @@ export default function Navbar() {
               <>
                 <Link to="/restaurants" onClick={() => setMenuOpen(false)} className="btn btn-gold justify-center">Trouver à Manger</Link>
                 <Link to="/connexion" onClick={() => setMenuOpen(false)}
-                  className="text-center text-white/70 text-sm py-2 hover:text-white transition-colors">Connexion</Link>
+                  className="text-center text-sm py-2 transition-colors"
+                  style={{ color: 'rgba(248,248,248,0.70)' }}>Connexion</Link>
               </>
             )}
           </div>
@@ -344,27 +369,26 @@ export default function Navbar() {
   )
 }
 
-// Notification dropdown component
+// Notification dropdown
 function NotifDropdown({ onClose, navigate }) {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
 
   const typeIcons = {
-    order: Package,
+    order:   Package,
     message: MessageCircle,
-    review: Bell,
-    system: Bell,
-    info: Bell,
+    review:  Bell,
+    system:  Bell,
+    info:    Bell,
   }
 
   return (
-    <div className="absolute right-0 top-full mt-2 w-80 bg-dark2 border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden z-50">
-      <div className="px-4 py-3 border-b border-white/[0.07] flex items-center justify-between">
-        <span className="text-white text-sm font-semibold">Notifications</span>
+    <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl overflow-hidden z-50"
+      style={{ backgroundColor: '#504640', border: '1px solid rgba(248,248,248,0.10)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+      <div className="px-4 py-3 flex items-center justify-between"
+        style={{ borderBottom: '1px solid rgba(248,248,248,0.07)' }}>
+        <span className="text-sm font-semibold" style={{ color: '#f8f8f8' }}>Notifications</span>
         {unreadCount > 0 && (
-          <button
-            onClick={markAllAsRead}
-            className="text-gold text-xs hover:underline"
-          >
+          <button onClick={markAllAsRead} className="text-xs hover:underline" style={{ color: '#c5611a' }}>
             Tout marquer lu
           </button>
         )}
@@ -372,8 +396,8 @@ function NotifDropdown({ onClose, navigate }) {
       <div className="max-h-80 overflow-y-auto">
         {notifications.length === 0 ? (
           <div className="py-8 text-center">
-            <Bell size={24} className="text-white/20 mx-auto mb-2" />
-            <p className="text-white/40 text-sm">Aucune notification</p>
+            <Bell size={24} className="mx-auto mb-2" style={{ color: 'rgba(248,248,248,0.20)' }} />
+            <p className="text-sm" style={{ color: 'rgba(248,248,248,0.40)' }}>Aucune notification</p>
           </div>
         ) : (
           notifications.slice(0, 10).map(n => {
@@ -381,31 +405,30 @@ function NotifDropdown({ onClose, navigate }) {
             return (
               <button
                 key={n.id}
-                onClick={() => { markAsRead(n.id); if (n.link && n.link.startsWith('/')) navigate(n.link); onClose() }}
-                className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-all hover:bg-white/[0.05] ${
-                  !n.is_read ? 'bg-white/[0.03]' : ''
-                }`}
+                onClick={() => { markAsRead(n.id); if (n.link?.startsWith('/')) navigate(n.link); onClose() }}
+                className="w-full flex items-start gap-3 px-4 py-3 text-left transition-all hover:bg-white/[0.05]"
+                style={{ backgroundColor: !n.is_read ? 'rgba(248,248,248,0.03)' : 'transparent' }}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  !n.is_read ? 'bg-gold/20' : 'bg-white/[0.05]'
-                }`}>
-                  <Icon size={14} className={!n.is_read ? 'text-gold' : 'text-white/40'} />
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: !n.is_read ? 'rgba(197,97,26,0.20)' : 'rgba(248,248,248,0.05)' }}>
+                  <Icon size={14} style={{ color: !n.is_read ? '#c5611a' : 'rgba(248,248,248,0.40)' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm leading-snug ${!n.is_read ? 'text-white font-medium' : 'text-white/60'}`}>
+                  <p className="text-sm leading-snug"
+                    style={{ color: !n.is_read ? '#f8f8f8' : 'rgba(248,248,248,0.60)', fontWeight: !n.is_read ? 500 : 400 }}>
                     {n.title}
                   </p>
                   {n.body && (
-                    <p className="text-xs text-white/40 mt-0.5 truncate">{n.body}</p>
+                    <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(248,248,248,0.40)' }}>{n.body}</p>
                   )}
-                  <p className="text-[0.6rem] text-white/30 mt-1">
+                  <p className="text-[0.6rem] mt-1" style={{ color: 'rgba(248,248,248,0.30)' }}>
                     {new Date(n.created_at).toLocaleString('fr-FR', {
                       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
                     })}
                   </p>
                 </div>
                 {!n.is_read && (
-                  <span className="w-2 h-2 rounded-full bg-gold flex-shrink-0 mt-2" />
+                  <span className="w-2 h-2 rounded-full flex-shrink-0 mt-2" style={{ backgroundColor: '#c5611a' }} />
                 )}
               </button>
             )
@@ -413,11 +436,9 @@ function NotifDropdown({ onClose, navigate }) {
         )}
       </div>
       {notifications.length > 0 && (
-        <Link
-          to="/profil"
-          onClick={onClose}
-          className="block text-center py-2.5 text-xs text-gold hover:bg-white/[0.03] border-t border-white/[0.07] transition-all"
-        >
+        <Link to="/profil" onClick={onClose}
+          className="block text-center py-2.5 text-xs transition-all hover:bg-white/[0.03]"
+          style={{ color: '#c5611a', borderTop: '1px solid rgba(248,248,248,0.07)' }}>
           Voir toutes les notifications
         </Link>
       )}

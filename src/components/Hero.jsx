@@ -4,7 +4,7 @@ import { Sparkles, Utensils, UtensilsCrossed, ChefHat, Coffee } from 'lucide-rea
 
 const STATS = [
   { target: 30, suffix: '+', label: 'Cuisines' },
-  { target: 200, suffix: '+', label: 'Vendeurs' },
+  { target: 20, suffix: '+', label: 'Vendeurs' },
   { target: 8, suffix: '', label: 'Villes' },
   { target: 5000, suffix: '+', label: 'Expats Satisfaits' },
 ]
@@ -13,8 +13,8 @@ function StatItem({ target, suffix, label }) {
   const { value, ref } = useCounter(target, suffix)
   return (
     <div ref={ref} className="text-center px-4 py-2 border-r border-white/10 last:border-r-0">
-      <div className="font-serif text-3xl font-bold text-gold leading-none mb-1">{value}</div>
-      <div className="text-[0.7rem] text-muted font-semibold tracking-widest uppercase">{label}</div>
+      <div className="font-serif text-3xl font-bold leading-none mb-1" style={{ color: '#c5611a' }}>{value}</div>
+      <div className="text-[0.7rem] font-semibold tracking-widest uppercase" style={{ color: '#bd9f87' }}>{label}</div>
     </div>
   )
 }
@@ -34,12 +34,17 @@ function FoodOrb({ icon: Icon, className, delay }) {
 export default function Hero() {
   const { profile } = useAuth()
   const isVendor = profile?.role === 'vendor'
+
   return (
-    <section id="home" className="min-h-screen bg-dark relative overflow-hidden flex flex-col">
+    <section id="home" className="min-h-screen relative overflow-hidden flex flex-col" style={{ backgroundColor: '#1f1f1f' }}>
       {/* Background glow + zellige */}
-      <div className="absolute inset-0 bg-hero-glow" />
+      <div className="absolute inset-0" style={{
+        background: 'radial-gradient(ellipse 80% 60% at 60% 40%, rgba(197,97,26,0.18) 0%, transparent 70%)'
+      }} />
       <div className="absolute inset-0 zellige-pattern" />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-dark/60" />
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(to bottom, transparent 60%, rgba(31,31,31,0.7) 100%)'
+      }} />
 
       {/* Main content */}
       <div className="relative z-10 flex-1 flex items-center">
@@ -47,16 +52,16 @@ export default function Hero() {
 
           {/* Text */}
           <div>
-
             <h1
-              className="font-serif font-black text-white leading-[1.1] tracking-tight mb-6"
+              className="font-serif font-black leading-[1.1] tracking-tight mb-6"
               style={{
+                color: '#f8f8f8',
                 fontSize: 'clamp(2.4rem, 5vw, 4rem)',
                 animation: 'fadeInUp 0.7s ease 0.1s both',
               }}
             >
               Retrouvez le{' '}
-              <em className="text-gold" style={{ fontStyle: 'italic' }}>
+              <em style={{ color: '#c5611a', fontStyle: 'italic' }}>
                 Goût de Chez Vous,
               </em>
               <br />
@@ -64,12 +69,12 @@ export default function Hero() {
             </h1>
 
             <p
-              className="text-light/80 text-[1.05rem] leading-[1.75] mb-10 max-w-[480px]"
-              style={{ animation: 'fadeInUp 0.7s ease 0.2s both' }}
+              className="text-[1.05rem] leading-[1.75] mb-10 max-w-[480px]"
+              style={{ color: 'rgba(189,159,135,0.85)', animation: 'fadeInUp 0.7s ease 0.2s both' }}
             >
-          Accédez en un clic à une diversité culinaire unique : 
-          restaurants internationaux, cuisiniers à domicile et spécialités du monde, réunis au même endroit.
-           </p>
+              Accédez en un clic à une diversité culinaire unique :
+              restaurants internationaux, cuisiniers à domicile et spécialités du monde, réunis au même endroit.
+            </p>
 
             <div
               className="flex flex-wrap gap-4"
@@ -114,7 +119,7 @@ export default function Hero() {
       </div>
 
       {/* Stats bar */}
-      <div className="relative z-10 bg-white/[0.03] border-t border-white/[0.06] backdrop-blur-sm">
+      <div className="relative z-10 border-t backdrop-blur-sm" style={{ backgroundColor: 'rgba(248,248,248,0.03)', borderColor: 'rgba(248,248,248,0.06)' }}>
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid grid-cols-2 sm:grid-cols-4">
             {STATS.map((s) => (

@@ -108,7 +108,7 @@ export default function CuisineFilter() {
                 className={`px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap
                             border-2 transition-all duration-200
                             ${active === tab.id
-                              ? 'bg-gold text-dark border-gold shadow-[0_4px_16px_rgba(244,168,40,0.3)]'
+                              ? 'btn-gold text-white  shadow-[0_4px_16px_rgba(244,168,40,0.3)]'
                               : 'bg-white text-dark3 border-transparent shadow-sm hover:border-gold hover:text-gold-dark'
                             }`}
               >

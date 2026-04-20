@@ -14,8 +14,8 @@
   }
   body {
     font-family: 'DM Sans', system-ui, sans-serif;
-    background-color: #f9f4ee;
-    color: #12111a;
+    background-color: #eae5d9; /* crème chaud — était #f9f4ee */
+    color: #1f1f1f;            /* noir profond — était #12111a */
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
@@ -25,29 +25,47 @@
   .btn {
     @apply inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm transition-all duration-300 whitespace-nowrap;
   }
+
+  /* Bouton primaire : terracotta */
   .btn-gold {
-    @apply bg-gold text-dark hover:bg-gold-light hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(244,168,40,0.4)];
+    background-color: #c5611a;
+    color: #f8f8f8;
+    @apply hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(197,97,26,0.4)];
   }
+  .btn-gold:hover {
+    background-color: #d9722a;
+  }
+
+  /* Bouton outline */
   .btn-outline {
     @apply bg-transparent text-white border-2 border-white/50 hover:border-white hover:bg-white/10 hover:-translate-y-0.5;
   }
+
+  /* Bouton sombre */
   .btn-dark {
-    @apply bg-dark text-white hover:bg-dark2 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)];
+    background-color: #1f1f1f;
+    color: #f8f8f8;
+    @apply hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(31,31,31,0.3)];
+  }
+  .btn-dark:hover {
+    background-color: #504640;
   }
 
   .section-label {
-    @apply text-gold text-xs font-semibold tracking-[0.18em] uppercase mb-3 block;
+    color: #c5611a;
+    @apply text-xs font-semibold tracking-[0.18em] uppercase mb-3 block;
   }
   .section-title {
     @apply font-serif text-[clamp(2rem,4vw,3rem)] font-bold leading-tight;
+    color: #1f1f1f;
   }
   .section-title em {
-    @apply italic text-gold not-italic;
+    color: #c5611a;
     font-style: italic !important;
   }
 
   .card-hover {
-    @apply transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_16px_48px_rgba(0,0,0,0.15)];
+    @apply transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_16px_48px_rgba(80,70,64,0.18)];
   }
 }
 
@@ -56,10 +74,12 @@
     font-family: 'Playfair Display', Georgia, serif;
     font-style: italic;
   }
+
+  /* Zellige avec terracotta */
   .zellige-pattern {
     background-image:
-      repeating-linear-gradient(45deg, rgba(244,168,40,0.035) 0, rgba(244,168,40,0.035) 1px, transparent 0, transparent 50%),
-      repeating-linear-gradient(-45deg, rgba(244,168,40,0.035) 0, rgba(244,168,40,0.035) 1px, transparent 0, transparent 50%);
+      repeating-linear-gradient(45deg, rgba(197,97,26,0.04) 0, rgba(197,97,26,0.04) 1px, transparent 0, transparent 50%),
+      repeating-linear-gradient(-45deg, rgba(197,97,26,0.04) 0, rgba(197,97,26,0.04) 1px, transparent 0, transparent 50%);
     background-size: 40px 40px;
   }
   .vendor-zellige {
@@ -68,8 +88,10 @@
       repeating-linear-gradient(-45deg, rgba(255,255,255,0.04) 0, rgba(255,255,255,0.04) 1px, transparent 0, transparent 50%);
     background-size: 30px 30px;
   }
+
+  /* Gradient terracotta → beige doré */
   .text-gradient-gold {
-    background: linear-gradient(135deg, #f4a828, #c8841a);
+    background: linear-gradient(135deg, #c5611a, #bd9f87);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
