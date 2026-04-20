@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import {
   ArrowLeft, ShoppingBag, MapPin, Phone, FileText,
   CreditCard, Smartphone, Banknote, CheckCircle, Clock, Lock,
-  Truck, Store
+  Truck, Store,Navigation
 } from 'lucide-react'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 

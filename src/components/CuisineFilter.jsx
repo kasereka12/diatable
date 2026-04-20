@@ -98,9 +98,9 @@ export default function CuisineFilter() {
       <div className="max-w-6xl mx-auto px-6">
         <SectionHeader label="Découvrir" title="Explorer par <em>Cuisine</em>" />
 
-        {/* Filter tabs */}
-        <div data-reveal className="overflow-x-auto scrollbar-hide mb-12">
-          <div className="flex gap-2.5 w-max mx-auto pb-1">
+        {/* Filter tabs — scrollable horizontally on all screen sizes */}
+        <div data-reveal className="overflow-x-auto scrollbar-hide mb-12 -mx-6 px-6 lg:-mx-[calc((100vw-72rem)/2+1.5rem)] lg:px-[calc((100vw-72rem)/2+1.5rem)]">
+          <div className="flex gap-2.5 w-max pb-1">
             {TABS.map((tab) => (
               <button
                 key={tab.id}

@@ -60,16 +60,16 @@ export default function Hero() {
                 Goût de Chez Vous,
               </em>
               <br />
-              Ici Même au Maroc
+              Même Loin de Chez Vous
             </h1>
 
             <p
               className="text-light/80 text-[1.05rem] leading-[1.75] mb-10 max-w-[480px]"
               style={{ animation: 'fadeInUp 0.7s ease 0.2s both' }}
             >
-              Découvrez des restaurants de la diaspora, des cuisiniers à domicile
-              et des vendeurs de nourriture authentique de plus de 30 pays — en un seul endroit.
-            </p>
+          Accédez en un clic à une diversité culinaire unique : 
+          restaurants internationaux, cuisiniers à domicile et spécialités du monde, réunis au même endroit.
+           </p>
 
             <div
               className="flex flex-wrap gap-4"
