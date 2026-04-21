@@ -37,7 +37,7 @@ export default function Restaurants() {
         <div className="relative max-w-6xl mx-auto px-6 text-center">
           <p className="section-label" data-reveal>Explorer</p>
           <h1 className="font-serif text-4xl md:text-5xl font-black text-white mb-4" data-reveal data-delay="0.1s">
-            Tous les <em className="text-gold italic">Restaurants</em>
+            Tous les <em style={{ color: '#c5611a', fontStyle: 'italic' }}>Restaurants</em>
           </h1>
           <p className="text-light/70 max-w-xl mx-auto" data-reveal data-delay="0.2s">
             {restaurants.length} restaurants et cuisiniers de la diaspora au Maroc
@@ -155,7 +155,7 @@ export default function Restaurants() {
                         <span className="text-xs text-muted italic">Aucun avis</span>
                       )}
                     </div>
-                    <div className="text-gold text-sm font-semibold flex items-center gap-1">
+                    <div className=" text-sm font-semibold flex items-center gap-1" style={{ color: '#c5611a' }}>
                       Voir le profil <ArrowRight size={14} />
                     </div>
                   </div>

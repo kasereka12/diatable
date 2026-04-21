@@ -7,21 +7,21 @@ import { ArrowRight } from 'lucide-react'
 
 // UI-only metadata — not stored in DB
 const CUISINE_META = {
-  senegalaise: { bg: 'linear-gradient(160deg,#8b2500,#c8581a,#f4a828)', country: 'Sénégal',     dish: 'Thiéboudienne', desc: "Le plat emblématique de la diaspora sénégalaise — riz au poisson, légumes et épices d'Afrique de l'Ouest." },
-  libanaise:   { bg: 'linear-gradient(160deg,#145a32,#1e8449,#76b041)', country: 'Liban',        dish: 'Mezze & Grills', desc: 'Houmous, falafel, kafta grillée — la générosité libanaise à chaque bouchée.' },
-  chinoise:    { bg: 'linear-gradient(160deg,#7b0000,#c0392b,#e74c3c)', country: 'Chine',        dish: 'Dim Sum',       desc: 'Bouchées vapeur et saveurs de Canton — une tradition millénaire revisitée à Casablanca.' },
-  syrienne:    { bg: 'linear-gradient(160deg,#2c0042,#6c3483,#9b59b6)', country: 'Syrie',        dish: 'Shawarma',      desc: 'Viande rôtie à la broche, marinée aux épices du Levant, servie en pita généreux.' },
-  nigeriane:   { bg: 'linear-gradient(160deg,#0a3d0a,#1e8449,#f9a825)', country: 'Nigéria',      dish: 'Jollof Rice',   desc: "Riz fumé au feu de bois dans une sauce tomate relevée — la fierté de l'Afrique de l'Ouest." },
-  indienne:    { bg: 'linear-gradient(160deg,#7d3200,#c05a00,#fbc02d)', country: 'Inde',         dish: 'Curry & Biryani', desc: 'Épices dorées, currys crémeux et riz basmati parfumé au safran.' },
-  francaise:   { bg: 'linear-gradient(160deg,#0a1a4a,#1565c0,#42a5f5)', country: 'France',       dish: 'Boulangerie',   desc: 'Croissants pur beurre, bœuf bourguignon et pâtisseries fines — le savoir-faire français au Maroc.' },
-  italienne:   { bg: 'linear-gradient(160deg,#6a0000,#c62828,#1b5e20)', country: 'Italie',       dish: 'Pizza & Pasta', desc: 'Pâte napolitaine et pasta al dente — la dolce vita à votre table.' },
-  marocaine:   { bg: 'linear-gradient(160deg,#6a0000,#b71c1c,#f4a828)', country: 'Maroc',        dish: 'Tajine',        desc: "Tajine d'agneau aux pruneaux, harira et pastilla — les saveurs authentiques du Maroc." },
-  bresilienne: { bg: 'linear-gradient(160deg,#0a3d0a,#2e7d32,#0d47a1)', country: 'Brésil',       dish: 'Feijoada',      desc: 'Ragoût de haricots noirs, viandes fumées et caïpirinha — le Brésil s\'invite à Casablanca.' },
-  ivoirienne:  { bg: 'linear-gradient(160deg,#7d3200,#e65100,#ffd54f)', country: "Côte d'Ivoire", dish: 'Alloco',       desc: "Bananes plantains frites, kedjenou de poulet — les saveurs chaleureuses d'Abidjan." },
-  turque:      { bg: 'linear-gradient(160deg,#6a0000,#b71c1c,#e53935)', country: 'Turquie',      dish: 'Kebab Adana',   desc: 'Kebab Adana, börek au fromage et baklava au miel — Istanbul dans votre assiette.' },
+  senegalaise: { bg: 'linear-gradient(160deg,#8b2500,#c5611a,#bd9f87)', country: 'Sénégal',      dish: 'Thiéboudienne',  desc: "Le plat emblématique de la diaspora sénégalaise — riz au poisson, légumes et épices d'Afrique de l'Ouest." },
+  libanaise:   { bg: 'linear-gradient(160deg,#145a32,#1e8449,#76b041)',  country: 'Liban',         dish: 'Mezze & Grills', desc: 'Houmous, falafel, kafta grillée — la générosité libanaise à chaque bouchée.' },
+  chinoise:    { bg: 'linear-gradient(160deg,#7b0000,#c0392b,#e74c3c)',  country: 'Chine',         dish: 'Dim Sum',        desc: 'Bouchées vapeur et saveurs de Canton — une tradition millénaire revisitée à Casablanca.' },
+  syrienne:    { bg: 'linear-gradient(160deg,#2c0042,#6c3483,#9b59b6)',  country: 'Syrie',         dish: 'Shawarma',       desc: 'Viande rôtie à la broche, marinée aux épices du Levant, servie en pita généreux.' },
+  nigeriane:   { bg: 'linear-gradient(160deg,#0a3d0a,#1e8449,#c5611a)',  country: 'Nigéria',       dish: 'Jollof Rice',    desc: "Riz fumé au feu de bois dans une sauce tomate relevée — la fierté de l'Afrique de l'Ouest." },
+  indienne:    { bg: 'linear-gradient(160deg,#7d3200,#c5611a,#bd9f87)',  country: 'Inde',          dish: 'Curry & Biryani',desc: 'Épices dorées, currys crémeux et riz basmati parfumé au safran.' },
+  francaise:   { bg: 'linear-gradient(160deg,#0a1a4a,#1565c0,#42a5f5)', country: 'France',        dish: 'Boulangerie',    desc: 'Croissants pur beurre, bœuf bourguignon et pâtisseries fines — le savoir-faire français au Maroc.' },
+  italienne:   { bg: 'linear-gradient(160deg,#6a0000,#c62828,#1b5e20)', country: 'Italie',        dish: 'Pizza & Pasta',  desc: 'Pâte napolitaine et pasta al dente — la dolce vita à votre table.' },
+  marocaine:   { bg: 'linear-gradient(160deg,#6a0000,#b71c1c,#c5611a)', country: 'Maroc',         dish: 'Tajine',         desc: "Tajine d'agneau aux pruneaux, harira et pastilla — les saveurs authentiques du Maroc." },
+  bresilienne: { bg: 'linear-gradient(160deg,#0a3d0a,#2e7d32,#0d47a1)', country: 'Brésil',        dish: 'Feijoada',       desc: 'Ragoût de haricots noirs, viandes fumées et caïpirinha — le Brésil s\'invite à Casablanca.' },
+  ivoirienne:  { bg: 'linear-gradient(160deg,#7d3200,#c5611a,#bd9f87)', country: "Côte d'Ivoire", dish: 'Alloco',         desc: "Bananes plantains frites, kedjenou de poulet — les saveurs chaleureuses d'Abidjan." },
+  turque:      { bg: 'linear-gradient(160deg,#6a0000,#b71c1c,#e53935)', country: 'Turquie',       dish: 'Kebab Adana',    desc: 'Kebab Adana, börek au fromage et baklava au miel — Istanbul dans votre assiette.' },
 }
 
-const DEFAULT_BG = 'linear-gradient(160deg,#1a1a2e,#f4a828)'
+const DEFAULT_BG = 'linear-gradient(160deg,#1f1f1f,#c5611a)'
 
 function FeaturedCard({ f, delay = '0s' }) {
   const CuisineIcon = getCuisineIcon(f.cuisine)
@@ -34,11 +34,12 @@ function FeaturedCard({ f, delay = '0s' }) {
       data-delay={delay}
       className="rounded-2xl overflow-hidden relative min-h-[280px] flex flex-col justify-end
                  cursor-pointer group transition-all duration-300
-                 hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(0,0,0,0.2)]"
+                 hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(31,31,31,0.25)]"
     >
       <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.03]"
         style={{ background: meta.bg }} />
-      <div className="absolute inset-0 bg-gradient-to-t from-[rgba(12,11,20,0.92)] via-[rgba(12,11,20,0.3)] to-transparent" />
+      <div className="absolute inset-0"
+        style={{ background: 'linear-gradient(to top, rgba(31,31,31,0.94) 0%, rgba(31,31,31,0.28) 50%, transparent 100%)' }} />
 
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] z-10
                       transition-transform duration-300 group-hover:-translate-y-[65%] group-hover:scale-110">
@@ -47,18 +48,24 @@ function FeaturedCard({ f, delay = '0s' }) {
 
       <div className="relative z-20 p-7">
         <span className="text-2xl block mb-1.5">{f.flag}</span>
-        <div className="text-[0.68rem] font-bold tracking-[0.15em] uppercase text-gold mb-1.5">
+        <div className="text-[0.68rem] font-bold tracking-[0.15em] uppercase mb-1.5"
+          style={{ color: '#c5611a' }}>
           {meta.country}
         </div>
         <h3 className="font-serif font-bold text-white text-2xl mb-2">{meta.dish}</h3>
-        <p className="text-white/70 text-sm leading-relaxed mb-4 line-clamp-2">{meta.desc}</p>
+        <p className="text-sm leading-relaxed mb-4 line-clamp-2" style={{ color: 'rgba(248,248,248,0.70)' }}>
+          {meta.desc}
+        </p>
         <div className="flex items-center justify-between">
-          <span className="inline-flex items-center gap-1 text-gold text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 text-sm font-semibold"
+            style={{ color: '#bd9f87' }}>
             Explorer cette cuisine
             <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-1" />
           </span>
           {f.avg_rating && (
-            <span className="text-white/50 text-xs">{parseFloat(f.avg_rating).toFixed(1)} ★ · {f.count} resto{f.count > 1 ? 's' : ''}</span>
+            <span className="text-xs" style={{ color: 'rgba(248,248,248,0.45)' }}>
+              {parseFloat(f.avg_rating).toFixed(1)} ★ · {f.count} resto{f.count > 1 ? 's' : ''}
+            </span>
           )}
         </div>
       </div>
@@ -81,7 +88,6 @@ export default function FeaturedCuisines() {
       .then(({ data, error }) => {
         if (error || !data?.length) { setLoading(false); return }
 
-        // Group by cuisine, compute avg rating + count
         const map = {}
         data.forEach(r => {
           if (!map[r.cuisine]) {
@@ -102,15 +108,18 @@ export default function FeaturedCuisines() {
   }, [])
 
   return (
-    <section id="cuisines" className="bg-cream2 py-24" ref={ref}>
+    <section id="cuisines" className="py-24" style={{ backgroundColor: '#eae5d9' }} ref={ref}>
       <div className="max-w-6xl mx-auto px-6">
         <SectionHeader label="Les Plus Populaires" title="Cuisines les plus <em>Aimées</em>" />
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-10 h-10 rounded-full border-4 border-gold/30 border-t-gold animate-spin" />
+            <div className="w-10 h-10 rounded-full animate-spin"
+              style={{ border: '4px solid rgba(197,97,26,0.25)', borderTopColor: '#c5611a' }} />
           </div>
         ) : featured.length === 0 ? (
-          <p className="text-center text-muted py-12">Aucune cuisine disponible pour le moment.</p>
+          <p className="text-center py-12" style={{ color: '#bd9f87' }}>
+            Aucune cuisine disponible pour le moment.
+          </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {featured.map((f, i) => (

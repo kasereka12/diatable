@@ -24,8 +24,7 @@ function MenuItem({ item, onAddToCart }) {
   }
 
   return (
-    <div className="flex items-start gap-3 py-4 border-b border-black/[0.06] last:border-0">
-      {/* Thumbnail */}
+    <div className="flex items-start gap-3 py-4 last:border-0" style={{ borderBottom: '1px solid rgba(80,70,64,0.07)' }}>
       {item.image_url && (
         <button
           onClick={() => onImageClick(item.image_url, item.name)}
@@ -40,23 +39,34 @@ function MenuItem({ item, onAddToCart }) {
       )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-          <span className="font-semibold text-dark text-sm">{item.name}</span>
+          <span className="font-semibold text-sm" style={{ color: '#1f1f1f' }}>{item.name}</span>
           {item.is_popular && (
-            <span className="bg-gold/15 text-gold-dark text-[0.65rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+            <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
+              style={{ backgroundColor: 'rgba(197,97,26,0.12)', color: '#a04d12' }}>
               Populaire
             </span>
           )}
         </div>
-        {item.description && <p className="text-muted text-xs leading-relaxed">{item.description}</p>}
+        {item.description && (
+          <p className="text-xs leading-relaxed" style={{ color: '#80716a' }}>{item.description}</p>
+        )}
       </div>
       <div className="flex items-center gap-3 flex-shrink-0">
-        <span className="font-bold text-dark text-sm">{item.price} MAD</span>
+        <span className="font-bold text-sm" style={{ color: '#1f1f1f' }}>{item.price} MAD</span>
         <button
           onClick={handleAdd}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${added
-            ? 'bg-green-500 text-white shadow-[0_2px_8px_rgba(34,197,94,0.3)]'
-            : 'bg-gold text-dark hover:bg-gold-light shadow-[0_2px_8px_rgba(244,168,40,0.3)]'
-            }`}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+          style={added ? {
+            backgroundColor: '#22c55e',
+            color: '#fff',
+            boxShadow: '0 2px 8px rgba(34,197,94,0.3)',
+          } : {
+            backgroundColor: '#c5611a',
+            color: '#f8f8f8',
+            boxShadow: '0 2px 8px rgba(197,97,26,0.3)',
+          }}
+          onMouseEnter={e => { if (!added) e.currentTarget.style.backgroundColor = '#d9722a' }}
+          onMouseLeave={e => { if (!added) e.currentTarget.style.backgroundColor = '#c5611a' }}
           aria-label={`Ajouter ${item.name} au panier`}
         >
           {added ? <><Check size={14} /> Ajouté</> : <><Plus size={14} /> Ajouter</>}
@@ -68,21 +78,21 @@ function MenuItem({ item, onAddToCart }) {
 
 function ReviewCard({ review }) {
   return (
-    <div className="bg-white rounded-xl p-5 shadow-sm border border-black/[0.05]">
+    <div className="rounded-xl p-5 shadow-sm" style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.07)' }}>
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-9 h-9 rounded-full flex items-center justify-center text-dark text-xs font-bold flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg,#f4a828,#c8841a)' }}>
+        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+          style={{ background: 'linear-gradient(135deg,#c5611a,#a04d12)', color: '#f8f8f8' }}>
           {review.initials}
         </div>
         <div>
-          <div className="font-semibold text-dark text-sm">{review.name}</div>
+          <div className="font-semibold text-sm" style={{ color: '#1f1f1f' }}>{review.name}</div>
           <div className="flex items-center gap-1.5">
             <StarRating rating={review.rating} />
-            <span className="text-muted text-xs">{review.date}</span>
+            <span className="text-xs" style={{ color: '#80716a' }}>{review.date}</span>
           </div>
         </div>
       </div>
-      <p className="text-dark/70 text-sm leading-relaxed">{review.text}</p>
+      <p className="text-sm leading-relaxed" style={{ color: 'rgba(31,31,31,0.70)' }}>{review.text}</p>
     </div>
   )
 }
@@ -117,14 +127,12 @@ export default function RestaurantDetail() {
   const { restaurant, menuByCategory, reviews, loading } = useRestaurantDetail(id)
   const ref = useScrollReveal()
   const [activeCategory, setActiveCategory] = useState(0)
-  const [lightbox, setLightbox] = useState(null) // { src, alt }
+  const [lightbox, setLightbox] = useState(null)
 
-  // Likes
   const [likesCount, setLikesCount] = useState(0)
   const [userLiked, setUserLiked] = useState(false)
   const [likeLoading, setLikeLoading] = useState(false)
 
-  // Reviews
   const [userReview, setUserReview] = useState(null)
   const [reviewForm, setReviewForm] = useState({ rating: 0, text: '' })
   const [reviewHover, setReviewHover] = useState(0)
@@ -135,31 +143,9 @@ export default function RestaurantDetail() {
   const categories = Object.keys(menuByCategory)
   const currentItems = menuByCategory[categories[activeCategory]] || []
 
-  // Track page view
-  /* useEffect(() => {
-     if (!id || !supabase) return
-     supabase.from('restaurant_views').insert({ restaurant_id: id })
-   }, [id])*/
-
-  // Fetch likes count + user-specific data
   useEffect(() => {
     if (!id || !supabase) return
-
-    /*supabase
-      .from('restaurant_likes')
-      .select('*', { count: 'exact', head: true })
-      .eq('restaurant_id', id)
-      .then(({ count }) => setLikesCount(count || 0))*/
-
     if (user) {
-      /*supabase
-        .from('restaurant_likes')
-        .select('id')
-        .eq('restaurant_id', id)
-        .eq('user_id', user.id)
-        .maybeSingle()
-        .then(({ data }) => setUserLiked(!!data))
-      */
       supabase
         .from('reviews')
         .select('*')
@@ -185,20 +171,13 @@ export default function RestaurantDetail() {
 
   async function startConversation() {
     if (!user || !supabase || !restaurant) return
-    // Check if conversation already exists
     const { data: existing } = await supabase
       .from('conversations')
       .select('id')
       .eq('customer_id', user.id)
       .eq('restaurant_id', restaurant.id)
       .maybeSingle()
-
-    if (existing) {
-      navigate('/messages')
-      return
-    }
-
-    // Create new conversation
+    if (existing) { navigate('/messages'); return }
     await supabase.from('conversations').insert({
       customer_id: user.id,
       vendor_id: restaurant.owner_id,
@@ -211,8 +190,7 @@ export default function RestaurantDetail() {
     if (!user || !supabase) return
     setLikeLoading(true)
     if (userLiked) {
-      await supabase.from('restaurant_likes').delete()
-        .eq('restaurant_id', id).eq('user_id', user.id)
+      await supabase.from('restaurant_likes').delete().eq('restaurant_id', id).eq('user_id', user.id)
       setUserLiked(false)
       setLikesCount(c => Math.max(0, c - 1))
     } else {
@@ -268,20 +246,21 @@ export default function RestaurantDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-dark flex items-center justify-center">
-        <div className="w-12 h-12 rounded-full border-4 border-gold/30 border-t-gold animate-spin" />
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1f1f1f' }}>
+        <div className="w-12 h-12 rounded-full animate-spin"
+          style={{ border: '4px solid rgba(197,97,26,0.25)', borderTopColor: '#c5611a' }} />
       </div>
     )
   }
 
   if (!restaurant) return (
-    <div className="min-h-screen bg-dark flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1f1f1f' }}>
       <div className="text-center">
         <div className="flex justify-center mb-4">
-          <Utensils size={56} className="text-gold" />
+          <Utensils size={56} style={{ color: '#c5611a' }} />
         </div>
-        <p className="text-white font-serif text-xl">Restaurant introuvable</p>
-        <Link to="/restaurants" className="text-gold mt-4 inline-flex items-center gap-1">
+        <p className="font-serif text-xl" style={{ color: '#f8f8f8' }}>Restaurant introuvable</p>
+        <Link to="/restaurants" className="mt-4 inline-flex items-center gap-1" style={{ color: '#c5611a' }}>
           <ArrowLeft size={16} /> Retour aux restaurants
         </Link>
       </div>
@@ -293,7 +272,7 @@ export default function RestaurantDetail() {
   const hours = restaurant.hours || 'Lun–Sam : 11h30 – 22h00'
 
   return (
-    <div className="bg-cream min-h-screen" ref={ref}>
+    <div className="min-h-screen" style={{ backgroundColor: '#eae5d9' }} ref={ref}>
       {/* Hero banner */}
       <div className="relative h-72 md:h-96 overflow-hidden"
         style={!restaurant.image_url ? { background: getGradient(restaurant.gradient) } : {}}>
@@ -304,12 +283,17 @@ export default function RestaurantDetail() {
             <CuisineIcon size={96} className="text-white/90 drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-dark/80 via-dark/20 to-transparent" />
+        <div className="absolute inset-0"
+          style={{ background: 'linear-gradient(to top, rgba(31,31,31,0.85) 0%, rgba(31,31,31,0.18) 50%, transparent 100%)' }} />
 
         {/* Breadcrumb */}
         <div className="absolute top-28 left-0 right-0 px-6">
           <div className="max-w-5xl mx-auto">
-            <Link to="/restaurants" className="text-white/70 text-sm hover:text-white transition-colors flex items-center gap-1 w-fit">
+            <Link to="/restaurants"
+              className="text-sm flex items-center gap-1 w-fit transition-colors"
+              style={{ color: 'rgba(248,248,248,0.70)' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#f8f8f8'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(248,248,248,0.70)'}>
               <ArrowLeft size={16} /> Tous les restaurants
             </Link>
           </div>
@@ -320,52 +304,63 @@ export default function RestaurantDetail() {
           <div className="max-w-5xl mx-auto">
             <div className="flex items-end justify-between flex-wrap gap-4">
               <div>
-                <div className="text-gold text-xs font-bold tracking-widest uppercase mb-1">
+                <div className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: '#c5611a' }}>
                   {restaurant.flag} {restaurant.cuisine_label}
                 </div>
-                <h1 className="font-serif text-2xl md:text-3xl font-black text-white leading-tight">
+                <h1 className="font-serif text-2xl md:text-3xl font-black leading-tight" style={{ color: '#f8f8f8' }}>
                   {restaurant.name}
                 </h1>
                 <div className="flex items-center gap-4 mt-2 flex-wrap">
-                  <span className="text-white/80 text-sm flex items-center gap-1">
+                  <span className="text-sm flex items-center gap-1" style={{ color: 'rgba(248,248,248,0.80)' }}>
                     <MapPin size={14} /> {restaurant.location}
                   </span>
                   {restaurant.reviews > 0 ? (
                     <span className="flex items-center gap-1.5 text-sm">
                       <StarRating rating={restaurant.rating} />
-                      <span className="text-white font-semibold">{restaurant.rating}</span>
-                      <span className="text-white/60">({restaurant.reviews} avis)</span>
+                      <span className="font-semibold" style={{ color: '#f8f8f8' }}>{restaurant.rating}</span>
+                      <span style={{ color: 'rgba(248,248,248,0.60)' }}>({restaurant.reviews} avis)</span>
                     </span>
                   ) : (
-                    <span className="text-white/50 text-sm italic">Aucun avis pour l'instant</span>
+                    <span className="text-sm italic" style={{ color: 'rgba(248,248,248,0.50)' }}>Aucun avis pour l'instant</span>
                   )}
                   {restaurant.is_verified && (
-                    <span className="bg-green-500/20 border border-green-500/40 text-green-400 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
+                      style={{ backgroundColor: 'rgba(34,197,94,0.20)', border: '1px solid rgba(34,197,94,0.40)', color: '#4ade80' }}>
                       <ShieldCheck size={12} /> Vérifié
                     </span>
                   )}
                 </div>
               </div>
               <div className="flex gap-2.5 flex-wrap">
-                {/* Like button */}
                 <button
                   onClick={toggleLike}
                   disabled={likeLoading}
                   title={user ? (userLiked ? 'Ne plus aimer' : "J'aime") : 'Connectez-vous pour aimer'}
-                  className={`btn text-sm px-4 py-2.5 flex items-center gap-2 transition-all
-                    ${userLiked
-                      ? 'bg-pink-500/20 border border-pink-500/40 text-pink-400 hover:bg-pink-500/30'
-                      : 'bg-white/10 backdrop-blur border border-white/20 text-white hover:bg-white/20'
-                    }`}
+                  className="btn text-sm px-4 py-2.5 flex items-center gap-2 transition-all"
+                  style={userLiked ? {
+                    backgroundColor: 'rgba(236,72,153,0.20)',
+                    border: '1px solid rgba(236,72,153,0.40)',
+                    color: '#f472b6',
+                  } : {
+                    backgroundColor: 'rgba(248,248,248,0.10)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(248,248,248,0.20)',
+                    color: '#f8f8f8',
+                  }}
                   aria-label={userLiked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                 >
                   <Heart size={16} className={userLiked ? 'fill-pink-400' : ''} />
                   {likesCount > 0 && <span>{likesCount}</span>}
                 </button>
-                {/* Message vendor */}
                 <button
                   onClick={user ? startConversation : () => navigate('/connexion')}
-                  className="btn bg-white/10 backdrop-blur border border-white/20 text-white hover:bg-white/20 text-sm px-5 py-2.5 flex items-center gap-2"
+                  className="btn text-sm px-5 py-2.5 flex items-center gap-2 transition-all"
+                  style={{
+                    backgroundColor: 'rgba(248,248,248,0.10)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(248,248,248,0.20)',
+                    color: '#f8f8f8',
+                  }}
                   aria-label="Contacter le vendeur"
                 >
                   <MessageCircle size={16} /> Message
@@ -382,17 +377,24 @@ export default function RestaurantDetail() {
 
           {/* Menu + Reviews */}
           <div className="lg:col-span-2">
-            <h2 className="font-serif text-2xl font-bold text-dark mb-6" data-reveal>Notre Carte</h2>
+            <h2 className="font-serif text-2xl font-bold mb-6" style={{ color: '#1f1f1f' }} data-reveal>Notre Carte</h2>
 
             {categories.length > 0 && (
               <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide pb-1" data-reveal>
                 {categories.map((cat, i) => (
                   <button key={cat} onClick={() => setActiveCategory(i)}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap
-                      border-2 transition-all duration-200 flex-shrink-0
-                      ${activeCategory === i
-                        ? 'bg-gold text-dark border-gold shadow-[0_4px_12px_rgba(244,168,40,0.3)]'
-                        : 'bg-white text-dark border-transparent shadow-sm hover:border-gold/50'}`}
+                    className="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap border-2 transition-all duration-200 flex-shrink-0"
+                    style={activeCategory === i ? {
+                      backgroundColor: '#c5611a',
+                      color: '#f8f8f8',
+                      borderColor: '#c5611a',
+                      boxShadow: '0 4px 12px rgba(197,97,26,0.30)',
+                    } : {
+                      backgroundColor: '#f8f8f8',
+                      color: '#1f1f1f',
+                      borderColor: 'transparent',
+                      boxShadow: '0 1px 4px rgba(80,70,64,0.08)',
+                    }}
                   >
                     {cat}
                   </button>
@@ -400,25 +402,26 @@ export default function RestaurantDetail() {
               </div>
             )}
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05]" data-reveal>
+            <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }} data-reveal>
               {currentItems.length > 0 ? (
                 currentItems.map(item => (
                   <MenuItem key={item.id} item={item} onAddToCart={handleAddToCart} />
                 ))
               ) : (
-                <p className="text-muted text-sm text-center py-6">Aucun plat dans cette catégorie.</p>
+                <p className="text-sm text-center py-6" style={{ color: '#80716a' }}>Aucun plat dans cette catégorie.</p>
               )}
             </div>
 
-            {/* Reviews list */}
+            {/* Reviews */}
             <div className="mt-10">
               <div className="flex items-center justify-between mb-6" data-reveal>
-                <h2 className="font-serif text-2xl font-bold text-dark">Avis clients</h2>
+                <h2 className="font-serif text-2xl font-bold" style={{ color: '#1f1f1f' }}>Avis clients</h2>
                 {restaurant.reviews > 0 && (
-                  <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-2 shadow-sm border border-black/[0.05]">
-                    <Star size={18} className="text-gold fill-gold" />
-                    <span className="font-bold text-dark">{restaurant.rating}</span>
-                    <span className="text-muted text-sm">/ 5</span>
+                  <div className="flex items-center gap-2 rounded-xl px-4 py-2 shadow-sm"
+                    style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }}>
+                    <Star size={18} style={{ color: '#c5611a', fill: '#c5611a' }} />
+                    <span className="font-bold" style={{ color: '#1f1f1f' }}>{restaurant.rating}</span>
+                    <span className="text-sm" style={{ color: '#80716a' }}>/ 5</span>
                   </div>
                 )}
               </div>
@@ -432,33 +435,39 @@ export default function RestaurantDetail() {
                   ))}
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-black/[0.05]">
-                  <Star size={32} className="text-gold mx-auto mb-3" />
-                  <p className="text-muted text-sm">Aucun avis pour l'instant. Soyez le premier !</p>
+                <div className="rounded-2xl p-8 text-center shadow-sm"
+                  style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }}>
+                  <Star size={32} className="mx-auto mb-3" style={{ color: '#c5611a' }} />
+                  <p className="text-sm" style={{ color: '#80716a' }}>Aucun avis pour l'instant. Soyez le premier !</p>
                 </div>
               )}
 
               {/* Review form */}
               <div className="mt-8" data-reveal>
                 {!user ? (
-                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05] text-center">
-                    <Star size={28} className="text-gold mx-auto mb-3" />
-                    <p className="text-dark font-semibold mb-1">Partagez votre expérience</p>
-                    <p className="text-muted text-sm mb-4">Connectez-vous pour laisser un avis</p>
+                  <div className="rounded-2xl p-6 shadow-sm text-center"
+                    style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }}>
+                    <Star size={28} className="mx-auto mb-3" style={{ color: '#c5611a' }} />
+                    <p className="font-semibold mb-1" style={{ color: '#1f1f1f' }}>Partagez votre expérience</p>
+                    <p className="text-sm mb-4" style={{ color: '#80716a' }}>Connectez-vous pour laisser un avis</p>
                     <Link to="/connexion" className="btn btn-gold px-6 py-2.5 text-sm inline-flex items-center gap-1.5">
                       Se connecter
                     </Link>
                   </div>
                 ) : isOwner ? null : (userReview && !editingReview) ? (
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+                  <div className="rounded-2xl p-5"
+                    style={{ backgroundColor: 'rgba(234,229,217,0.7)', border: '1px solid rgba(197,97,26,0.20)' }}>
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div>
-                        <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1.5">Votre avis</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#a04d12' }}>Votre avis</p>
                         <StarRating rating={userReview.rating} />
                       </div>
                       <div className="flex gap-1">
                         <button onClick={() => setEditingReview(true)}
-                          className="p-1.5 rounded-lg hover:bg-amber-100 text-amber-700 transition-colors"
+                          className="p-1.5 rounded-lg transition-colors"
+                          style={{ color: '#a04d12' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(197,97,26,0.12)'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                           title="Modifier" aria-label="Modifier votre avis">
                           <Pencil size={15} />
                         </button>
@@ -470,17 +479,18 @@ export default function RestaurantDetail() {
                       </div>
                     </div>
                     {userReview.text && (
-                      <p className="text-sm text-dark/70 mt-2 leading-relaxed">"{userReview.text}"</p>
+                      <p className="text-sm mt-2 leading-relaxed" style={{ color: 'rgba(31,31,31,0.70)' }}>"{userReview.text}"</p>
                     )}
                     {submitMsg && <p className="text-xs text-green-600 mt-2">{submitMsg}</p>}
                   </div>
                 ) : canReview ? (
-                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05]">
-                    <h3 className="font-semibold text-dark mb-4">
+                  <div className="rounded-2xl p-6 shadow-sm"
+                    style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }}>
+                    <h3 className="font-semibold mb-4" style={{ color: '#1f1f1f' }}>
                       {editingReview ? 'Modifier votre avis' : 'Laisser un avis'}
                     </h3>
                     <div className="mb-4">
-                      <p className="text-xs text-muted mb-2">Votre note</p>
+                      <p className="text-xs mb-2" style={{ color: '#80716a' }}>Votre note</p>
                       <StarSelector
                         value={reviewForm.rating}
                         hover={reviewHover}
@@ -494,7 +504,12 @@ export default function RestaurantDetail() {
                       onChange={e => setReviewForm(f => ({ ...f, text: e.target.value }))}
                       placeholder="Décrivez votre expérience (optionnel)..."
                       rows={3}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-gold/50 resize-none mb-3"
+                      className="w-full rounded-xl px-4 py-3 text-sm resize-none mb-3 focus:outline-none focus:ring-2"
+                      style={{
+                        border: '1px solid rgba(80,70,64,0.18)',
+                        color: '#1f1f1f',
+                        // focus ring via inline not possible, handled by Tailwind below
+                      }}
                     />
                     <div className="flex items-center gap-3 flex-wrap">
                       <button
@@ -511,7 +526,10 @@ export default function RestaurantDetail() {
                             setEditingReview(false)
                             setReviewForm({ rating: userReview.rating, text: userReview.text || '' })
                           }}
-                          className="text-sm text-muted hover:text-dark"
+                          className="text-sm transition-colors"
+                          style={{ color: '#80716a' }}
+                          onMouseEnter={e => e.currentTarget.style.color = '#1f1f1f'}
+                          onMouseLeave={e => e.currentTarget.style.color = '#80716a'}
                         >
                           Annuler
                         </button>
@@ -526,64 +544,61 @@ export default function RestaurantDetail() {
 
           {/* Sidebar */}
           <div className="space-y-5">
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-black/[0.05] sticky top-24" data-reveal>
-              <h3 className="font-serif font-bold text-dark text-base mb-4">Informations</h3>
+            <div className="rounded-2xl p-5 shadow-sm sticky top-24"
+              style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }} data-reveal>
+              <h3 className="font-serif font-bold text-base mb-4" style={{ color: '#1f1f1f' }}>Informations</h3>
               <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-3">
-                  <MapPin size={16} className="text-gold flex-shrink-0 mt-0.5" />
-                  <div>
-                    <div className="font-semibold text-dark">Adresse</div>
-                    <div className="text-muted">{address}</div>
+                {[
+                  { icon: MapPin, label: 'Adresse', value: address },
+                  { icon: Clock, label: 'Horaires', value: hours },
+                  { icon: CreditCard, label: 'Paiement', value: 'Espèces à la livraison' },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="flex items-start gap-3">
+                    <Icon size={16} className="flex-shrink-0 mt-0.5" style={{ color: '#c5611a' }} />
+                    <div>
+                      <div className="font-semibold" style={{ color: '#1f1f1f' }}>{label}</div>
+                      <div style={{ color: '#80716a' }}>{value}</div>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Clock size={16} className="text-gold flex-shrink-0 mt-0.5" />
-                  <div>
-                    <div className="font-semibold text-dark">Horaires</div>
-                    <div className="text-muted">{hours}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <CreditCard size={16} className="text-gold flex-shrink-0 mt-0.5" />
-                  <div>
-                    <div className="font-semibold text-dark">Paiement</div>
-                    <div className="text-muted">Espèces à la livraison</div>
-                  </div>
-                </div>
+                ))}
               </div>
-              <div className="mt-5 pt-4 border-t border-black/[0.06] space-y-2.5">
+              <div className="mt-5 pt-4 space-y-2.5" style={{ borderTop: '1px solid rgba(80,70,64,0.08)' }}>
                 <button
                   onClick={user ? startConversation : () => navigate('/connexion')}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gold hover:bg-gold-light text-dark font-semibold text-sm transition-all"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all"
+                  style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d9722a'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#c5611a'}
                 >
                   <MessageCircle size={16} /> Contacter le vendeur
                 </button>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-black/[0.05]" data-reveal>
-              <h3 className="font-serif font-bold text-dark text-sm mb-3">Partager</h3>
+            <div className="rounded-2xl p-5 shadow-sm"
+              style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }} data-reveal>
+              <h3 className="font-serif font-bold text-sm mb-3" style={{ color: '#1f1f1f' }}>Partager</h3>
               <div className="flex gap-2">
-                <button className="flex-1 py-2 rounded-lg bg-cream text-xs font-medium text-dark hover:bg-gold/10 transition-all flex items-center justify-center gap-1"
-                  aria-label="Partager sur Facebook">
-                  <Facebook size={14} /> Facebook
-                </button>
-                <button className="flex-1 py-2 rounded-lg bg-cream text-xs font-medium text-dark hover:bg-gold/10 transition-all flex items-center justify-center gap-1"
-                  aria-label="Partager sur Instagram">
-                  <Instagram size={14} /> Instagram
-                </button>
-                <button className="flex-1 py-2 rounded-lg bg-cream text-xs font-medium text-dark hover:bg-gold/10 transition-all flex items-center justify-center gap-1"
-                  aria-label="Partager sur WhatsApp">
-                  <MessageCircle size={14} /> WhatsApp
-                </button>
+                {[
+                  { icon: Facebook, label: 'Facebook' },
+                  { icon: Instagram, label: 'Instagram' },
+                  { icon: MessageCircle, label: 'WhatsApp' },
+                ].map(({ icon: Icon, label }) => (
+                  <button key={label}
+                    className="flex-1 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1"
+                    style={{ backgroundColor: '#eae5d9', color: '#1f1f1f' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(197,97,26,0.12)'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#eae5d9'}
+                    aria-label={`Partager sur ${label}`}>
+                    <Icon size={14} /> {label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Lightbox */}
       {lightbox && <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
     </div>
   )

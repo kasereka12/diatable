@@ -70,7 +70,7 @@ export default function Contact() {
         <div className="relative max-w-3xl mx-auto px-6 text-center">
           <p className="section-label" data-reveal>Parlons-nous</p>
           <h1 className="font-serif text-4xl font-black text-white mb-3" data-reveal data-delay="0.1s">
-            Nous <em className="text-gold italic">Contacter</em>
+            Nous <em style={{ color: '#c5611a'}}>Contacter</em>
           </h1>
           <p className="text-light/70" data-reveal data-delay="0.2s">
             Une question, un problème, ou vous souhaitez rejoindre DiaTable ? On vous répond dans les 24h.

@@ -61,7 +61,7 @@ export default function Cuisines() {
         <div className="relative max-w-3xl mx-auto px-6 text-center">
           <p className="section-label" data-reveal>Explorer</p>
           <h1 className="font-serif text-4xl md:text-5xl font-black text-white mb-4" data-reveal data-delay="0.1s">
-            Toutes les <em className="text-gold italic">Cuisines</em>
+            Toutes les <em style={{ color: '#c5611a'}}>Cuisines</em>
           </h1>
           <p className="text-light/70" data-reveal data-delay="0.2s">
             {loading ? '…' : cuisines.length} cuisines du monde entier, représentées par la diaspora au Maroc

@@ -50,72 +50,121 @@ export default function Register() {
     if (error) setError(error.message)
   }
 
+  // Shared input style helpers
+  const inputBase = {
+    backgroundColor: 'rgba(248,248,248,0.06)',
+    border: '1px solid rgba(248,248,248,0.10)',
+    color: '#f8f8f8',
+  }
+  const inputFocus = (e) => {
+    e.target.style.borderColor = '#c5611a'
+    e.target.style.backgroundColor = 'rgba(248,248,248,0.08)'
+  }
+  const inputBlur = (e) => {
+    e.target.style.borderColor = 'rgba(248,248,248,0.10)'
+    e.target.style.backgroundColor = 'rgba(248,248,248,0.06)'
+  }
+
   return (
-    <div className="min-h-screen bg-dark flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#1f1f1f' }}>
       <div className="absolute inset-0 zellige-pattern opacity-40 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-br from-dark via-dark to-dark2 pointer-events-none" />
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ background: 'linear-gradient(135deg, #1f1f1f 0%, #1f1f1f 70%, #504640 100%)' }} />
 
       <div className="relative flex-1 flex flex-col items-center justify-center px-4 py-20">
-        <Link to="/" className="font-serif text-3xl font-bold text-white mb-10 flex items-center gap-1.5">
-          Dia<span className="text-gold">Table</span>
-          <Globe size={24} className="text-gold" />
+        {/* Logo */}
+        <Link to="/" className="font-serif text-3xl font-bold mb-10 flex items-center gap-1.5"
+          style={{ color: '#f8f8f8' }}>
+          Dia<span style={{ color: '#c5611a' }}>Table</span>
+          <Globe size={24} style={{ color: '#c5611a' }} />
         </Link>
 
         {/* Step indicator */}
         <div className="flex items-center gap-2 mb-8">
-          {[1,2].map(s => (
+          {[1, 2].map(s => (
             <div key={s} className="flex items-center gap-2">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all
-                ${step >= s ? 'bg-gold text-dark' : 'bg-white/10 text-muted'}`}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+                style={step >= s ? {
+                  backgroundColor: '#c5611a',
+                  color: '#f8f8f8',
+                } : {
+                  backgroundColor: 'rgba(248,248,248,0.10)',
+                  color: '#80716a',
+                }}>
                 {step > s ? <Check size={12} /> : s}
               </div>
-              {s < 2 && <div className={`w-12 h-px transition-all ${step > 1 ? 'bg-gold' : 'bg-white/10'}`} />}
+              {s < 2 && (
+                <div className="w-12 h-px transition-all"
+                  style={{ backgroundColor: step > 1 ? '#c5611a' : 'rgba(248,248,248,0.10)' }} />
+              )}
             </div>
           ))}
         </div>
 
         <div className="w-full max-w-md">
-          <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+          <div className="rounded-2xl p-8 backdrop-blur-sm"
+            style={{ backgroundColor: 'rgba(248,248,248,0.04)', border: '1px solid rgba(248,248,248,0.10)' }}>
 
             {/* STEP 1: Role selection */}
             {step === 1 && (
               <>
                 <div className="flex items-center gap-3 mb-1">
-                  <h1 className="font-serif text-2xl font-bold text-white">Bienvenue !</h1>
-                  <Sparkles size={24} className="text-gold" />
+                  <h1 className="font-serif text-2xl font-bold" style={{ color: '#f8f8f8' }}>Bienvenue !</h1>
+                  <Sparkles size={24} style={{ color: '#c5611a' }} />
                 </div>
-                <p className="text-muted text-sm mb-8">Comment souhaitez-vous utiliser DiaTable ?</p>
+                <p className="text-sm mb-8" style={{ color: '#80716a' }}>
+                  Comment souhaitez-vous utiliser DiaTable ?
+                </p>
+
                 <div className="space-y-3 mb-8">
                   {ROLES.map(r => (
                     <button
                       key={r.id}
                       onClick={() => setRole(r.id)}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200
-                        ${role === r.id
-                          ? 'border-gold bg-gold/10'
-                          : 'border-white/10 bg-white/[0.03] hover:border-white/20'}`}
+                      className="w-full text-left p-4 rounded-xl transition-all duration-200"
+                      style={role === r.id ? {
+                        border: '2px solid #c5611a',
+                        backgroundColor: 'rgba(197,97,26,0.10)',
+                      } : {
+                        border: '2px solid rgba(248,248,248,0.10)',
+                        backgroundColor: 'rgba(248,248,248,0.03)',
+                      }}
+                      onMouseEnter={e => { if (role !== r.id) e.currentTarget.style.borderColor = 'rgba(248,248,248,0.22)' }}
+                      onMouseLeave={e => { if (role !== r.id) e.currentTarget.style.borderColor = 'rgba(248,248,248,0.10)' }}
                     >
                       <div className="flex items-start gap-3">
-                        <r.Icon size={24} className={role === r.id ? 'text-gold' : 'text-muted'} />
+                        <r.Icon size={24} style={{ color: role === r.id ? '#c5611a' : '#80716a' }} />
                         <div>
-                          <div className={`font-semibold text-sm ${role === r.id ? 'text-white' : 'text-light'}`}>{r.title}</div>
-                          <div className="text-muted text-xs mt-0.5 leading-relaxed">{r.desc}</div>
+                          <div className="font-semibold text-sm" style={{ color: '#f8f8f8' }}>{r.title}</div>
+                          <div className="text-xs mt-0.5 leading-relaxed" style={{ color: '#80716a' }}>{r.desc}</div>
                         </div>
-                        <div className={`ml-auto w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 transition-all
-                          ${role === r.id ? 'border-gold bg-gold' : 'border-white/20'}`}>
-                          {role === r.id && (
-                            <div className="w-full h-full rounded-full flex items-center justify-center text-dark">
-                              <Check size={12} />
-                            </div>
-                          )}
+                        <div className="ml-auto w-5 h-5 rounded-full flex-shrink-0 mt-0.5 transition-all flex items-center justify-center"
+                          style={role === r.id ? {
+                            border: '2px solid #c5611a',
+                            backgroundColor: '#c5611a',
+                          } : {
+                            border: '2px solid rgba(248,248,248,0.20)',
+                            backgroundColor: 'transparent',
+                          }}>
+                          {role === r.id && <Check size={12} style={{ color: '#f8f8f8' }} />}
                         </div>
                       </div>
                     </button>
                   ))}
                 </div>
+
                 <button
                   onClick={() => setStep(2)}
-                  className="w-full bg-gold hover:bg-gold-light text-dark font-semibold py-3.5 rounded-xl transition-all text-sm hover:shadow-[0_8px_24px_rgba(244,168,40,0.4)]"
+                  className="w-full font-semibold py-3.5 rounded-xl transition-all text-sm"
+                  style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.backgroundColor = '#d9722a'
+                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(197,97,26,0.40)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.backgroundColor = '#c5611a'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 >
                   Continuer →
                 </button>
@@ -125,16 +174,23 @@ export default function Register() {
             {/* STEP 2: Account info */}
             {step === 2 && (
               <>
-                <h1 className="font-serif text-2xl font-bold text-white mb-1">Créer votre compte</h1>
-                <p className="text-muted text-sm mb-6">
-                  En tant que <span className="text-gold font-semibold">{role === 'vendor' ? 'vendeur' : 'client'}</span>
+                <h1 className="font-serif text-2xl font-bold mb-1" style={{ color: '#f8f8f8' }}>
+                  Créer votre compte
+                </h1>
+                <p className="text-sm mb-6" style={{ color: '#80716a' }}>
+                  En tant que{' '}
+                  <span className="font-semibold" style={{ color: '#c5611a' }}>
+                    {role === 'vendor' ? 'vendeur' : 'client'}
+                  </span>
                 </p>
 
+                {/* Google */}
                 <button
                   onClick={handleGoogle}
-                  className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl
-                             bg-white/[0.06] border border-white/10 text-white text-sm font-medium
-                             hover:bg-white/10 transition-all duration-200 mb-5"
+                  className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-200 mb-5"
+                  style={{ backgroundColor: 'rgba(248,248,248,0.06)', border: '1px solid rgba(248,248,248,0.10)', color: '#f8f8f8' }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(248,248,248,0.10)'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(248,248,248,0.06)'}
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -146,82 +202,134 @@ export default function Register() {
                 </button>
 
                 <div className="flex items-center gap-3 mb-5">
-                  <div className="flex-1 h-px bg-white/10" />
-                  <span className="text-muted text-xs">ou par email</span>
-                  <div className="flex-1 h-px bg-white/10" />
+                  <div className="flex-1 h-px" style={{ backgroundColor: 'rgba(248,248,248,0.10)' }} />
+                  <span className="text-xs" style={{ color: '#80716a' }}>ou par email</span>
+                  <div className="flex-1 h-px" style={{ backgroundColor: 'rgba(248,248,248,0.10)' }} />
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Nom */}
                   <div>
-                    <label className="block text-xs font-semibold text-light/70 mb-1.5 uppercase tracking-wide">Nom complet</label>
-                    <input
-                      type="text" value={fullName} onChange={e => setFullName(e.target.value)} required
+                    <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide"
+                      style={{ color: 'rgba(248,248,248,0.60)' }}>Nom complet</label>
+                    <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} required
                       placeholder="Aminata Sow"
-                      className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-muted focus:outline-none focus:border-gold focus:bg-white/[0.08] transition-all"
-                    />
+                      className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-all"
+                      style={inputBase} onFocus={inputFocus} onBlur={inputBlur} />
                   </div>
+
+                  {/* Email */}
                   <div>
-                    <label className="block text-xs font-semibold text-light/70 mb-1.5 uppercase tracking-wide">Email</label>
-                    <input
-                      type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                    <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide"
+                      style={{ color: 'rgba(248,248,248,0.60)' }}>Email</label>
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                       placeholder="vous@exemple.com"
-                      className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-muted focus:outline-none focus:border-gold focus:bg-white/[0.08] transition-all"
-                    />
+                      className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-all"
+                      style={inputBase} onFocus={inputFocus} onBlur={inputBlur} />
                   </div>
+
+                  {/* Mot de passe */}
                   <div>
-                    <label className="block text-xs font-semibold text-light/70 mb-1.5 uppercase tracking-wide">Mot de passe</label>
+                    <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide"
+                      style={{ color: 'rgba(248,248,248,0.60)' }}>Mot de passe</label>
                     <div className="relative">
-                      <input
-                        type={showPwd ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required
+                      <input type={showPwd ? 'text' : 'password'} value={password}
+                        onChange={e => setPassword(e.target.value)} required
                         placeholder="Minimum 6 caractères"
-                        className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-muted pr-12 focus:outline-none focus:border-gold focus:bg-white/[0.08] transition-all"
-                      />
-                      <button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white transition-colors flex items-center justify-center">
+                        className="w-full rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none transition-all"
+                        style={inputBase} onFocus={inputFocus} onBlur={inputBlur} />
+                      <button type="button" onClick={() => setShowPwd(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center transition-colors"
+                        style={{ color: '#80716a' }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#f8f8f8'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#80716a'}>
                         {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
-                    {/* Password strength indicator */}
+                    {/* Indicateur de force */}
                     {password && (
                       <div className="mt-2">
                         <div className="flex gap-1">
-                          {[1,2,3,4].map(level => {
-                            const strength = (password.length >= 6 ? 1 : 0) + (password.length >= 8 ? 1 : 0) + (/[A-Z]/.test(password) && /[a-z]/.test(password) ? 1 : 0) + (/\d/.test(password) || /[^a-zA-Z0-9]/.test(password) ? 1 : 0)
-                            const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-emerald-500']
-                            return <div key={level} className={`h-1 flex-1 rounded-full transition-all ${level <= strength ? colors[strength - 1] : 'bg-white/10'}`} />
+                          {[1, 2, 3, 4].map(level => {
+                            const strength =
+                              (password.length >= 6 ? 1 : 0) +
+                              (password.length >= 8 ? 1 : 0) +
+                              (/[A-Z]/.test(password) && /[a-z]/.test(password) ? 1 : 0) +
+                              (/\d/.test(password) || /[^a-zA-Z0-9]/.test(password) ? 1 : 0)
+                            const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e']
+                            return (
+                              <div key={level} className="h-1 flex-1 rounded-full transition-all"
+                                style={{ backgroundColor: level <= strength ? colors[strength - 1] : 'rgba(248,248,248,0.10)' }} />
+                            )
                           })}
                         </div>
-                        <p className="text-[0.65rem] text-muted mt-1">
+                        <p className="text-[0.65rem] mt-1" style={{ color: '#80716a' }}>
                           {password.length < 6 ? 'Trop court' : password.length < 8 ? 'Acceptable' : 'Bon mot de passe'}
                         </p>
                       </div>
                     )}
                   </div>
+
+                  {/* Confirmer */}
                   <div>
-                    <label className="block text-xs font-semibold text-light/70 mb-1.5 uppercase tracking-wide">Confirmer le mot de passe</label>
-                    <input
-                      type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required
+                    <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide"
+                      style={{ color: 'rgba(248,248,248,0.60)' }}>Confirmer le mot de passe</label>
+                    <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required
                       placeholder="••••••••"
-                      className={`w-full bg-white/[0.06] border rounded-xl px-4 py-3 text-white text-sm placeholder-muted focus:outline-none focus:bg-white/[0.08] transition-all ${
-                        confirm && confirm !== password ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-gold'
-                      }`}
+                      className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-all"
+                      style={{
+                        ...inputBase,
+                        borderColor: confirm && confirm !== password
+                          ? 'rgba(239,68,68,0.50)'
+                          : 'rgba(248,248,248,0.10)',
+                      }}
+                      onFocus={e => {
+                        e.target.style.borderColor = confirm && confirm !== password ? '#ef4444' : '#c5611a'
+                        e.target.style.backgroundColor = 'rgba(248,248,248,0.08)'
+                      }}
+                      onBlur={e => {
+                        e.target.style.borderColor = confirm && confirm !== password
+                          ? 'rgba(239,68,68,0.50)'
+                          : 'rgba(248,248,248,0.10)'
+                        e.target.style.backgroundColor = 'rgba(248,248,248,0.06)'
+                      }}
                     />
                     {confirm && confirm !== password && (
-                      <p className="text-red-400 text-xs mt-1">Les mots de passe ne correspondent pas</p>
+                      <p className="text-xs mt-1" style={{ color: '#f87171' }}>
+                        Les mots de passe ne correspondent pas
+                      </p>
                     )}
                   </div>
 
                   {error && (
-                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">{error}</div>
+                    <div className="rounded-xl px-4 py-3 text-sm"
+                      style={{ backgroundColor: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.30)', color: '#f87171' }}>
+                      {error}
+                    </div>
                   )}
 
                   <div className="flex gap-3 mt-2">
                     <button type="button" onClick={() => setStep(1)}
-                      className="flex-1 py-3.5 rounded-xl border border-white/20 text-white text-sm font-medium hover:bg-white/5 transition-all">
+                      className="flex-1 py-3.5 rounded-xl text-sm font-medium transition-all"
+                      style={{ border: '1px solid rgba(248,248,248,0.20)', color: '#f8f8f8' }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(248,248,248,0.05)'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                       ← Retour
                     </button>
                     <button type="submit" disabled={loading}
-                      className="flex-[2] bg-gold hover:bg-gold-light text-dark font-semibold py-3.5 rounded-xl transition-all text-sm hover:shadow-[0_8px_24px_rgba(244,168,40,0.4)] disabled:opacity-60">
-                      {loading ? 'Création…' : "Créer mon compte"}
+                      className="flex-[2] font-semibold py-3.5 rounded-xl transition-all text-sm disabled:opacity-60"
+                      style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}
+                      onMouseEnter={e => {
+                        if (!loading) {
+                          e.currentTarget.style.backgroundColor = '#d9722a'
+                          e.currentTarget.style.boxShadow = '0 8px 24px rgba(197,97,26,0.40)'
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.backgroundColor = '#c5611a'
+                        e.currentTarget.style.boxShadow = 'none'
+                      }}>
+                      {loading ? 'Création…' : 'Créer mon compte'}
                     </button>
                   </div>
                 </form>
@@ -229,9 +337,14 @@ export default function Register() {
             )}
           </div>
 
-          <p className="text-center text-muted text-sm mt-6">
+          <p className="text-center text-sm mt-6" style={{ color: '#80716a' }}>
             Déjà un compte ?{' '}
-            <Link to="/connexion" className="text-gold font-semibold hover:text-gold-light transition-colors">Se connecter</Link>
+            <Link to="/connexion" className="font-semibold transition-colors"
+              style={{ color: '#c5611a' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#d9722a'}
+              onMouseLeave={e => e.currentTarget.style.color = '#c5611a'}>
+              Se connecter
+            </Link>
           </p>
         </div>
       </div>
