@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Globe, Utensils, ChefHat, Check, Sparkles, Eye, EyeOff } from 'lucide-react'
+import Logo from '../assets/Logo.png';
+
 
 const ROLES = [
   {
@@ -73,12 +75,16 @@ export default function Register() {
 
       <div className="relative flex-1 flex flex-col items-center justify-center px-4 py-20">
         {/* Logo */}
-        <Link to="/" className="font-serif text-3xl font-bold mb-10 flex items-center gap-1.5"
-          style={{ color: '#f8f8f8' }}>
-          Dia<span style={{ color: '#c5611a' }}>Table</span>
-          <Globe size={24} style={{ color: '#c5611a' }} />
-        </Link>
-
+            <div className="flex justify-center mb-8">
+              <Link to="/" aria-label="DiaTable - Accueil">
+                <img
+                  src={Logo}
+                  alt="DiaTable"
+                  className="h-16 w-auto object-contain"
+                />
+              </Link>
+            </div>
+        
         {/* Step indicator */}
         <div className="flex items-center gap-2 mb-8">
           {[1, 2].map(s => (

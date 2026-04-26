@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Facebook, Instagram, MessageCircle, Heart, Globe } from 'lucide-react'
+import Logo from '../assets/LogoBlanc.png';
+
 
 const ABOUT_LINKS = [
   { label: 'Notre histoire', to: '/a-propos' },
@@ -64,10 +66,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr] gap-12 pb-16">
           {/* Brand */}
           <div>
-            <Link to="/" className="font-serif text-[1.75rem] font-bold text-white flex items-center gap-1.5 mb-4">
-              Dia<span className="text-gold">Table</span>
-              <Globe size={20} className="text-gold" />
-            </Link>
+              <Link to="/" className="flex items-center" aria-label="DiaTable - Accueil">
+                      <img
+                        src={Logo}
+                        alt="DiaTable"
+                        className="h-20  w-auto object-contain"
+                      />
+                    </Link>
             <p className="text-muted text-sm leading-[1.7] max-w-[260px] mb-7">
               Relier les communautés de la diaspora à travers la nourriture. Retrouvez le goût de chez vous, ici au Maroc.
             </p>

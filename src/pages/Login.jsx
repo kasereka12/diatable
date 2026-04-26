@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Globe, Eye, EyeOff } from 'lucide-react'
+import Logo from '../assets/Logo.png';
+
 
 export default function Login() {
   const { signIn, signInWithGoogle } = useAuth()
@@ -39,12 +41,16 @@ export default function Login() {
         style={{ background: 'linear-gradient(135deg, #1f1f1f 0%, #1f1f1f 70%, #504640 100%)' }} />
 
       <div className="relative flex-1 flex flex-col items-center justify-center px-4 py-20">
-        {/* Logo */}
-        <Link to="/" className="font-serif text-3xl font-bold mb-10 flex items-center gap-1.5"
-          style={{ color: '#f8f8f8' }}>
-          Dia<span style={{ color: '#c5611a' }}>Table</span>
-          <Globe size={24} style={{ color: '#c5611a' }} />
-        </Link>
+    {/* Logo */}
+    <div className="flex justify-center mb-8">
+      <Link to="/" aria-label="DiaTable - Accueil">
+        <img
+          src={Logo}
+          alt="DiaTable"
+          className="h-16 w-auto object-contain"
+        />
+      </Link>
+    </div>
 
         <div className="w-full max-w-md">
           <div className="rounded-2xl p-8 backdrop-blur-sm"

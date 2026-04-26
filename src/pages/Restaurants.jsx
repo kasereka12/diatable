@@ -148,7 +148,7 @@ export default function Restaurants() {
                       </span>
                       {r.reviews > 0 ? (
                         <span className="flex items-center gap-1 text-xs font-semibold text-dark">
-                          <StarRating rating={r.rating} />
+                          <StarRating rating={r.rating}   />
                           {r.rating} <span className="text-muted font-normal">({r.reviews})</span>
                         </span>
                       ) : (

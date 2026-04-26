@@ -8,6 +8,7 @@ import {
   ShieldCheck, Image, MapPin, ShoppingBag, MessageCircle, Bell,
   Package
 } from 'lucide-react'
+import Logo from '../assets/Logo.png';
 
 const NAV_LINKS = [
   { label: 'Accueil',  to: '/' },
@@ -84,10 +85,13 @@ export default function Navbar() {
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between py-5">
 
           {/* Logo */}
-          <Link to="/" className="font-serif text-2xl font-bold tracking-tight flex items-center gap-1.5" style={{ color: '#f8f8f8' }}>
-            Dia<span style={{ color: '#c5611a' }}>Table</span>
-            <Globe size={20} style={{ color: '#c5611a' }} />
-          </Link>
+          <Link to="/" className="flex items-center" aria-label="DiaTable - Accueil">
+          <img
+            src={Logo}
+            alt="DiaTable"
+            className="h-11 w-auto object-contain"
+          />
+        </Link>
 
           {/* Desktop links */}
           <ul className="hidden md:flex items-center gap-1 list-none">
