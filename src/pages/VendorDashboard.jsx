@@ -145,7 +145,8 @@ export default function VendorDashboard() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingDish, setEditingDish] = useState(null)
   const [newDish, setNewDish] = useState({ nom: '', prix: '', description: '', categorie: 'Plats Principaux', populaire: false, prepTime: '15' })
-  const [readIds, setReadIds] = useState(new Set())
+  const [vendorNotifs, setVendorNotifs] = useState([])
+  const [notifsLoading, setNotifsLoading] = useState(true)
   const [restaurantForm, setRestaurantForm] = useState({ nom: '', cuisine: '', ville: '', adresse: '', telephone: '', whatsapp: '', instagram: '', description: '', horaires: '' })
   const [bankForm, setBankForm] = useState({ rib: '', bank_name: '', account_name: '' })
   const [savingBank, setSavingBank] = useState(false)
@@ -198,22 +199,7 @@ export default function VendorDashboard() {
     return counts
   }, [reviews])
 
-  const notifications = useMemo(() => {
-    const list = []
-    let id = 0
-    if (restaurant && !restaurant.is_verified)
-      list.push({ id: id++, icon: AlertCircle, color: 'text-amber-500', text: 'Votre restaurant est en attente de vérification par notre équipe.', time: '' })
-    if (restaurant?.is_verified)
-      list.push({ id: id++, icon: CheckCircle, color: 'text-green-500', text: 'Votre restaurant a été vérifié et publié sur DiaTable.', time: '' })
-    if (menuItems.length === 0 && restaurant)
-      list.push({ id: id++, icon: Utensils, color: 'text-red-400', text: 'Votre carte est vide — ajoutez des plats pour attirer plus de clients.', time: '' })
-    reviews.slice(0, 8).forEach(r => {
-      list.push({ id: id++, icon: Star, color: 'text-yellow-400', text: `${r.name} a laissé un avis ${r.rating} étoile${r.rating > 1 ? 's' : ''}`, time: timeAgo(r.created_at) })
-    })
-    return list
-  }, [reviews, restaurant, menuItems])
-
-  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length
+  const unreadCount = vendorNotifs.filter(n => !n.is_read).length
 
   useEffect(() => {
     if (!supabase || !user) { setDbLoading(false); return }
@@ -246,6 +232,33 @@ export default function VendorDashboard() {
     load()
   }, [user])
 
+  // Fetch notifications from Supabase
+  useEffect(() => {
+    if (!supabase || !user) { setNotifsLoading(false); return }
+    async function loadNotifs() {
+      setNotifsLoading(true)
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      setVendorNotifs(data || [])
+      setNotifsLoading(false)
+    }
+    loadNotifs()
+
+    // Realtime subscription for new notifications
+    const channel = supabase
+      .channel('vendor-notifs')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        (payload) => { setVendorNotifs(prev => [payload.new, ...prev]) }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [user])
+
   const menuByCategory = menuItems.reduce((acc, item) => {
     const cat = item.category || 'Plats Principaux'
     if (!acc[cat]) acc[cat] = []
@@ -255,7 +268,18 @@ export default function VendorDashboard() {
   const menuCategories = Object.keys(menuByCategory)
 
   function handleSignOut() { signOut(); navigate('/') }
-  function markRead(id) { setReadIds(prev => new Set([...prev, id])) }
+
+  async function markRead(id) {
+    if (!supabase) return
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+    setVendorNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+  }
+
+  async function markAllNotifsRead() {
+    if (!supabase || !user) return
+    await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false)
+    setVendorNotifs(prev => prev.map(n => ({ ...n, is_read: true })))
+  }
 
   async function toggleActive() {
     if (!supabase || !restaurant) return
@@ -1018,43 +1042,70 @@ export default function VendorDashboard() {
     )
   }
 
+  function getNotifIcon(type) {
+    switch (type) {
+      case 'order': return { icon: Package, color: 'text-blue-500' }
+      case 'message': return { icon: MessageCircle, color: 'text-green-500' }
+      case 'review': return { icon: Star, color: 'text-yellow-500' }
+      case 'order_status': return { icon: CheckCircle, color: 'text-purple-500' }
+      default: return { icon: Bell, color: 'text-[#c5611a]' }
+    }
+  }
+
   function renderNotifs() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-2xl font-serif font-bold" style={{ color: C.dark }}>Notifications</h1>
           {unreadCount > 0 && (
-            <button onClick={() => setReadIds(new Set(notifications.map(n => n.id)))}
+            <button onClick={markAllNotifsRead}
               className="text-xs font-medium hover:underline" style={{ color: C.terra }}>
               Tout marquer comme lu
             </button>
           )}
         </div>
-        <div className="space-y-3">
-          {notifications.map(n => (
-            <div key={n.id} className="rounded-xl p-4 shadow-sm flex items-start gap-3 transition-all"
-              style={{
-                backgroundColor: C.creamLight,
-                border: `1px solid ${readIds.has(n.id) ? 'rgba(80,70,64,0.10)' : `rgba(197,97,26,0.30)`}`,
-                opacity: readIds.has(n.id) ? 0.7 : 1,
-              }}>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: readIds.has(n.id) ? 'rgba(80,70,64,0.08)' : `rgba(197,97,26,0.10)` }}>
-                <n.icon size={16} className={n.color} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm" style={{ color: readIds.has(n.id) ? C.muted : C.dark, fontWeight: readIds.has(n.id) ? 400 : 500 }}>{n.text}</p>
-                <p className="text-xs mt-0.5" style={{ color: C.muted }}>{n.time}</p>
-              </div>
-              {!readIds.has(n.id) && (
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: C.terra }} />
-                  <button onClick={() => markRead(n.id)} className="text-xs hover:underline whitespace-nowrap" style={{ color: C.muted }}>Marquer comme lu</button>
+
+        {notifsLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="w-8 h-8 rounded-full border-4 border-[#c5611a]/30 border-t-[#c5611a] animate-spin" />
+          </div>
+        ) : vendorNotifs.length === 0 ? (
+          <div className="rounded-xl p-8 shadow-sm text-center" style={{ backgroundColor: C.creamLight, border: '1px solid rgba(80,70,64,0.10)' }}>
+            <Bell size={40} className="mx-auto mb-3" style={{ color: 'rgba(80,70,64,0.20)' }} />
+            <p className="text-sm" style={{ color: C.muted }}>Aucune notification pour le moment</p>
+            <p className="text-xs mt-1" style={{ color: C.muted }}>Vous serez notifié lors de nouvelles commandes, messages ou avis.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {vendorNotifs.map(n => {
+              const { icon: NIcon, color } = getNotifIcon(n.type)
+              return (
+                <div key={n.id} className="rounded-xl p-4 shadow-sm flex items-start gap-3 transition-all"
+                  style={{
+                    backgroundColor: C.creamLight,
+                    border: `1px solid ${n.is_read ? 'rgba(80,70,64,0.10)' : 'rgba(197,97,26,0.30)'}`,
+                    opacity: n.is_read ? 0.7 : 1,
+                  }}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: n.is_read ? 'rgba(80,70,64,0.08)' : 'rgba(197,97,26,0.10)' }}>
+                    <NIcon size={16} className={color} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {n.title && <p className="text-sm font-semibold" style={{ color: C.dark }}>{n.title}</p>}
+                    <p className="text-sm" style={{ color: n.is_read ? C.muted : C.dark, fontWeight: n.is_read ? 400 : 500 }}>{n.body || n.message || '—'}</p>
+                    <p className="text-xs mt-0.5" style={{ color: C.muted }}>{timeAgo(n.created_at)}</p>
+                  </div>
+                  {!n.is_read && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: C.terra }} />
+                      <button onClick={() => markRead(n.id)} className="text-xs hover:underline whitespace-nowrap" style={{ color: C.muted }}>Marquer comme lu</button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     )
   }

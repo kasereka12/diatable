@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { useNotifications } from '../context/NotificationContext'
+import { useMessages } from '../context/MessageContext'
 import {
   Globe, X, ChevronDown, LogOut, User, BarChart2, Utensils,
   ShieldCheck, Image, MapPin, ShoppingBag, MessageCircle, Bell,
@@ -26,6 +27,7 @@ export default function Navbar() {
   const { user, profile, signOut, isAdmin } = useAuth()
   const { itemCount, setIsCartOpen } = useCart()
   const { unreadCount } = useNotifications()
+  const { unreadMessages } = useMessages()
   const [scrolled,      setScrolled]     = useState(false)
   const [menuOpen,      setMenuOpen]     = useState(false)
   const [userMenu,      setUserMenu]     = useState(false)
@@ -184,6 +186,12 @@ export default function Navbar() {
                   aria-label="Messages"
                 >
                   <MessageCircle size={18} />
+                  {unreadMessages > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] flex items-center justify-center rounded-full text-[0.6rem] font-bold text-white px-1"
+                      style={{ backgroundColor: '#25d366' }}>
+                      {unreadMessages > 99 ? '99+' : unreadMessages}
+                    </span>
+                  )}
                 </Link>
 
                 {/* Notifications */}
@@ -353,8 +361,16 @@ export default function Navbar() {
                   className="text-center text-sm py-2 transition-colors"
                   style={{ color: 'rgba(248,248,248,0.70)' }}>Mes commandes</Link>
                 <Link to="/messages" onClick={() => setMenuOpen(false)}
-                  className="text-center text-sm py-2 transition-colors"
-                  style={{ color: 'rgba(248,248,248,0.70)' }}>Messages</Link>
+                  className="text-center text-sm py-2 transition-colors flex items-center justify-center gap-2"
+                  style={{ color: 'rgba(248,248,248,0.70)' }}>
+                  Messages
+                  {unreadMessages > 0 && (
+                    <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[0.6rem] font-bold text-white px-1"
+                      style={{ backgroundColor: '#25d366' }}>
+                      {unreadMessages > 99 ? '99+' : unreadMessages}
+                    </span>
+                  )}
+                </Link>
                 <button onClick={() => { handleSignOut(); setMenuOpen(false) }}
                   className="text-red-400 text-sm font-medium py-2">Se déconnecter</button>
               </>

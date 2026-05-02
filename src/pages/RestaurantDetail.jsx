@@ -143,6 +143,25 @@ export default function RestaurantDetail() {
   const categories = Object.keys(menuByCategory)
   const currentItems = menuByCategory[categories[activeCategory]] || []
 
+  // Fetch likes count & user like status
+  useEffect(() => {
+    if (!id || !supabase) return
+    supabase
+      .from('restaurant_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('restaurant_id', id)
+      .then(({ count }) => setLikesCount(count || 0))
+    if (user) {
+      supabase
+        .from('restaurant_likes')
+        .select('id')
+        .eq('restaurant_id', id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => setUserLiked(!!data))
+    }
+  }, [id, user])
+
   useEffect(() => {
     if (!id || !supabase) return
     if (user) {
@@ -177,13 +196,16 @@ export default function RestaurantDetail() {
       .eq('customer_id', user.id)
       .eq('restaurant_id', restaurant.id)
       .maybeSingle()
-    if (existing) { navigate('/messages'); return }
-    await supabase.from('conversations').insert({
+    if (existing) {
+      navigate('/messages?conv=' + existing.id)
+      return
+    }
+    const { data: created } = await supabase.from('conversations').insert({
       customer_id: user.id,
       vendor_id: restaurant.owner_id,
       restaurant_id: restaurant.id,
-    })
-    navigate('/messages')
+    }).select('id').single()
+    navigate('/messages?conv=' + (created?.id || ''))
   }
 
   async function toggleLike() {

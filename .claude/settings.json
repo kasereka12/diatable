@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm run:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(find /c/Users/ACER/Downloads/Diatable/diatable -name \"*.sql\" -type f ! -path \"*/node_modules/*\" -exec ls -la {} \\\\;)"
     ]
   }
 }

@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useMessages } from '../context/MessageContext'
 import { supabase } from '../lib/supabase'
 import {
   MessageCircle, Send, ArrowLeft, Search, User, Clock
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -21,7 +22,9 @@ function timeAgo(iso) {
 
 export default function Messages() {
   const { user, profile } = useAuth()
+  const { fetchUnreadCount } = useMessages()
   const isVendor = profile?.role === 'vendor'
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [conversations, setConversations] = useState([])
   const [activeConv, setActiveConv] = useState(null)
@@ -30,6 +33,7 @@ export default function Messages() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [search, setSearch] = useState('')
+  const [unreadCounts, setUnreadCounts] = useState({})
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -41,7 +45,7 @@ export default function Messages() {
     if (!supabase || !user) { setLoading(false); return }
 
     async function load() {
-      setLoading(true)
+      if (conversations.length === 0) setLoading(true)
       const { data } = await supabase
         .from('conversations')
         .select(`
@@ -54,6 +58,36 @@ export default function Messages() {
         .order('last_message_at', { ascending: false })
 
       setConversations(data || [])
+
+      // Fetch unread message counts per conversation
+      if (data && data.length > 0) {
+        const convIds = data.map(c => c.id)
+        const { data: unreadData } = await supabase
+          .from('messages')
+          .select('conversation_id')
+          .in('conversation_id', convIds)
+          .neq('sender_id', user.id)
+          .eq('is_read', false)
+        if (unreadData) {
+          const counts = {}
+          unreadData.forEach(msg => {
+            counts[msg.conversation_id] = (counts[msg.conversation_id] || 0) + 1
+          })
+          setUnreadCounts(counts)
+        }
+      }
+
+      // Auto-open conversation if conv param is present
+      const convId = searchParams.get('conv')
+      if (convId && data) {
+        const target = data.find(c => c.id === convId)
+        if (target) {
+          setActiveConv(target)
+          searchParams.delete('conv')
+          setSearchParams(searchParams, { replace: true })
+        }
+      }
+
       setLoading(false)
     }
     load()
@@ -80,16 +114,18 @@ export default function Messages() {
 
   useEffect(() => {
     if (activeConv) {
-      loadMessages(activeConv.id)
+      loadMessages(activeConv.id).then(() => fetchUnreadCount())
+      // Reset unread count for opened conversation
+      setUnreadCounts(prev => ({ ...prev, [activeConv.id]: 0 }))
     }
-  }, [activeConv, loadMessages])
+  }, [activeConv, loadMessages, fetchUnreadCount])
 
   // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom()
   }, [messages])
 
-  // Realtime subscription for new messages
+  // Realtime subscription for new messages in active conversation
   useEffect(() => {
     if (!supabase || !activeConv) return
 
@@ -119,6 +155,40 @@ export default function Messages() {
       supabase.removeChannel(channel)
     }
   }, [activeConv, user])
+
+  // Realtime subscription for unread counts on other conversations
+  useEffect(() => {
+    if (!supabase || !user || conversations.length === 0) return
+
+    const channel = supabase
+      .channel('unread-global')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload) => {
+          const msg = payload.new
+          // Only count messages not from us and not in the active conversation
+          if (msg.sender_id !== user.id && msg.conversation_id !== activeConv?.id) {
+            const isOurConv = conversations.some(c => c.id === msg.conversation_id)
+            if (isOurConv) {
+              setUnreadCounts(prev => ({
+                ...prev,
+                [msg.conversation_id]: (prev[msg.conversation_id] || 0) + 1
+              }))
+            }
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user, conversations, activeConv])
 
   async function sendMessage(e) {
     e.preventDefault()
@@ -195,32 +265,41 @@ export default function Messages() {
                     </p>
                   </div>
                 ) : (
-                  filtered.map(conv => (
-                    <button
-                      key={conv.id}
-                      onClick={() => setActiveConv(conv)}
-                      className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-all hover:bg-cream/50 ${
-                        activeConv?.id === conv.id ? 'bg-gold/10 border-l-2 border-gold' : ''
-                      }`}
-                    >
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-dark text-xs font-bold flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg,#f4a828,#c8841a)' }}>
-                        {getConvInitials(conv)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start">
-                          <p className="text-sm font-semibold text-dark truncate">{getConvName(conv)}</p>
-                          <span className="text-[0.65rem] text-muted flex-shrink-0 ml-2">
-                            {timeAgo(conv.last_message_at)}
-                          </span>
+                  filtered.map(conv => {
+                    const unread = unreadCounts[conv.id] || 0
+                    return (
+                      <button
+                        key={conv.id}
+                        onClick={() => setActiveConv(conv)}
+                        className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-all hover:bg-cream/50 ${
+                          activeConv?.id === conv.id ? 'bg-gold/10 border-l-2 border-gold' : ''
+                        }`}
+                      >
+                        <div className="relative w-10 h-10 rounded-full flex items-center justify-center text-dark text-xs font-bold flex-shrink-0"
+                          style={{ background: 'linear-gradient(135deg,#f4a828,#c8841a)' }}>
+                          {getConvInitials(conv)}
+                          {unread > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[0.6rem] font-bold text-white px-1"
+                              style={{ backgroundColor: '#25d366' }}>
+                              {unread > 99 ? '99+' : unread}
+                            </span>
+                          )}
                         </div>
-                        {!isVendor && conv.restaurant && (
-                          <p className="text-[0.65rem] text-muted">{conv.restaurant.flag} {conv.restaurant.cuisine_label}</p>
-                        )}
-                        <p className="text-xs text-muted truncate mt-0.5">{conv.last_message || 'Nouvelle conversation'}</p>
-                      </div>
-                    </button>
-                  ))
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <p className={`text-sm truncate ${unread > 0 ? 'font-bold text-dark' : 'font-semibold text-dark'}`}>{getConvName(conv)}</p>
+                            <span className={`text-[0.65rem] flex-shrink-0 ml-2 ${unread > 0 ? 'text-[#25d366] font-semibold' : 'text-muted'}`}>
+                              {timeAgo(conv.last_message_at)}
+                            </span>
+                          </div>
+                          {!isVendor && conv.restaurant && (
+                            <p className="text-[0.65rem] text-muted">{conv.restaurant.flag} {conv.restaurant.cuisine_label}</p>
+                          )}
+                          <p className={`text-xs truncate mt-0.5 ${unread > 0 ? 'text-dark font-medium' : 'text-muted'}`}>{conv.last_message || 'Nouvelle conversation'}</p>
+                        </div>
+                      </button>
+                    )
+                  })
                 )}
               </div>
             </div>
