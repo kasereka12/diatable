@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import SectionHeader from '../components/ui/SectionHeader'
 import { supabase } from '../lib/supabase'
 import { Globe, Users, ShieldCheck, Heart } from 'lucide-react'
+import WhyDiaTable from '../components/WhyDiaTable'
+import Testimonials from '../components/Testimonials'
 
 const VALUES = [
   { Icon: Globe,       title: 'Multiculturalisme',    desc: 'Nous croyons que la diversité culturelle est une richesse. DiaTable célèbre chaque communauté et chaque saveur.' },
@@ -155,6 +157,9 @@ export default function About() {
           )}
         </div>
       </section>
+
+      <WhyDiaTable />
+      <Testimonials />
 
       {/* CTA */}
       <section className="py-20 text-center" style={{ backgroundColor: '#1f1f1f' }} ref={useScrollReveal()}>

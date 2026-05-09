@@ -101,3 +101,92 @@
 /* Scrollbar hide for filter tabs */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Hero ambient animations */
+@keyframes heroZoom {
+  0%, 100% { transform: scale(1.06) translate(0, 0); }
+  50%      { transform: scale(1.18) translate(-2%, -2%); }
+}
+@keyframes softFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+@keyframes pillPulse {
+  0%, 100% {
+    box-shadow:
+      0 10px 30px rgba(197,97,26,0.55),
+      0 0 0 0 rgba(197,97,26,0.65),
+      0 0 0 0 rgba(197,97,26,0.45);
+  }
+  60% {
+    box-shadow:
+      0 10px 30px rgba(197,97,26,0.55),
+      0 0 0 18px rgba(197,97,26,0),
+      0 0 0 32px rgba(197,97,26,0);
+  }
+  100% {
+    box-shadow:
+      0 10px 30px rgba(197,97,26,0.55),
+      0 0 0 0 rgba(197,97,26,0),
+      0 0 0 0 rgba(197,97,26,0);
+  }
+}
+@keyframes chevronBob {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50%      { transform: translateY(8px); opacity: 0.7; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes glowOrb {
+  0%, 100% { transform: translate(0, 0) scale(1);    opacity: 0.55; }
+  50%      { transform: translate(40px, -30px) scale(1.25); opacity: 0.85; }
+}
+@keyframes scrollHint {
+  0%   { transform: translateY(0);   opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(14px); opacity: 0; }
+}
+@keyframes scrollHintRing {
+  0%, 100% { transform: scale(1);   border-color: rgba(248,248,248,0.55); }
+  50%      { transform: scale(1.08); border-color: rgba(197,97,26,0.9); }
+}
+@keyframes sparkleDrift {
+  0%   { transform: translate(0,   0)   scale(1);   opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(20px, -120px) scale(0.4); opacity: 0; }
+}
+
+.animate-hero-zoom        { animation: heroZoom 18s ease-in-out infinite; }
+.animate-soft-float       { animation: softFloat 5s ease-in-out infinite; }
+.animate-pill-pulse       { animation: pillPulse 2s ease-out infinite; }
+.animate-chevron-bob      { animation: chevronBob 1.4s ease-in-out infinite; }
+.animate-glow-orb         { animation: glowOrb 9s ease-in-out infinite; }
+.animate-scroll-hint      { animation: scrollHint 1.8s ease-in-out infinite; }
+.animate-scroll-ring      { animation: scrollHintRing 1.8s ease-in-out infinite; }
+.animate-sparkle          { animation: sparkleDrift 4.5s linear infinite; }
+
+@keyframes marqueeLeft {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marqueeLeft 38s linear infinite; }
+.animate-marquee:hover { animation-play-state: paused; }
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(189,189,189,1)  0%,
+    rgba(248,248,248,1) 40%,
+    rgba(245,196,140,1) 50%,
+    rgba(248,248,248,1) 60%,
+    rgba(189,189,189,1) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3.2s linear infinite;
+}

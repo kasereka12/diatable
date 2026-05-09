@@ -2,6 +2,8 @@ import { useScrollReveal } from '../hooks/useScrollReveal'
 import SectionHeader from '../components/ui/SectionHeader'
 import { Link } from 'react-router-dom'
 import { Search, MapPin, Utensils, ChefHat, Star, ShieldCheck, Bell, CreditCard, MessageCircle, ArrowRight } from 'lucide-react'
+import HowItWorksHighlights from '../components/HowItWorks'
+import VendorCTA from '../components/VendorCTA'
 
 const STEPS_BUYER = [
   {
@@ -72,6 +74,8 @@ export default function HowItWorks() {
           </p>
         </div>
       </div>
+
+      <HowItWorksHighlights />
 
       {/* Pour les acheteurs */}
       <section className="bg-cream py-24">
@@ -157,6 +161,8 @@ export default function HowItWorks() {
           </div>
         </div>
       </section>
+
+      <VendorCTA />
 
       {/* CTA */}
       <section className="bg-gold py-20 text-center" ref={useScrollReveal()}>

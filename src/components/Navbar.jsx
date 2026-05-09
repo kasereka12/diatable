@@ -79,10 +79,14 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300`} style={{
-        backgroundColor: scrolled ? 'rgba(31,31,31,0.97)' : 'rgba(31,31,31,0.92)',
+      <nav className={`fixed top-0 left-0 right-0 z-[110] transition-all duration-300`} style={{
+        background: scrolled
+          ? 'linear-gradient(180deg, #3a3a3a 0%, #4a4a4a 18%, #2a2a2a 55%, #141414 100%)'
+          : 'linear-gradient(180deg, #353535 0%, #4f4f4f 22%, #262626 60%, #0f0f0f 100%)',
         backdropFilter: 'blur(12px)',
-        boxShadow: scrolled ? '0 2px 24px rgba(0,0,0,0.35)' : '0 2px 12px rgba(0,0,0,0.25)',
+        boxShadow: scrolled
+          ? '0 2px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)'
+          : '0 2px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.10)',
       }}>
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-[1fr_auto_1fr] items-center py-3">
 

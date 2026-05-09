@@ -4,6 +4,8 @@ import { useScrollReveal } from '../hooks/useScrollReveal'
 import { supabase } from '../lib/supabase'
 import { getCuisineIcon } from '../lib/cuisineIcons'
 import { ChevronRight, Utensils } from 'lucide-react'
+import FeaturedCuisines from '../components/FeaturedCuisines'
+import CuisineFilter from '../components/CuisineFilter'
 
 // Visual mapping — UI-only, not stored in DB
 const CUISINE_META = {
@@ -117,6 +119,9 @@ export default function Cuisines() {
           </div>
         )}
       </div>
+
+      <FeaturedCuisines />
+      <CuisineFilter />
 
       {/* CTA */}
       <div className="bg-dark2 py-16 text-center">

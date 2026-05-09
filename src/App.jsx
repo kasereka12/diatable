@@ -71,7 +71,7 @@ export default function App() {
 
               <Routes>
                 {/* Public pages with shared Layout (Navbar + Footer) */}
-                <Route path="/" element={<Layout><Home /></Layout>} />
+                <Route path="/" element={<Layout noFooter><Home /></Layout>} />
                 <Route path="/restaurants" element={<Layout><Restaurants /></Layout>} />
                 <Route path="/restaurants/:id" element={<Layout><RestaurantDetail /></Layout>} />
                 <Route path="/cuisines" element={<SuspenseLayout><CuisinesPage /></SuspenseLayout>} />
