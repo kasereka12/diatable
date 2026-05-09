@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import {
   ArrowLeft, ShoppingBag, MapPin, Phone, FileText,
   CreditCard, Smartphone, Banknote, CheckCircle, Clock, Lock,
-  Truck, Store,Navigation
+  Truck, Store, Navigation
 } from 'lucide-react'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 
@@ -434,11 +434,10 @@ export default function Checkout() {
                       onChange={e => updateForm('phone', e.target.value)}
                       placeholder="+212 6XX XX XX XX"
                       required
-                      className={`w-full border rounded-xl px-4 py-3 text-sm text-dark focus:outline-none focus:ring-2 ${
-                        form.phone && !/^(\+212|0)(5|6|7)\d{8}$/.test(form.phone.replace(/[\s\-\.]/g, ''))
+                      className={`w-full border rounded-xl px-4 py-3 text-sm text-dark focus:outline-none focus:ring-2 ${form.phone && !/^(\+212|0)(5|6|7)\d{8}$/.test(form.phone.replace(/[\s\-\.]/g, ''))
                           ? 'border-red-300 focus:ring-red-300'
                           : 'border-gray-200 focus:ring-gold/50'
-                      }`}
+                        }`}
                     />
                     {form.phone && !/^(\+212|0)(5|6|7)\d{8}$/.test(form.phone.replace(/[\s\-\.]/g, '')) && (
                       <p className="text-red-500 text-xs mt-1">Format : 06 XX XX XX XX ou +212 6XX XX XX XX</p>

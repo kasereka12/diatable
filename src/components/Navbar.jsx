@@ -9,7 +9,7 @@ import {
   ShieldCheck, Image, MapPin, ShoppingBag, MessageCircle, Bell,
   Package
 } from 'lucide-react'
-import Logo from '../assets/Logo.png';
+import Logo from '../assets/LogoBlanc.png';
 
 const NAV_LINKS = [
   { label: 'Accueil',  to: '/' },
@@ -80,46 +80,39 @@ export default function Navbar() {
   return (
     <>
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300`} style={{
-        backgroundColor: scrolled ? 'rgba(31,31,31,0.97)' : 'rgba(31,31,31,0.80)',
+        backgroundColor: scrolled ? 'rgba(31,31,31,0.97)' : 'rgba(31,31,31,0.92)',
         backdropFilter: 'blur(12px)',
-        boxShadow: scrolled ? '0 2px 24px rgba(0,0,0,0.35)' : 'none',
+        boxShadow: scrolled ? '0 2px 24px rgba(0,0,0,0.35)' : '0 2px 12px rgba(0,0,0,0.25)',
       }}>
-        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between py-5">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-[1fr_auto_1fr] items-center py-3">
 
-          {/* Logo */}
-          <Link to="/" className="flex items-center" aria-label="DiaTable - Accueil">
-          <img
-            src={Logo}
-            alt="DiaTable"
-            className="h-11 w-auto object-contain"
-          />
-        </Link>
+          {/* Left links */}
+          <ul className="hidden md:flex items-center gap-2 list-none justify-start">
+            <li>
+              <NavLink to="/"
+                className={({ isActive }) =>
+                  `text-sm font-medium px-4 py-2 rounded-full transition-all duration-200
+                   ${isActive ? 'bg-white/10' : 'hover:bg-white/10'}`
+                }
+                style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.85)' })}
+              >
+                Accueil
+              </NavLink>
+            </li>
 
-          {/* Desktop links */}
-          <ul className="hidden md:flex items-center gap-1 list-none">
-            {NAV_LINKS.slice(0, 1).map((l) => (
-              <li key={l.to}>
-                <NavLink to={l.to}
-                  className={({ isActive }) =>
-                    `text-sm font-medium px-3.5 py-2 rounded-lg transition-all duration-200
-                     ${isActive ? 'bg-white/10' : 'hover:bg-white/10'}`
-                  }
-                  style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.75)' })}
-                >
-                  {l.label}
-                </NavLink>
-              </li>
-            ))}
-
-            {/* Explorer dropdown */}
+            {/* Explorer dropdown — pill highlight */}
             <li ref={explorerRef} className="relative">
               <button
                 onClick={() => setExplorerOpen(v => !v)}
-                className="flex items-center gap-1.5 text-sm font-medium px-3.5 py-2 rounded-lg transition-all duration-200 hover:bg-white/10"
-                style={{ color: explorerOpen ? '#f8f8f8' : 'rgba(248,248,248,0.75)' }}
+                className="flex items-center gap-1.5 text-sm font-semibold px-5 py-2 rounded-full transition-all duration-200"
+                style={{
+                  backgroundColor: '#f8f8f8',
+                  color: '#c5611a',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                }}
               >
                 Explorer
-                <ChevronDown size={14} className={`transition-transform duration-200 ${explorerOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} strokeWidth={2.5} className={`transition-transform duration-200 ${explorerOpen ? 'rotate-180' : ''}`} />
               </button>
               {explorerOpen && (
                 <div className="absolute top-full left-0 mt-2 w-52 rounded-2xl overflow-hidden z-50"
@@ -143,24 +136,42 @@ export default function Navbar() {
                 </div>
               )}
             </li>
-
-            {NAV_LINKS.slice(1).map((l) => (
-              <li key={l.to}>
-                <NavLink to={l.to}
-                  className={({ isActive }) =>
-                    `text-sm font-medium px-3.5 py-2 rounded-lg transition-all duration-200
-                     ${isActive ? 'bg-white/10' : 'hover:bg-white/10'}`
-                  }
-                  style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.75)' })}
-                >
-                  {l.label}
-                </NavLink>
-              </li>
-            ))}
           </ul>
 
-          {/* Right side */}
-          <div className="hidden md:flex items-center gap-2">
+          {/* Center logo */}
+          <Link to="/" className="flex items-center justify-center" aria-label="DiaTable - Accueil">
+            <div
+              className="rounded-full flex items-center justify-center"
+              style={{
+                width: 96,
+                height: 96,
+                backgroundColor: '#c5611a',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+                marginBottom: -28,
+              }}
+            >
+              <img
+                src={Logo}
+                alt="DiaTable"
+                className="object-contain"
+                style={{ width: 78, height: 78 }}
+              />
+            </div>
+          </Link>
+
+          {/* Right side: A propos + Contact + actions */}
+          <div className="hidden md:flex items-center gap-2 justify-end">
+            {NAV_LINKS.slice(1).map((l) => (
+              <NavLink key={l.to} to={l.to}
+                className={({ isActive }) =>
+                  `text-sm font-medium px-4 py-2 rounded-full transition-all duration-200
+                   ${isActive ? 'bg-white/10' : 'hover:bg-white/10'}`
+                }
+                style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.85)' })}
+              >
+                {l.label}
+              </NavLink>
+            ))}
             {user ? (
               <>
                 {/* Cart */}
@@ -280,10 +291,19 @@ export default function Navbar() {
               </>
             ) : (
               <>
+                <Link to="/connexion"
+                  className="flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-full transition-all hover:bg-white/10"
+                  style={{ color: 'rgba(248,248,248,0.85)' }}>
+                  Connexion
+                  <span className="w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: 'rgba(248,248,248,0.10)' }}>
+                    <User size={15} />
+                  </span>
+                </Link>
                 <button
                   onClick={() => setIsCartOpen(true)}
-                  className="relative p-2 rounded-lg transition-all hover:bg-white/10"
-                  style={{ color: 'rgba(248,248,248,0.70)' }}
+                  className="relative p-2 rounded-full transition-all hover:bg-white/10"
+                  style={{ color: 'rgba(248,248,248,0.85)' }}
                   aria-label="Ouvrir le panier"
                 >
                   <ShoppingBag size={18} />
@@ -294,14 +314,6 @@ export default function Navbar() {
                     </span>
                   )}
                 </button>
-                <Link to="/connexion"
-                  className="text-sm font-medium px-4 py-2 rounded-lg transition-all hover:bg-white/10"
-                  style={{ color: 'rgba(248,248,248,0.80)' }}>
-                  Connexion
-                </Link>
-                <Link to="/restaurants" className="btn btn-gold text-sm px-5 py-2.5">
-                  Trouver à Manger
-                </Link>
               </>
             )}
           </div>

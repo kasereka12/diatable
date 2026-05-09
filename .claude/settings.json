@@ -3,7 +3,16 @@
     "allow": [
       "Bash(npm run:*)",
       "Bash(npx vite:*)",
-      "Bash(find /c/Users/ACER/Downloads/Diatable/diatable -name \"*.sql\" -type f ! -path \"*/node_modules/*\" -exec ls -la {} \\\\;)"
+      "Bash(find /c/Users/ACER/Downloads/Diatable/diatable -name \"*.sql\" -type f ! -path \"*/node_modules/*\" -exec ls -la {} \\\\;)",
+      "Bash(grep -E \"\\\\.jsx$\")",
+      "Read(//c/Users/ACER/Downloads/Diatable/**)",
+      "Bash(flutter create:*)",
+      "Bash(flutter pub:*)",
+      "Bash(flutter analyze:*)",
+      "PowerShell($zipPath = \"c:\\\\Users\\\\ACER\\\\Downloads\\\\Diatable\\\\diatable_mobile.zip\"; $size = \\(Get-Item $zipPath\\).Length; Write-Output \"==========================================\"; Write-Output \"ARCHIVE FLUTTER DIATABLE - PRETE\"; Write-Output \"==========================================\"; Write-Output \"Chemin : $zipPath\"; Write-Output \"Taille : $\\([math]::Round\\($size/1KB, 2\\)\\) KB\"; Write-Output \"\"; Write-Output \"Contenu \\(dossiers principaux\\) :\"; Add-Type -AssemblyName System.IO.Compression.FileSystem; $zip = [System.IO.Compression.ZipFile]::OpenRead\\($zipPath\\); $zip.Entries | Group-Object { \\($_.FullName -split '/'\\)[0..1] -join '/' } | Select-Object Name, Count | Sort-Object Name | Format-Table -AutoSize; $zip.Dispose\\(\\))"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\ACER\\Downloads\\Diatable\\diatable_mobile"
     ]
   }
 }
