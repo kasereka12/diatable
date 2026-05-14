@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { TESTIMONIALS } from '../data/restaurants'
 import SectionHeader from './ui/SectionHeader'
@@ -55,12 +56,13 @@ function TestimonialCard({ t, delay = '0s' }) {
 }
 
 export default function Testimonials() {
+  const { t } = useTranslation()
   const ref = useScrollReveal()
 
   return (
     <section className="py-24" style={{ backgroundColor: '#eae5d9' }} ref={ref}>
       <div className="max-w-6xl mx-auto px-6">
-        <SectionHeader label="Témoignages" title="Ce que dit notre <em>Communauté</em>" />
+        <SectionHeader label={t('testimonials.label')} title={t('testimonials.title')} />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
           {TESTIMONIALS.map((t, i) => (
             <TestimonialCard key={t.id} t={t} delay={`${i * 0.12}s`} />

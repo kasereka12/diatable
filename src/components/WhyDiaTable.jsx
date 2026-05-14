@@ -1,27 +1,17 @@
+import { useTranslation } from 'react-i18next'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import SectionHeader from './ui/SectionHeader'
 import { Globe, ShieldCheck, Users } from 'lucide-react'
 
-const FEATURES = [
-  {
-    Icon: Globe,
-    title: '30+ Cuisines',
-    desc: 'De l\'Afrique de l\'Ouest à l\'Asie de l\'Est, du Moyen-Orient à l\'Europe — si une communauté de la diaspora existe au Maroc, sa cuisine est sur DiaTable.',
-  },
-  {
-    Icon: ShieldCheck,
-    title: 'Vendeurs Vérifiés',
-    desc: 'Chaque restaurant et cuisinier à domicile sur notre plateforme est évalué, vérifié et approuvé par notre communauté d\'expatriés et de locaux.',
-  },
-  {
-    Icon: Users,
-    title: 'La Communauté Avant Tout',
-    desc: 'Nous soutenons les entrepreneurs de la diaspora qui construisent leur vie et leur activité au Maroc — parce que la culture voyage à travers la nourriture.',
-  },
-]
-
 export default function WhyDiaTable() {
+  const { t } = useTranslation()
   const ref = useScrollReveal()
+
+  const FEATURES = [
+    { Icon: Globe, title: t('why.feat1_title'), desc: t('why.feat1_desc') },
+    { Icon: ShieldCheck, title: t('why.feat2_title'), desc: t('why.feat2_desc') },
+    { Icon: Users, title: t('why.feat3_title'), desc: t('why.feat3_desc') },
+  ]
 
   return (
     <section className="bg-dark2 py-24 relative overflow-hidden" ref={ref}>
@@ -32,7 +22,7 @@ export default function WhyDiaTable() {
       />
 
       <div className="max-w-6xl mx-auto px-6 relative">
-        <SectionHeader label="Notre Engagement" title="Pourquoi Choisir <em>DiaTable ?</em>" light />
+        <SectionHeader label={t('why.label')} title={t('why.title')} light />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {FEATURES.map((f, i) => (

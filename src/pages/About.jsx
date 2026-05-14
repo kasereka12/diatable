@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { useAuth } from '../context/AuthContext'
 import SectionHeader from '../components/ui/SectionHeader'
@@ -7,19 +8,20 @@ import { Globe, Users, ShieldCheck, Heart } from 'lucide-react'
 import WhyDiaTable from '../components/WhyDiaTable'
 import Testimonials from '../components/Testimonials'
 
-const VALUES = [
-  { Icon: Globe,       title: 'Multiculturalisme',    desc: 'Nous croyons que la diversité culturelle est une richesse. DiaTable célèbre chaque communauté et chaque saveur.' },
-  { Icon: Users,       title: "Communauté d'abord",   desc: 'Nous sommes au service des vendeurs de la diaspora — des entrepreneurs qui construisent leur vie au Maroc.' },
-  { Icon: ShieldCheck, title: 'Confiance & Qualité',  desc: 'Chaque vendeur est vérifié par notre équipe. Vous commandez en toute confiance, chaque fois.' },
-  { Icon: Heart,       title: 'Fabriqué avec amour',  desc: "DiaTable est né d'un besoin réel. Nous avons tous vécu loin de chez nous — nous comprenons ce que représente un bon plat du pays." },
-]
-
 export default function About() {
+  const { t } = useTranslation()
   const ref = useScrollReveal()
   const { profile } = useAuth()
   const isVendor = profile?.role === 'vendor'
   const [team, setTeam]             = useState([])
   const [teamLoading, setTeamLoading] = useState(true)
+
+  const VALUES = [
+    { Icon: Globe,       title: t('about_page.val1_title'), desc: t('about_page.val1_desc') },
+    { Icon: Users,       title: t('about_page.val2_title'), desc: t('about_page.val2_desc') },
+    { Icon: ShieldCheck, title: t('about_page.val3_title'), desc: t('about_page.val3_desc') },
+    { Icon: Heart,       title: t('about_page.val4_title'), desc: t('about_page.val4_desc') },
+  ]
 
   useEffect(() => {
     if (!supabase) { setTeamLoading(false); return }
@@ -42,17 +44,17 @@ export default function About() {
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: 'linear-gradient(to bottom, transparent, rgba(31,31,31,0.65))' }} />
         <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <p className="section-label" data-reveal>Notre Histoire</p>
+          <p className="section-label" data-reveal>{t('about_page.hero_label')}</p>
           <h1 className="font-serif text-4xl md:text-5xl font-black mb-6 leading-tight"
             style={{ color: '#f8f8f8' }} data-reveal data-delay="0.1s">
-            La table de{' '}
-            <em style={{ color: '#c5611a', fontStyle: 'italic' }}>toute la diaspora</em>
+            {t('about_page.hero_title_before')}{' '}
+            <em style={{ color: '#c5611a', fontStyle: 'italic' }}>{t('about_page.hero_title_em')}</em>
           </h1>
           <p className="text-lg leading-relaxed" style={{ color: 'rgba(248,248,248,0.70)' }}
             data-reveal data-delay="0.2s">
-            DiaTable est née d'une simple question :{' '}
-            <em style={{ color: '#bd9f87' }}>"Où trouver un bon Thiéboudienne à Casablanca ?"</em><br/>
-            Et si la réponse était une seule plateforme pour tous ?
+            {t('about_page.hero_desc_before')}{' '}
+            <em style={{ color: '#bd9f87' }}>{t('about_page.hero_quote')}</em><br/>
+            {t('about_page.hero_desc_after')}
           </p>
         </div>
       </div>
@@ -62,25 +64,25 @@ export default function About() {
         <div className="max-w-4xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div data-reveal>
-              <p className="section-label">Notre Mission</p>
+              <p className="section-label">{t('about_page.mission_label')}</p>
               <h2 className="font-serif text-3xl font-bold mb-5" style={{ color: '#1f1f1f' }}>
-                Connecter les communautés à travers la{' '}
-                <em style={{ color: '#c5611a', fontStyle: 'italic' }}>nourriture</em>
+                {t('about_page.mission_title_before')}{' '}
+                <em style={{ color: '#c5611a', fontStyle: 'italic' }}>{t('about_page.mission_title_em')}</em>
               </h2>
               <p className="leading-relaxed mb-4" style={{ color: 'rgba(31,31,31,0.70)' }}>
-                Chaque expatrié qui arrive au Maroc emporte dans ses bagages les saveurs de son pays. DiaTable les aide à retrouver ces saveurs — et aide les cuisiniers de la diaspora à partager leur culture avec des milliers de personnes.
+                {t('about_page.mission_p1')}
               </p>
               <p className="leading-relaxed" style={{ color: 'rgba(31,31,31,0.70)' }}>
-                De Casablanca à Marrakech, en passant par Rabat et Tanger, nous construisons le plus grand annuaire de cuisines de la diaspora au Maroc.
+                {t('about_page.mission_p2')}
               </p>
             </div>
             <div data-reveal data-delay="0.15s">
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { n: '30+',  l: 'Pays représentés' },
-                  { n: '200+', l: 'Vendeurs actifs' },
-                  { n: '8',    l: 'Villes couvertes' },
-                  { n: '5K+',  l: 'Expats satisfaits' },
+                  { n: '30+',  l: t('about_page.stat_countries') },
+                  { n: '200+', l: t('about_page.stat_vendors') },
+                  { n: '8',    l: t('about_page.stat_cities') },
+                  { n: '5K+',  l: t('about_page.stat_expats') },
                 ].map(s => (
                   <div key={s.l} className="rounded-2xl p-5 text-center"
                     style={{ backgroundColor: '#f8f8f8', boxShadow: '0 2px 12px rgba(80,70,64,0.08)', border: '1px solid rgba(80,70,64,0.06)' }}>
@@ -97,7 +99,7 @@ export default function About() {
       {/* Values */}
       <section className="py-24" style={{ backgroundColor: '#504640' }}>
         <div className="max-w-6xl mx-auto px-6" ref={useScrollReveal()}>
-          <SectionHeader label="Ce En Quoi Nous Croyons" title="Nos <em>Valeurs</em>" light />
+          <SectionHeader label={t('about_page.values_label')} title={t('about_page.values_title')} light />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {VALUES.map((v, i) => (
               <div key={v.title} data-reveal data-delay={`${i * 0.1}s`}
@@ -126,14 +128,14 @@ export default function About() {
       {/* Team */}
       <section className="py-24" style={{ backgroundColor: '#eae5d9' }}>
         <div className="max-w-5xl mx-auto px-6" ref={useScrollReveal()}>
-          <SectionHeader label="Les Fondateurs" title="L'équipe <em>DiaTable</em>" />
+          <SectionHeader label={t('about_page.team_label')} title={t('about_page.team_title')} />
           {teamLoading ? (
             <div className="flex justify-center py-12">
               <div className="w-10 h-10 rounded-full animate-spin"
                 style={{ border: '4px solid rgba(197,97,26,0.25)', borderTopColor: '#c5611a' }} />
             </div>
           ) : team.length === 0 ? (
-            <p className="text-center py-12" style={{ color: '#80716a' }}>Aucun membre d'équipe pour le moment.</p>
+            <p className="text-center py-12" style={{ color: '#80716a' }}>{t('about_page.team_none')}</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {team.map((m, i) => (
@@ -165,16 +167,16 @@ export default function About() {
       <section className="py-20 text-center" style={{ backgroundColor: '#1f1f1f' }} ref={useScrollReveal()}>
         <div className="max-w-2xl mx-auto px-6" data-reveal>
           <h2 className="font-serif text-3xl font-bold mb-4" style={{ color: '#f8f8f8' }}>
-            Rejoignez l'aventure{' '}
-            <em style={{ color: '#c5611a', fontStyle: 'italic' }}>DiaTable</em>
+            {t('about_page.cta_title_before')}{' '}
+            <em style={{ color: '#c5611a', fontStyle: 'italic' }}>{t('about_page.cta_title_em')}</em>
           </h2>
           <p className="mb-8" style={{ color: '#80716a' }}>
-            Que vous cherchiez de la nourriture ou que vous cuisiniez, votre place est ici.
+            {t('about_page.cta_desc')}
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <a href="/restaurants" className="btn btn-gold">Explorer les cuisines</a>
+            <a href="/restaurants" className="btn btn-gold">{t('about_page.explore_btn')}</a>
             {!isVendor && (
-              <a href="/inscription?role=vendor" className="btn btn-outline">Devenir vendeur</a>
+              <a href="/inscription?role=vendor" className="btn btn-outline">{t('about_page.vendor_btn')}</a>
             )}
           </div>
         </div>

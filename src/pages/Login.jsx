@@ -1,11 +1,13 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Globe, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import Logo from '../assets/Logo.png';
 
 
 export default function Login() {
+  const { t } = useTranslation()
   const { signIn, signInWithGoogle } = useAuth()
   const navigate  = useNavigate()
   const location  = useLocation()
@@ -57,18 +59,18 @@ export default function Login() {
             style={{ backgroundColor: 'rgba(248,248,248,0.04)', border: '1px solid rgba(248,248,248,0.10)' }}>
 
             <h1 className="font-serif text-2xl font-bold mb-1" style={{ color: '#f8f8f8' }}>
-              {registered ? 'Compte créé !' : 'Bon retour'}
+              {registered ? t('login_page.title_new') : t('login_page.title_return')}
             </h1>
             <p className="text-sm mb-6" style={{ color: '#80716a' }}>
               {registered
-                ? 'Votre compte a bien été créé. Connectez-vous pour continuer.'
-                : 'Connectez-vous pour accéder à votre compte'}
+                ? t('login_page.subtitle_new')
+                : t('login_page.subtitle_return')}
             </p>
 
             {registered && (
               <div className="rounded-xl px-4 py-3 text-sm mb-6"
                 style={{ backgroundColor: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.30)', color: '#4ade80' }}>
-                Inscription réussie — connectez-vous avec vos identifiants.
+                {t('login_page.success_msg')}
               </div>
             )}
 
@@ -87,12 +89,12 @@ export default function Login() {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Continuer avec Google
+              {t('login_page.google_btn')}
             </button>
 
             <div className="flex items-center gap-3 mb-6">
               <div className="flex-1 h-px" style={{ backgroundColor: 'rgba(248,248,248,0.10)' }} />
-              <span className="text-xs" style={{ color: '#80716a' }}>ou avec votre email</span>
+              <span className="text-xs" style={{ color: '#80716a' }}>{t('login_page.or_email')}</span>
               <div className="flex-1 h-px" style={{ backgroundColor: 'rgba(248,248,248,0.10)' }} />
             </div>
 
@@ -100,14 +102,14 @@ export default function Login() {
               <div>
                 <label className="block text-xs font-semibold mb-1.5 tracking-wide uppercase"
                   style={{ color: 'rgba(248,248,248,0.60)' }}>
-                  Adresse email
+                  {t('login_page.email_label')}
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
-                  placeholder="vous@exemple.com"
+                  placeholder={t('login_page.email_placeholder')}
                   className="w-full rounded-xl px-4 py-3 text-sm transition-all focus:outline-none"
                   style={{
                     backgroundColor: 'rgba(248,248,248,0.06)',
@@ -128,7 +130,7 @@ export default function Login() {
               <div>
                 <label className="block text-xs font-semibold mb-1.5 tracking-wide uppercase"
                   style={{ color: 'rgba(248,248,248,0.60)' }}>
-                  Mot de passe
+                  {t('login_page.pwd_label')}
                 </label>
                 <div className="relative">
                   <input
@@ -169,7 +171,7 @@ export default function Login() {
                     style={{ color: '#80716a' }}
                     onMouseEnter={e => e.currentTarget.style.color = '#c5611a'}
                     onMouseLeave={e => e.currentTarget.style.color = '#80716a'}>
-                    Mot de passe oublié ?
+                    {t('login_page.forgot_pwd')}
                   </Link>
                 </div>
               </div>
@@ -198,29 +200,29 @@ export default function Login() {
                   e.currentTarget.style.boxShadow = 'none'
                 }}
               >
-                {loading ? 'Connexion en cours…' : 'Se connecter'}
+                {loading ? t('login_page.submit_loading') : t('login_page.submit')}
               </button>
             </form>
           </div>
 
           <p className="text-center text-sm mt-6" style={{ color: '#80716a' }}>
-            Pas encore de compte ?{' '}
+            {t('login_page.no_account')}{' '}
             <Link to="/inscription"
               className="font-semibold transition-colors"
               style={{ color: '#c5611a' }}
               onMouseEnter={e => e.currentTarget.style.color = '#d9722a'}
               onMouseLeave={e => e.currentTarget.style.color = '#c5611a'}>
-              Créer un compte
+              {t('login_page.create_account')}
             </Link>
           </p>
           <p className="text-center text-sm mt-3" style={{ color: '#80716a' }}>
-            Vous cuisinez ?{' '}
+            {t('login_page.cook_question')}{' '}
             <Link to="/inscription?role=vendor"
               className="font-semibold transition-colors"
               style={{ color: '#c5611a' }}
               onMouseEnter={e => e.currentTarget.style.color = '#d9722a'}
               onMouseLeave={e => e.currentTarget.style.color = '#c5611a'}>
-              Rejoindre en tant que vendeur →
+              {t('login_page.join_vendor')}
             </Link>
           </p>
         </div>

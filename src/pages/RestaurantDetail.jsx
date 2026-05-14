@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { useRestaurantDetail } from '../hooks/useRestaurantDetail'
 import { useAuth } from '../context/AuthContext'
@@ -11,13 +12,16 @@ import { getCuisineIcon } from '../lib/cuisineIcons'
 import {
   ArrowLeft, MapPin, Clock, CreditCard,
   MessageCircle, ShieldCheck, Star, Facebook, Instagram, Utensils,
-  Heart, Send, Pencil, Trash2, Plus, Check, ZoomIn
+  Heart, Send, Pencil, Trash2, Plus, Check, ZoomIn, Power
 } from 'lucide-react'
+import { getEffectivelyOpen, getClosedReason } from '../lib/scheduleParser'
 
-function MenuItem({ item, onAddToCart }) {
+function MenuItem({ item, onAddToCart, restaurantClosed }) {
+  const { t } = useTranslation()
   const [added, setAdded] = useState(false)
 
   function handleAdd() {
+    if (restaurantClosed) return
     onAddToCart(item)
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)
@@ -43,7 +47,7 @@ function MenuItem({ item, onAddToCart }) {
           {item.is_popular && (
             <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
               style={{ backgroundColor: 'rgba(197,97,26,0.12)', color: '#a04d12' }}>
-              Populaire
+              {t('rd.popular')}
             </span>
           )}
         </div>
@@ -55,8 +59,13 @@ function MenuItem({ item, onAddToCart }) {
         <span className="font-bold text-sm" style={{ color: '#1f1f1f' }}>{item.price} MAD</span>
         <button
           onClick={handleAdd}
+          disabled={restaurantClosed}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
-          style={added ? {
+          style={restaurantClosed ? {
+            backgroundColor: 'rgba(80,70,64,0.08)',
+            color: '#80716a',
+            cursor: 'not-allowed',
+          } : added ? {
             backgroundColor: '#22c55e',
             color: '#fff',
             boxShadow: '0 2px 8px rgba(34,197,94,0.3)',
@@ -65,11 +74,11 @@ function MenuItem({ item, onAddToCart }) {
             color: '#f8f8f8',
             boxShadow: '0 2px 8px rgba(197,97,26,0.3)',
           }}
-          onMouseEnter={e => { if (!added) e.currentTarget.style.backgroundColor = '#d9722a' }}
-          onMouseLeave={e => { if (!added) e.currentTarget.style.backgroundColor = '#c5611a' }}
-          aria-label={`Ajouter ${item.name} au panier`}
+          onMouseEnter={e => { if (!added && !restaurantClosed) e.currentTarget.style.backgroundColor = '#d9722a' }}
+          onMouseLeave={e => { if (!added && !restaurantClosed) e.currentTarget.style.backgroundColor = '#c5611a' }}
+          aria-label={restaurantClosed ? t('rd.restaurant_closed') : t('rd.add_to_cart', { name: item.name })}
         >
-          {added ? <><Check size={14} /> Ajouté</> : <><Plus size={14} /> Ajouter</>}
+          {restaurantClosed ? t('rd.closed') : added ? <><Check size={14} /> {t('rd.added')}</> : <><Plus size={14} /> {t('rd.add')}</>}
         </button>
       </div>
     </div>
@@ -98,6 +107,7 @@ function ReviewCard({ review }) {
 }
 
 function StarSelector({ value, hover, onRate, onHover, onLeave }) {
+  const { t } = useTranslation()
   return (
     <div className="flex gap-1" onMouseLeave={onLeave}>
       {[1, 2, 3, 4, 5].map(n => (
@@ -107,7 +117,7 @@ function StarSelector({ value, hover, onRate, onHover, onLeave }) {
           onClick={() => onRate(n)}
           onMouseEnter={() => onHover(n)}
           className="transition-transform hover:scale-110"
-          aria-label={`${n} étoile${n > 1 ? 's' : ''}`}
+          aria-label={t('rd.star', { count: n })}
         >
           <Star
             size={28}
@@ -120,6 +130,7 @@ function StarSelector({ value, hover, onRate, onHover, onLeave }) {
 }
 
 export default function RestaurantDetail() {
+  const { t } = useTranslation()
   const { id } = useParams()
   const { user } = useAuth()
   const { addItem } = useCart()
@@ -235,7 +246,7 @@ export default function RestaurantDetail() {
       if (!error) {
         setUserReview(prev => ({ ...prev, rating: reviewForm.rating, text: reviewForm.text }))
         setEditingReview(false)
-        setSubmitMsg('Votre avis a été mis à jour.')
+        setSubmitMsg(t('rd.review_updated'))
       }
     } else {
       const { data, error } = await supabase.from('reviews').insert({
@@ -246,9 +257,9 @@ export default function RestaurantDetail() {
       }).select().single()
       if (!error && data) {
         setUserReview(data)
-        setSubmitMsg('Merci ! Votre avis a été publié.')
+        setSubmitMsg(t('rd.review_published'))
       } else if (error) {
-        setSubmitMsg('Erreur : ' + error.message)
+        setSubmitMsg(t('rd.error_prefix') + error.message)
       }
     }
     setSubmitting(false)
@@ -265,6 +276,8 @@ export default function RestaurantDetail() {
 
   const isOwner = user && restaurant && restaurant.owner_id === user.id
   const canReview = user && !isOwner
+  const effectivelyOpen = getEffectivelyOpen(restaurant)
+  const closedReason = getClosedReason(restaurant)
 
   if (loading) {
     return (
@@ -281,9 +294,9 @@ export default function RestaurantDetail() {
         <div className="flex justify-center mb-4">
           <Utensils size={56} style={{ color: '#c5611a' }} />
         </div>
-        <p className="font-serif text-xl" style={{ color: '#f8f8f8' }}>Restaurant introuvable</p>
+        <p className="font-serif text-xl" style={{ color: '#f8f8f8' }}>{t('rd.not_found')}</p>
         <Link to="/restaurants" className="mt-4 inline-flex items-center gap-1" style={{ color: '#c5611a' }}>
-          <ArrowLeft size={16} /> Retour aux restaurants
+          <ArrowLeft size={16} /> {t('rd.back_to_list')}
         </Link>
       </div>
     </div>
@@ -316,7 +329,7 @@ export default function RestaurantDetail() {
               style={{ color: 'rgba(248,248,248,0.70)' }}
               onMouseEnter={e => e.currentTarget.style.color = '#f8f8f8'}
               onMouseLeave={e => e.currentTarget.style.color = 'rgba(248,248,248,0.70)'}>
-              <ArrowLeft size={16} /> Tous les restaurants
+              <ArrowLeft size={16} /> {t('rd.all_restaurants')}
             </Link>
           </div>
         </div>
@@ -340,24 +353,38 @@ export default function RestaurantDetail() {
                     <span className="flex items-center gap-1.5 text-sm">
                       <StarRating rating={restaurant.rating} />
                       <span className="font-semibold" style={{ color: '#f8f8f8' }}>{restaurant.rating}</span>
-                      <span style={{ color: 'rgba(248,248,248,0.60)' }}>({restaurant.reviews} avis)</span>
+                      <span style={{ color: 'rgba(248,248,248,0.60)' }}>({t('rd.reviews_count', { count: restaurant.reviews })})</span>
                     </span>
                   ) : (
-                    <span className="text-sm italic" style={{ color: 'rgba(248,248,248,0.50)' }}>Aucun avis pour l'instant</span>
+                    <span className="text-sm italic" style={{ color: 'rgba(248,248,248,0.50)' }}>{t('rd.no_reviews_yet')}</span>
                   )}
                   {restaurant.is_verified && (
                     <span className="text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
                       style={{ backgroundColor: 'rgba(34,197,94,0.20)', border: '1px solid rgba(34,197,94,0.40)', color: '#4ade80' }}>
-                      <ShieldCheck size={12} /> Vérifié
+                      <ShieldCheck size={12} /> {t('rd.verified')}
                     </span>
                   )}
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5"
+                    style={effectivelyOpen ? {
+                      backgroundColor: 'rgba(34,197,94,0.20)',
+                      border: '1px solid rgba(34,197,94,0.40)',
+                      color: '#4ade80',
+                    } : {
+                      backgroundColor: 'rgba(239,68,68,0.20)',
+                      border: '1px solid rgba(239,68,68,0.40)',
+                      color: '#fca5a5',
+                    }}>
+                    <span className="w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: effectivelyOpen ? '#4ade80' : '#fca5a5' }} />
+                    {effectivelyOpen ? t('rd.open') : t('rd.closed')}
+                  </span>
                 </div>
               </div>
               <div className="flex gap-2.5 flex-wrap">
                 <button
                   onClick={toggleLike}
                   disabled={likeLoading}
-                  title={user ? (userLiked ? 'Ne plus aimer' : "J'aime") : 'Connectez-vous pour aimer'}
+                  title={user ? (userLiked ? t('rd.unlike') : t('rd.like')) : t('rd.login_to_like')}
                   className="btn text-sm px-4 py-2.5 flex items-center gap-2 transition-all"
                   style={userLiked ? {
                     backgroundColor: 'rgba(236,72,153,0.20)',
@@ -369,7 +396,7 @@ export default function RestaurantDetail() {
                     border: '1px solid rgba(248,248,248,0.20)',
                     color: '#f8f8f8',
                   }}
-                  aria-label={userLiked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                  aria-label={user ? (userLiked ? t('rd.unlike') : t('rd.like')) : t('rd.login_to_like')}
                 >
                   <Heart size={16} className={userLiked ? 'fill-pink-400' : ''} />
                   {likesCount > 0 && <span>{likesCount}</span>}
@@ -383,9 +410,9 @@ export default function RestaurantDetail() {
                     border: '1px solid rgba(248,248,248,0.20)',
                     color: '#f8f8f8',
                   }}
-                  aria-label="Contacter le vendeur"
+                  aria-label={t('rd.contact_vendor')}
                 >
-                  <MessageCircle size={16} /> Message
+                  <MessageCircle size={16} /> {t('rd.message')}
                 </button>
               </div>
             </div>
@@ -399,7 +426,28 @@ export default function RestaurantDetail() {
 
           {/* Menu + Reviews */}
           <div className="lg:col-span-2">
-            <h2 className="font-serif text-2xl font-bold mb-6" style={{ color: '#1f1f1f' }} data-reveal>Notre Carte</h2>
+            <h2 className="font-serif text-2xl font-bold mb-6" style={{ color: '#1f1f1f' }} data-reveal>{t('rd.our_menu')}</h2>
+
+            {!effectivelyOpen && (
+              <div className="mb-6 rounded-xl px-4 py-4 flex items-start gap-3"
+                style={{ backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.20)' }}
+                data-reveal>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ backgroundColor: 'rgba(239,68,68,0.12)' }}>
+                  <Power size={15} style={{ color: '#dc2626' }} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: '#dc2626' }}>
+                    {t('rd.currently_closed')}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: '#ef4444' }}>
+                    {closedReason === 'manuel'
+                      ? t('rd.closed_manual')
+                      : t('rd.closed_hours', { hours: restaurant.hours || t('rd.not_specified') })}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {categories.length > 0 && (
               <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide pb-1" data-reveal>
@@ -427,17 +475,17 @@ export default function RestaurantDetail() {
             <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }} data-reveal>
               {currentItems.length > 0 ? (
                 currentItems.map(item => (
-                  <MenuItem key={item.id} item={item} onAddToCart={handleAddToCart} />
+                  <MenuItem key={item.id} item={item} onAddToCart={handleAddToCart} restaurantClosed={!effectivelyOpen} />
                 ))
               ) : (
-                <p className="text-sm text-center py-6" style={{ color: '#80716a' }}>Aucun plat dans cette catégorie.</p>
+                <p className="text-sm text-center py-6" style={{ color: '#80716a' }}>{t('rd.no_dishes')}</p>
               )}
             </div>
 
             {/* Reviews */}
             <div className="mt-10">
               <div className="flex items-center justify-between mb-6" data-reveal>
-                <h2 className="font-serif text-2xl font-bold" style={{ color: '#1f1f1f' }}>Avis clients</h2>
+                <h2 className="font-serif text-2xl font-bold" style={{ color: '#1f1f1f' }}>{t('rd.customer_reviews')}</h2>
                 {restaurant.reviews > 0 && (
                   <div className="flex items-center gap-2 rounded-xl px-4 py-2 shadow-sm"
                     style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }}>
@@ -460,7 +508,7 @@ export default function RestaurantDetail() {
                 <div className="rounded-2xl p-8 text-center shadow-sm"
                   style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }}>
                   <Star size={32} className="mx-auto mb-3" style={{ color: '#c5611a' }} />
-                  <p className="text-sm" style={{ color: '#80716a' }}>Aucun avis pour l'instant. Soyez le premier !</p>
+                  <p className="text-sm" style={{ color: '#80716a' }}>{t('rd.no_reviews_be_first')}</p>
                 </div>
               )}
 
@@ -470,10 +518,10 @@ export default function RestaurantDetail() {
                   <div className="rounded-2xl p-6 shadow-sm text-center"
                     style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }}>
                     <Star size={28} className="mx-auto mb-3" style={{ color: '#c5611a' }} />
-                    <p className="font-semibold mb-1" style={{ color: '#1f1f1f' }}>Partagez votre expérience</p>
-                    <p className="text-sm mb-4" style={{ color: '#80716a' }}>Connectez-vous pour laisser un avis</p>
+                    <p className="font-semibold mb-1" style={{ color: '#1f1f1f' }}>{t('rd.share_experience')}</p>
+                    <p className="text-sm mb-4" style={{ color: '#80716a' }}>{t('rd.login_to_review')}</p>
                     <Link to="/connexion" className="btn btn-gold px-6 py-2.5 text-sm inline-flex items-center gap-1.5">
-                      Se connecter
+                      {t('rd.sign_in')}
                     </Link>
                   </div>
                 ) : isOwner ? null : (userReview && !editingReview) ? (
@@ -481,7 +529,7 @@ export default function RestaurantDetail() {
                     style={{ backgroundColor: 'rgba(234,229,217,0.7)', border: '1px solid rgba(197,97,26,0.20)' }}>
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#a04d12' }}>Votre avis</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#a04d12' }}>{t('rd.your_review')}</p>
                         <StarRating rating={userReview.rating} />
                       </div>
                       <div className="flex gap-1">
@@ -490,12 +538,12 @@ export default function RestaurantDetail() {
                           style={{ color: '#a04d12' }}
                           onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(197,97,26,0.12)'}
                           onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                          title="Modifier" aria-label="Modifier votre avis">
+                          title={t('rd.edit')} aria-label={t('rd.edit_review')}>
                           <Pencil size={15} />
                         </button>
                         <button onClick={deleteReview}
                           className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors"
-                          title="Supprimer" aria-label="Supprimer votre avis">
+                          title={t('rd.delete')} aria-label={t('rd.delete_review')}>
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -509,10 +557,10 @@ export default function RestaurantDetail() {
                   <div className="rounded-2xl p-6 shadow-sm"
                     style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }}>
                     <h3 className="font-semibold mb-4" style={{ color: '#1f1f1f' }}>
-                      {editingReview ? 'Modifier votre avis' : 'Laisser un avis'}
+                      {editingReview ? t('rd.edit_review') : t('rd.leave_review')}
                     </h3>
                     <div className="mb-4">
-                      <p className="text-xs mb-2" style={{ color: '#80716a' }}>Votre note</p>
+                      <p className="text-xs mb-2" style={{ color: '#80716a' }}>{t('rd.your_rating')}</p>
                       <StarSelector
                         value={reviewForm.rating}
                         hover={reviewHover}
@@ -524,7 +572,7 @@ export default function RestaurantDetail() {
                     <textarea
                       value={reviewForm.text}
                       onChange={e => setReviewForm(f => ({ ...f, text: e.target.value }))}
-                      placeholder="Décrivez votre expérience (optionnel)..."
+                      placeholder={t('rd.review_placeholder')}
                       rows={3}
                       className="w-full rounded-xl px-4 py-3 text-sm resize-none mb-3 focus:outline-none focus:ring-2"
                       style={{
@@ -540,7 +588,7 @@ export default function RestaurantDetail() {
                         className="btn btn-gold px-5 py-2.5 text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Send size={14} />
-                        {submitting ? 'Envoi…' : editingReview ? 'Mettre à jour' : 'Publier'}
+                        {submitting ? t('rd.submitting') : editingReview ? t('rd.update') : t('rd.publish')}
                       </button>
                       {editingReview && (
                         <button
@@ -553,7 +601,7 @@ export default function RestaurantDetail() {
                           onMouseEnter={e => e.currentTarget.style.color = '#1f1f1f'}
                           onMouseLeave={e => e.currentTarget.style.color = '#80716a'}
                         >
-                          Annuler
+                          {t('rd.cancel')}
                         </button>
                       )}
                       {submitMsg && <p className="text-xs text-green-600">{submitMsg}</p>}
@@ -568,12 +616,12 @@ export default function RestaurantDetail() {
           <div className="space-y-5">
             <div className="rounded-2xl p-5 shadow-sm sticky top-24"
               style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }} data-reveal>
-              <h3 className="font-serif font-bold text-base mb-4" style={{ color: '#1f1f1f' }}>Informations</h3>
+              <h3 className="font-serif font-bold text-base mb-4" style={{ color: '#1f1f1f' }}>{t('rd.info')}</h3>
               <div className="space-y-3 text-sm">
                 {[
-                  { icon: MapPin, label: 'Adresse', value: address },
-                  { icon: Clock, label: 'Horaires', value: hours },
-                  { icon: CreditCard, label: 'Paiement', value: 'Espèces à la livraison' },
+                  { icon: MapPin, label: t('rd.address'), value: address },
+                  { icon: Clock, label: t('rd.hours'), value: hours },
+                  { icon: CreditCard, label: t('rd.payment'), value: t('rd.payment_value') },
                 ].map(({ icon: Icon, label, value }) => (
                   <div key={label} className="flex items-start gap-3">
                     <Icon size={16} className="flex-shrink-0 mt-0.5" style={{ color: '#c5611a' }} />
@@ -591,15 +639,16 @@ export default function RestaurantDetail() {
                   style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d9722a'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = '#c5611a'}
+                  aria-label={t('rd.contact_vendor')}
                 >
-                  <MessageCircle size={16} /> Contacter le vendeur
+                  <MessageCircle size={16} /> {t('rd.contact_vendor')}
                 </button>
               </div>
             </div>
 
             <div className="rounded-2xl p-5 shadow-sm"
               style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }} data-reveal>
-              <h3 className="font-serif font-bold text-sm mb-3" style={{ color: '#1f1f1f' }}>Partager</h3>
+              <h3 className="font-serif font-bold text-sm mb-3" style={{ color: '#1f1f1f' }}>{t('rd.share')}</h3>
               <div className="flex gap-2">
                 {[
                   { icon: Facebook, label: 'Facebook' },
@@ -611,7 +660,7 @@ export default function RestaurantDetail() {
                     style={{ backgroundColor: '#eae5d9', color: '#1f1f1f' }}
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(197,97,26,0.12)'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = '#eae5d9'}
-                    aria-label={`Partager sur ${label}`}>
+                    aria-label={t('rd.share_on', { platform: label })}>
                     <Icon size={14} /> {label}
                   </button>
                 ))}

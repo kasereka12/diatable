@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { useNotifications } from '../context/NotificationContext'
@@ -9,21 +10,10 @@ import {
   ShieldCheck, Image, MapPin, ShoppingBag, MessageCircle, Bell,
   Package
 } from 'lucide-react'
-import Logo from '../assets/LogoBlanc.png';
-
-const NAV_LINKS = [
-  { label: 'Accueil',  to: '/' },
-  { label: 'À propos', to: '/a-propos' },
-  { label: 'Contact',  to: '/contact' },
-]
-
-const EXPLORER_LINKS = [
-  { label: 'Restaurants', to: '/restaurants',  icon: Utensils,  desc: 'Tous les restaurants' },
-  { label: 'Cuisines',    to: '/cuisines',      icon: MapPin,    desc: 'Par type de cuisine' },
-  { label: 'Galerie',     to: '/galerie',       icon: Image,     desc: 'Plats & photos' },
-]
+import Logo from '../assets/LogoBlanc.png'
 
 export default function Navbar() {
+  const { t, i18n } = useTranslation()
   const { user, profile, signOut, isAdmin } = useAuth()
   const { itemCount, setIsCartOpen } = useCart()
   const { unreadCount } = useNotifications()
@@ -40,15 +30,15 @@ export default function Navbar() {
   const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || ''
   const initials    = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2) : '?'
 
+  const isEN = i18n.language?.startsWith('en')
+  function toggleLang() { i18n.changeLanguage(isEN ? 'fr' : 'en') }
+
   useEffect(() => {
     let ticking = false
     const handler = () => {
       if (!ticking) {
         ticking = true
-        requestAnimationFrame(() => {
-          setScrolled(window.scrollY > 60)
-          ticking = false
-        })
+        requestAnimationFrame(() => { setScrolled(window.scrollY > 60); ticking = false })
       }
     }
     window.addEventListener('scroll', handler, { passive: true })
@@ -77,9 +67,21 @@ export default function Navbar() {
     navigate('/')
   }
 
+  const NAV_LINKS = [
+    { label: t('nav.home'),    to: '/' },
+    { label: t('nav.about'),   to: '/a-propos' },
+    { label: t('nav.contact'), to: '/contact' },
+  ]
+
+  const EXPLORER_LINKS = [
+    { label: t('nav.restaurants'), to: '/restaurants',  icon: Utensils,  desc: t('nav.all_restaurants') },
+    { label: t('nav.cuisines'),    to: '/cuisines',      icon: MapPin,    desc: t('nav.by_cuisine') },
+    { label: t('nav.gallery'),     to: '/galerie',       icon: Image,     desc: t('nav.dishes_photos') },
+  ]
+
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-[110] transition-all duration-300`} style={{
+      <nav className="fixed top-0 left-0 right-0 z-[110] transition-all duration-300" style={{
         background: scrolled
           ? 'linear-gradient(180deg, #3a3a3a 0%, #4a4a4a 18%, #2a2a2a 55%, #141414 100%)'
           : 'linear-gradient(180deg, #353535 0%, #4f4f4f 22%, #262626 60%, #0f0f0f 100%)',
@@ -96,26 +98,19 @@ export default function Navbar() {
               <NavLink to="/"
                 className={({ isActive }) =>
                   `text-sm font-medium px-4 py-2 rounded-full transition-all duration-200
-                   ${isActive ? 'bg-white/10' : 'hover:bg-white/10'}`
-                }
-                style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.85)' })}
-              >
-                Accueil
+                   ${isActive ? 'bg-white/10' : 'hover:bg-white/10'}`}
+                style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.85)' })}>
+                {t('nav.home')}
               </NavLink>
             </li>
 
-            {/* Explorer dropdown — pill highlight */}
+            {/* Explorer dropdown */}
             <li ref={explorerRef} className="relative">
               <button
                 onClick={() => setExplorerOpen(v => !v)}
                 className="flex items-center gap-1.5 text-sm font-semibold px-5 py-2 rounded-full transition-all duration-200"
-                style={{
-                  backgroundColor: '#f8f8f8',
-                  color: '#c5611a',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                }}
-              >
-                Explorer
+                style={{ backgroundColor: '#f8f8f8', color: '#c5611a', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                {t('nav.explore')}
                 <ChevronDown size={14} strokeWidth={2.5} className={`transition-transform duration-200 ${explorerOpen ? 'rotate-180' : ''}`} />
               </button>
               {explorerOpen && (
@@ -125,8 +120,7 @@ export default function Navbar() {
                     <NavLink key={to} to={to}
                       onClick={() => setExplorerOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 transition-all hover:bg-white/[0.08]"
-                      style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.80)' })}
-                    >
+                      style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.80)' })}>
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ backgroundColor: 'rgba(197,97,26,0.2)' }}>
                         <Icon size={15} style={{ color: '#c5611a' }} />
@@ -143,63 +137,51 @@ export default function Navbar() {
           </ul>
 
           {/* Center logo */}
-          <Link to="/" className="flex items-center justify-center" aria-label="DiaTable - Accueil">
-            <div
-              className="rounded-full flex items-center justify-center"
-              style={{
-                width: 96,
-                height: 96,
-                backgroundColor: '#c5611a',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
-                marginBottom: -28,
-              }}
-            >
-              <img
-                src={Logo}
-                alt="DiaTable"
-                className="object-contain"
-                style={{ width: 78, height: 78 }}
-              />
+          <Link to="/" className="flex items-center justify-center" aria-label="DiaTable">
+            <div className="rounded-full flex items-center justify-center"
+              style={{ width: 96, height: 96, backgroundColor: '#c5611a', boxShadow: '0 8px 24px rgba(0,0,0,0.35)', marginBottom: -28 }}>
+              <img src={Logo} alt="DiaTable" className="object-contain" style={{ width: 78, height: 78 }} />
             </div>
           </Link>
 
-          {/* Right side: A propos + Contact + actions */}
+          {/* Right side */}
           <div className="hidden md:flex items-center gap-2 justify-end">
             {NAV_LINKS.slice(1).map((l) => (
               <NavLink key={l.to} to={l.to}
                 className={({ isActive }) =>
                   `text-sm font-medium px-4 py-2 rounded-full transition-all duration-200
-                   ${isActive ? 'bg-white/10' : 'hover:bg-white/10'}`
-                }
-                style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.85)' })}
-              >
+                   ${isActive ? 'bg-white/10' : 'hover:bg-white/10'}`}
+                style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.85)' })}>
                 {l.label}
               </NavLink>
             ))}
+
+            {/* Language toggle */}
+            <button
+              onClick={toggleLang}
+              title={isEN ? 'Passer en français' : 'Switch to English'}
+              className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-full transition-all hover:bg-white/10"
+              style={{ color: 'rgba(248,248,248,0.65)', border: '1px solid rgba(248,248,248,0.12)' }}>
+              <Globe size={13} />
+              {isEN ? 'FR' : 'EN'}
+            </button>
+
             {user ? (
               <>
                 {/* Cart */}
-                <button
-                  onClick={() => setIsCartOpen(true)}
+                <button onClick={() => setIsCartOpen(true)}
                   className="relative p-2 rounded-lg transition-all hover:bg-white/10"
-                  style={{ color: 'rgba(248,248,248,0.70)' }}
-                  aria-label="Ouvrir le panier"
-                >
+                  style={{ color: 'rgba(248,248,248,0.70)' }} aria-label={t('nav.open_cart')}>
                   <ShoppingBag size={18} />
                   {itemCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 text-[0.6rem] font-bold min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}>
-                      {itemCount}
-                    </span>
+                      style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}>{itemCount}</span>
                   )}
                 </button>
 
                 {/* Messages */}
-                <Link to="/messages"
-                  className="relative p-2 rounded-lg transition-all hover:bg-white/10"
-                  style={{ color: 'rgba(248,248,248,0.70)' }}
-                  aria-label="Messages"
-                >
+                <Link to="/messages" className="relative p-2 rounded-lg transition-all hover:bg-white/10"
+                  style={{ color: 'rgba(248,248,248,0.70)' }} aria-label={t('nav.messages')}>
                   <MessageCircle size={18} />
                   {unreadMessages > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] flex items-center justify-center rounded-full text-[0.6rem] font-bold text-white px-1"
@@ -211,12 +193,10 @@ export default function Navbar() {
 
                 {/* Notifications */}
                 <div ref={notifRef} className="relative">
-                  <button
-                    onClick={() => setNotifOpen(v => !v)}
+                  <button onClick={() => setNotifOpen(v => !v)}
                     className="relative p-2 rounded-lg transition-all hover:bg-white/10"
                     style={{ color: 'rgba(248,248,248,0.70)' }}
-                    aria-label="Notifications" aria-expanded={notifOpen}
-                  >
+                    aria-label={t('nav.notifications')} aria-expanded={notifOpen}>
                     <Bell size={18} />
                     {unreadCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[0.6rem] font-bold min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center">
@@ -224,9 +204,7 @@ export default function Navbar() {
                       </span>
                     )}
                   </button>
-                  {notifOpen && (
-                    <NotifDropdown onClose={() => setNotifOpen(false)} navigate={navigate} />
-                  )}
+                  {notifOpen && <NotifDropdown onClose={() => setNotifOpen(false)} navigate={navigate} t={t} />}
                 </div>
 
                 {/* User menu */}
@@ -251,9 +229,9 @@ export default function Navbar() {
                       </div>
                       <div className="py-1">
                         {[
-                          { to: '/profil',           icon: User,         label: 'Mon profil' },
-                          { to: '/mes-commandes',    icon: Package,      label: 'Mes commandes' },
-                          { to: '/messages',         icon: MessageCircle, label: 'Messages' },
+                          { to: '/profil',        icon: User,          label: t('nav.my_profile') },
+                          { to: '/mes-commandes', icon: Package,       label: t('nav.my_orders') },
+                          { to: '/messages',      icon: MessageCircle, label: t('nav.messages') },
                         ].map(({ to, icon: Icon, label }) => (
                           <Link key={to} to={to} onClick={() => setUserMenu(false)}
                             className="flex items-center gap-2 px-4 py-2.5 text-sm transition-all hover:bg-white/[0.06]"
@@ -265,7 +243,7 @@ export default function Navbar() {
                           <Link to="/tableau-de-bord" onClick={() => setUserMenu(false)}
                             className="flex items-center gap-2 px-4 py-2.5 text-sm transition-all hover:bg-white/[0.06]"
                             style={{ color: 'rgba(248,248,248,0.80)' }}>
-                            <BarChart2 size={15} /> Tableau de bord
+                            <BarChart2 size={15} /> {t('nav.dashboard')}
                           </Link>
                         )}
                         {isAdmin && (
@@ -274,19 +252,19 @@ export default function Navbar() {
                             style={{ color: '#c5611a' }}
                             onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(197,97,26,0.12)'}
                             onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                            <ShieldCheck size={15} /> Administration
+                            <ShieldCheck size={15} /> {t('nav.administration')}
                           </Link>
                         )}
                         <Link to="/restaurants" onClick={() => setUserMenu(false)}
                           className="flex items-center gap-2 px-4 py-2.5 text-sm transition-all hover:bg-white/[0.06]"
                           style={{ color: 'rgba(248,248,248,0.80)' }}>
-                          <Utensils size={15} /> Restaurants
+                          <Utensils size={15} /> {t('nav.restaurants')}
                         </Link>
                       </div>
                       <div className="py-1" style={{ borderTop: '1px solid rgba(248,248,248,0.07)' }}>
                         <button onClick={handleSignOut}
                           className="w-full flex items-center gap-2 px-4 py-2.5 text-red-400 text-sm hover:bg-red-500/10 transition-all">
-                          <LogOut size={15} /> Se déconnecter
+                          <LogOut size={15} /> {t('nav.sign_out')}
                         </button>
                       </div>
                     </div>
@@ -298,24 +276,19 @@ export default function Navbar() {
                 <Link to="/connexion"
                   className="flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-full transition-all hover:bg-white/10"
                   style={{ color: 'rgba(248,248,248,0.85)' }}>
-                  Connexion
+                  {t('nav.sign_in')}
                   <span className="w-7 h-7 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: 'rgba(248,248,248,0.10)' }}>
                     <User size={15} />
                   </span>
                 </Link>
-                <button
-                  onClick={() => setIsCartOpen(true)}
+                <button onClick={() => setIsCartOpen(true)}
                   className="relative p-2 rounded-full transition-all hover:bg-white/10"
-                  style={{ color: 'rgba(248,248,248,0.85)' }}
-                  aria-label="Ouvrir le panier"
-                >
+                  style={{ color: 'rgba(248,248,248,0.85)' }} aria-label={t('nav.open_cart')}>
                   <ShoppingBag size={18} />
                   {itemCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 text-[0.6rem] font-bold min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}>
-                      {itemCount}
-                    </span>
+                      style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}>{itemCount}</span>
                   )}
                 </button>
               </>
@@ -324,22 +297,23 @@ export default function Navbar() {
 
           {/* Hamburger */}
           <div className="md:hidden flex items-center gap-2">
-            <button
-              onClick={() => setIsCartOpen(true)}
+            {/* Lang toggle mobile */}
+            <button onClick={toggleLang}
+              className="text-xs font-bold px-2 py-1 rounded-full"
+              style={{ color: 'rgba(248,248,248,0.65)', border: '1px solid rgba(248,248,248,0.12)' }}>
+              {isEN ? 'FR' : 'EN'}
+            </button>
+            <button onClick={() => setIsCartOpen(true)}
               className="relative p-2 rounded-lg transition-all hover:bg-white/10"
-              style={{ color: 'rgba(248,248,248,0.70)' }}
-              aria-label="Ouvrir le panier"
-            >
+              style={{ color: 'rgba(248,248,248,0.70)' }} aria-label={t('nav.open_cart')}>
               <ShoppingBag size={18} />
               {itemCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 text-[0.6rem] font-bold min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}>
-                  {itemCount}
-                </span>
+                  style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}>{itemCount}</span>
               )}
             </button>
             <button className="flex flex-col gap-1.5 p-2"
-              onClick={() => setMenuOpen(true)} aria-label="Ouvrir le menu">
+              onClick={() => setMenuOpen(true)} aria-label={t('nav.open_menu')}>
               {[0, 1, 2].map((i) => (
                 <span key={i} className="block w-6 h-0.5 rounded-full" style={{ backgroundColor: '#f8f8f8' }} />
               ))}
@@ -352,14 +326,14 @@ export default function Navbar() {
       {menuOpen && (
         <div className="fixed inset-0 z-[999] flex flex-col items-center justify-center gap-7"
           style={{ backgroundColor: '#1f1f1f' }}
-          role="dialog" aria-modal="true" aria-label="Menu de navigation">
+          role="dialog" aria-modal="true" aria-label={t('nav.nav_menu')}>
           <button className="absolute top-6 right-6 flex items-center justify-center"
             style={{ color: '#f8f8f8' }}
-            onClick={() => setMenuOpen(false)} aria-label="Fermer le menu">
+            onClick={() => setMenuOpen(false)} aria-label={t('nav.close_menu')}>
             <X size={20} />
           </button>
 
-          {[...NAV_LINKS.slice(0,1), ...EXPLORER_LINKS, ...NAV_LINKS.slice(1)].map((l) => (
+          {[NAV_LINKS[0], ...EXPLORER_LINKS, ...NAV_LINKS.slice(1)].map((l) => (
             <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}
               className="font-serif text-3xl font-semibold transition-colors"
               style={{ color: '#f8f8f8' }}
@@ -372,14 +346,14 @@ export default function Navbar() {
           <div className="flex flex-col gap-3 mt-4 w-48">
             {user ? (
               <>
-                <Link to="/profil" onClick={() => setMenuOpen(false)} className="btn btn-gold justify-center">Mon profil</Link>
+                <Link to="/profil" onClick={() => setMenuOpen(false)} className="btn btn-gold justify-center">{t('nav.my_profile')}</Link>
                 <Link to="/mes-commandes" onClick={() => setMenuOpen(false)}
                   className="text-center text-sm py-2 transition-colors"
-                  style={{ color: 'rgba(248,248,248,0.70)' }}>Mes commandes</Link>
+                  style={{ color: 'rgba(248,248,248,0.70)' }}>{t('nav.my_orders')}</Link>
                 <Link to="/messages" onClick={() => setMenuOpen(false)}
                   className="text-center text-sm py-2 transition-colors flex items-center justify-center gap-2"
                   style={{ color: 'rgba(248,248,248,0.70)' }}>
-                  Messages
+                  {t('nav.messages')}
                   {unreadMessages > 0 && (
                     <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[0.6rem] font-bold text-white px-1"
                       style={{ backgroundColor: '#25d366' }}>
@@ -388,14 +362,14 @@ export default function Navbar() {
                   )}
                 </Link>
                 <button onClick={() => { handleSignOut(); setMenuOpen(false) }}
-                  className="text-red-400 text-sm font-medium py-2">Se déconnecter</button>
+                  className="text-red-400 text-sm font-medium py-2">{t('nav.sign_out')}</button>
               </>
             ) : (
               <>
-                <Link to="/restaurants" onClick={() => setMenuOpen(false)} className="btn btn-gold justify-center">Trouver à Manger</Link>
+                <Link to="/restaurants" onClick={() => setMenuOpen(false)} className="btn btn-gold justify-center">{t('nav.find_food')}</Link>
                 <Link to="/connexion" onClick={() => setMenuOpen(false)}
                   className="text-center text-sm py-2 transition-colors"
-                  style={{ color: 'rgba(248,248,248,0.70)' }}>Connexion</Link>
+                  style={{ color: 'rgba(248,248,248,0.70)' }}>{t('nav.sign_in')}</Link>
               </>
             )}
           </div>
@@ -405,8 +379,7 @@ export default function Navbar() {
   )
 }
 
-// Notification dropdown
-function NotifDropdown({ onClose, navigate }) {
+function NotifDropdown({ onClose, navigate, t }) {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
 
   const typeIcons = {
@@ -422,10 +395,10 @@ function NotifDropdown({ onClose, navigate }) {
       style={{ backgroundColor: '#504640', border: '1px solid rgba(248,248,248,0.10)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
       <div className="px-4 py-3 flex items-center justify-between"
         style={{ borderBottom: '1px solid rgba(248,248,248,0.07)' }}>
-        <span className="text-sm font-semibold" style={{ color: '#f8f8f8' }}>Notifications</span>
+        <span className="text-sm font-semibold" style={{ color: '#f8f8f8' }}>{t('nav.notifications')}</span>
         {unreadCount > 0 && (
           <button onClick={markAllAsRead} className="text-xs hover:underline" style={{ color: '#c5611a' }}>
-            Tout marquer lu
+            {t('nav.mark_all_read')}
           </button>
         )}
       </div>
@@ -433,18 +406,16 @@ function NotifDropdown({ onClose, navigate }) {
         {notifications.length === 0 ? (
           <div className="py-8 text-center">
             <Bell size={24} className="mx-auto mb-2" style={{ color: 'rgba(248,248,248,0.20)' }} />
-            <p className="text-sm" style={{ color: 'rgba(248,248,248,0.40)' }}>Aucune notification</p>
+            <p className="text-sm" style={{ color: 'rgba(248,248,248,0.40)' }}>{t('nav.no_notifications')}</p>
           </div>
         ) : (
           notifications.slice(0, 10).map(n => {
             const Icon = typeIcons[n.type] || Bell
             return (
-              <button
-                key={n.id}
+              <button key={n.id}
                 onClick={() => { markAsRead(n.id); if (n.link?.startsWith('/')) navigate(n.link); onClose() }}
                 className="w-full flex items-start gap-3 px-4 py-3 text-left transition-all hover:bg-white/[0.05]"
-                style={{ backgroundColor: !n.is_read ? 'rgba(248,248,248,0.03)' : 'transparent' }}
-              >
+                style={{ backgroundColor: !n.is_read ? 'rgba(248,248,248,0.03)' : 'transparent' }}>
                 <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: !n.is_read ? 'rgba(197,97,26,0.20)' : 'rgba(248,248,248,0.05)' }}>
                   <Icon size={14} style={{ color: !n.is_read ? '#c5611a' : 'rgba(248,248,248,0.40)' }} />
@@ -458,7 +429,7 @@ function NotifDropdown({ onClose, navigate }) {
                     <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(248,248,248,0.40)' }}>{n.body}</p>
                   )}
                   <p className="text-[0.6rem] mt-1" style={{ color: 'rgba(248,248,248,0.30)' }}>
-                    {new Date(n.created_at).toLocaleString('fr-FR', {
+                    {new Date(n.created_at).toLocaleString(i18n?.language?.startsWith('en') ? 'en-GB' : 'fr-FR', {
                       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
                     })}
                   </p>
@@ -475,7 +446,7 @@ function NotifDropdown({ onClose, navigate }) {
         <Link to="/profil" onClick={onClose}
           className="block text-center py-2.5 text-xs transition-all hover:bg-white/[0.03]"
           style={{ color: '#c5611a', borderTop: '1px solid rgba(248,248,248,0.07)' }}>
-          Voir toutes les notifications
+          {t('nav.view_all_notifications')}
         </Link>
       )}
     </div>

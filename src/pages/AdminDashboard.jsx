@@ -7,7 +7,7 @@ import {
   Globe, ShieldCheck, AlertCircle, RefreshCw, Menu, X, ChevronLeft,
   Phone, MessageCircle, Instagram, Clock, MapPin, Utensils, Eye, ChevronRight,
   Package, Star, TrendingUp, Ban, UserCheck, Mail, Calendar, ArrowLeft,
-  BarChart2, ShoppingBag, Heart
+  BarChart2, ShoppingBag, Heart, Crown, Sparkles, Zap, CreditCard
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -1548,16 +1548,278 @@ function SectionTeam() {
   )
 }
 
+// ─── Section 8 : Abonnements ──────────────────────────────────────────────────
+
+function SectionSubscriptions() {
+  const [payments, setPayments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [processing, setProcessing] = useState(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase
+        .from('subscription_payments')
+        .select('*, profiles:vendor_id(full_name, email, restaurants(name))')
+        .order('created_at', { ascending: false })
+      if (err) throw err
+      setPayments(data || [])
+    } catch (e) {
+      setError(e.message || 'Erreur de chargement')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function approve(p) {
+    setProcessing(p.id)
+    setError(null)
+    try {
+      const now = new Date().toISOString()
+
+      const { error: payErr } = await supabase
+        .from('subscription_payments')
+        .update({ status: 'approved', reviewed_at: now })
+        .eq('id', p.id)
+      if (payErr) throw new Error('Mise à jour du paiement : ' + payErr.message)
+
+      // Tente d'abord un UPDATE (le row existe si le vendeur est déjà enregistré)
+      const { data: updated, error: upErr } = await supabase
+        .from('subscriptions')
+        .update({ plan: p.plan, status: 'active', started_at: now })
+        .eq('vendor_id', p.vendor_id)
+        .select()
+      if (upErr) throw new Error('Mise à jour de l\'abonnement : ' + upErr.message)
+
+      // Si aucune ligne mise à jour, on INSERT (cas rare : vendeur sans ligne subscription)
+      if (!updated || updated.length === 0) {
+        const { error: insErr } = await supabase
+          .from('subscriptions')
+          .insert({ vendor_id: p.vendor_id, plan: p.plan, status: 'active', started_at: now })
+        if (insErr) throw new Error('Création de l\'abonnement : ' + insErr.message)
+      }
+
+      await load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setProcessing(null)
+    }
+  }
+
+  async function reject(p) {
+    setProcessing(p.id)
+    setError(null)
+    try {
+      const { error: payErr } = await supabase
+        .from('subscription_payments')
+        .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+        .eq('id', p.id)
+      if (payErr) throw new Error('Mise à jour du paiement : ' + payErr.message)
+      await load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setProcessing(null)
+    }
+  }
+
+  const pending  = payments.filter(p => p.status === 'pending')
+  const reviewed = payments.filter(p => p.status !== 'pending')
+
+  function planBadge(plan) {
+    const conf = {
+      pro:     { bg: 'rgba(139,92,246,0.10)', color: '#7c3aed', label: 'Pro',     Icon: Sparkles },
+      premium: { bg: 'rgba(197,97,26,0.10)',  color: '#c5611a', label: 'Premium', Icon: Crown },
+      free:    { bg: 'rgba(80,70,64,0.08)',   color: '#80716a', label: 'Gratuit', Icon: Zap },
+    }
+    const c = conf[plan] || conf.free
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full"
+        style={{ backgroundColor: c.bg, color: c.color }}>
+        <c.Icon size={10} /> {c.label}
+      </span>
+    )
+  }
+
+  function statusBadge(status) {
+    if (status === 'pending')  return <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">En attente</span>
+    if (status === 'approved') return <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-200">Approuvé</span>
+    if (status === 'rejected') return <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200">Rejeté</span>
+    return null
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-dark flex items-center gap-2">
+            <Crown size={22} className="text-[#c5611a]" /> Abonnements
+          </h1>
+          <p className="text-sm text-muted mt-1">Validation manuelle des demandes de changement de plan</p>
+        </div>
+        <button onClick={load}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border text-sm hover:bg-gray-50 transition-colors"
+          style={{ color: '#80716a', borderColor: 'rgba(80,70,64,0.20)' }}>
+          <RefreshCw size={14} /> Actualiser
+        </button>
+      </div>
+
+      {error && <ErrorMsg msg={error} />}
+
+      {loading ? (
+        <div className="space-y-3">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="rounded-xl p-5 animate-pulse bg-white border border-black/[0.06] flex gap-4">
+              <div className="w-10 h-10 rounded-full bg-black/[0.06] flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="w-1/3 h-4 rounded bg-black/[0.06]" />
+                <div className="w-1/2 h-3 rounded bg-black/[0.06]" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* ── Demandes en attente ─────────────────────── */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold text-dark">En attente de validation</h2>
+              {pending.length > 0 && (
+                <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                  {pending.length}
+                </span>
+              )}
+            </div>
+            {pending.length === 0 ? (
+              <div className="rounded-xl p-10 text-center bg-white border border-black/[0.06]">
+                <CheckCircle size={36} className="mx-auto mb-2 text-green-300" />
+                <p className="text-sm text-muted">Aucune demande en attente</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pending.map(p => {
+                  const vendorName = p.profiles?.full_name || p.profiles?.email || '—'
+                  const restName   = p.profiles?.restaurants?.[0]?.name || '—'
+                  const isProc     = processing === p.id
+                  return (
+                    <div key={p.id} className="rounded-xl bg-white border-l-4 border-amber-400 shadow-sm overflow-hidden"
+                      style={{ border: '1px solid rgba(0,0,0,0.07)', borderLeftWidth: 4, borderLeftColor: '#fbbf24' }}>
+                      <div className="p-5">
+                        <div className="flex items-start gap-4 flex-wrap">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                            style={{ backgroundColor: 'rgba(197,97,26,0.10)', color: '#c5611a' }}>
+                            {vendorName.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <p className="text-sm font-semibold text-dark">{vendorName}</p>
+                              <span className="text-muted text-xs">→</span>
+                              {planBadge(p.plan)}
+                              {statusBadge(p.status)}
+                            </div>
+                            <p className="text-xs text-muted mb-1">
+                              {restName} · <span className="font-medium">{p.bank}</span> · Réf : <span className="font-mono">{p.reference}</span> · Expéditeur : {p.sender_name}
+                            </p>
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="text-xs text-muted">{formatDate(p.created_at)}</span>
+                              {p.receipt_url && (
+                                <a href={p.receipt_url} target="_blank" rel="noopener noreferrer"
+                                  className="text-xs font-medium text-[#c5611a] hover:underline flex items-center gap-1">
+                                  <Eye size={12} /> Voir le reçu
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button onClick={() => approve(p)} disabled={isProc}
+                              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                              style={{ backgroundColor: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}
+                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#dcfce7'}
+                              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
+                              <CheckCircle size={14} />
+                              {isProc ? 'Traitement…' : 'Approuver'}
+                            </button>
+                            <button onClick={() => reject(p)} disabled={isProc}
+                              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                              style={{ backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
+                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fef2f2'}>
+                              <XCircle size={14} />
+                              Rejeter
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* ── Historique ──────────────────────────────── */}
+          {reviewed.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-base font-semibold text-dark">Historique</h2>
+              <div className="space-y-2">
+                {reviewed.map(p => {
+                  const vendorName = p.profiles?.full_name || p.profiles?.email || '—'
+                  const restName   = p.profiles?.restaurants?.[0]?.name || '—'
+                  return (
+                    <div key={p.id} className="rounded-xl p-4 bg-white flex items-start gap-4 flex-wrap opacity-80"
+                      style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        style={{ backgroundColor: 'rgba(80,70,64,0.08)', color: '#80716a' }}>
+                        {vendorName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                          <p className="text-sm font-medium text-dark">{vendorName}</p>
+                          <span className="text-muted text-xs">→</span>
+                          {planBadge(p.plan)}
+                          {statusBadge(p.status)}
+                        </div>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <p className="text-xs text-muted">{restName} · {p.bank} · {formatDate(p.created_at)}</p>
+                          {p.receipt_url && (
+                            <a href={p.receipt_url} target="_blank" rel="noopener noreferrer"
+                              className="text-xs font-medium text-[#c5611a] hover:underline flex items-center gap-1">
+                              <Eye size={12} /> Reçu
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      {p.reviewed_at && (
+                        <span className="text-xs text-muted flex-shrink-0">{formatDate(p.reviewed_at)}</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── Sidebar ───────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { key: 'overview', label: 'Vue globale', icon: LayoutDashboard },
-  { key: 'users', label: 'Utilisateurs', icon: Users },
-  { key: 'restaurants', label: 'Restaurants', icon: Store },
-  { key: 'orders', label: 'Commandes', icon: Package },
-  { key: 'reviews', label: 'Avis', icon: Star },
-  { key: 'gallery', label: 'Galerie', icon: ImageIcon },
-  { key: 'team', label: 'Équipe', icon: Users2 },
+  { key: 'overview',       label: 'Vue globale',   icon: LayoutDashboard },
+  { key: 'users',          label: 'Utilisateurs',  icon: Users },
+  { key: 'restaurants',    label: 'Restaurants',   icon: Store },
+  { key: 'orders',         label: 'Commandes',     icon: Package },
+  { key: 'reviews',        label: 'Avis',          icon: Star },
+  { key: 'subscriptions',  label: 'Abonnements',   icon: Crown },
+  { key: 'gallery',        label: 'Galerie',       icon: ImageIcon },
+  { key: 'team',           label: 'Équipe',        icon: Users2 },
 ]
 
 function Sidebar({ active, setActive, onSignOut, user, mobileOpen, setMobileOpen, collapsed, setCollapsed }) {
@@ -1681,6 +1943,7 @@ export default function AdminDashboard() {
       case 'restaurants': return <SectionRestaurants />
       case 'orders': return <SectionOrders />
       case 'reviews': return <SectionReviews />
+      case 'subscriptions': return <SectionSubscriptions />
       case 'gallery': return <SectionGallery />
       case 'team': return <SectionTeam />
       default: return <SectionOverview />

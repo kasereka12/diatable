@@ -1,20 +1,20 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
-  ChevronDown, Search, MapPin, ShieldCheck, ArrowRight, Utensils, X,
+  ChevronDown, Search, MapPin, ShieldCheck, ArrowRight, Utensils, X, Crown, Sparkles,
 } from 'lucide-react'
 import { useRestaurants } from '../hooks/useRestaurants'
 import { TABS } from '../data/restaurants'
 import StarRating from './ui/StarRating'
 import { getCuisineIcon } from '../lib/cuisineIcons'
 import { getGradient } from '../lib/gradients'
+import { getEffectivelyOpen } from '../lib/scheduleParser'
 import heroBg from '../assets/top-view-shakh-plov-delicious.jpg'
 import woodTexture from '../assets/WoodGrain08-byGhostlyPixels.png'
 
-const VILLES = ['Toutes', 'Casablanca', 'Rabat', 'Marrakech', 'Tanger']
-const NOTES = [{ label: 'Toutes', val: 0 }, { label: '4.5+', val: 4.5 }, { label: '4.8+', val: 4.8 }]
-
 export default function Hero() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -128,7 +128,7 @@ export default function Hero() {
           className="animate-pill-pulse flex items-center gap-3 px-8 md:px-10 py-3.5 md:py-4 rounded-full font-medium text-base md:text-lg transition-transform hover:-translate-y-0.5 hover:scale-[1.05]"
           style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}
         >
-          Trouver à Manger
+          {t('hero.find_food')}
           <span className="animate-chevron-bob inline-flex">
             <ChevronDown size={20} strokeWidth={2.5} />
           </span>
@@ -145,10 +145,10 @@ export default function Hero() {
               textShadow: '0 4px 24px rgba(0,0,0,0.45)',
             }}
           >
-            Retrouvez le{' '}
-            <span className="text-shimmer">Goût de Chez Vous,</span>
+            {t('hero.headline1')}{' '}
+            <span className="text-shimmer">{t('hero.headline_shimmer')}</span>
             <br />
-            Même Loin de Chez Vous
+            {t('hero.headline2')}
           </h1>
 
           <p
@@ -159,9 +159,7 @@ export default function Hero() {
               textShadow: '0 2px 12px rgba(0,0,0,0.4)',
             }}
           >
-            Accédez en un clic à une diversité culinaire unique :
-            restaurants internationaux, cuisiniers à domicile et spécialités du monde,
-            réunis au même endroit.
+            {t('hero.subtext')}
           </p>
         </div>
       </div>
@@ -172,15 +170,29 @@ export default function Hero() {
 }
 
 function RestaurantsModal({ onClose }) {
+  const { t } = useTranslation()
   const { restaurants, loading } = useRestaurants()
   const [cuisine, setCuisine] = useState('all')
-  const [ville, setVille] = useState('Toutes')
+  const [ville, setVille] = useState('')
   const [note, setNote] = useState(0)
   const [search, setSearch] = useState('')
 
+  const VILLES = [
+    { label: t('restaurants_page.all'), val: '' },
+    { label: 'Casablanca', val: 'Casablanca' },
+    { label: 'Rabat', val: 'Rabat' },
+    { label: 'Marrakech', val: 'Marrakech' },
+    { label: 'Tanger', val: 'Tanger' },
+  ]
+  const NOTES = [
+    { label: t('restaurants_page.all'), val: 0 },
+    { label: '4.5+', val: 4.5 },
+    { label: '4.8+', val: 4.8 },
+  ]
+
   const filtered = useMemo(() => restaurants.filter(r => {
     if (cuisine !== 'all' && r.cuisine !== cuisine) return false
-    if (ville !== 'Toutes' && r.location !== ville) return false
+    if (ville !== '' && r.location !== ville) return false
     if (note > 0 && (r.reviews === 0 || r.rating === null || r.rating < note)) return false
     if (search &&
       !r.name.toLowerCase().includes(search.toLowerCase()) &&
@@ -192,7 +204,7 @@ function RestaurantsModal({ onClose }) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Trouver à manger"
+      aria-label={t('hero.find_food')}
       className="fixed left-0 right-0 bottom-0 z-[100] flex items-start justify-center p-4 md:p-6 pt-6"
       style={{ top: '110px' }}
     >
@@ -226,7 +238,7 @@ function RestaurantsModal({ onClose }) {
         >
           <button
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t('hero.close')}
             className="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/15"
             style={{ color: '#f8f8f8', backgroundColor: 'rgba(248,248,248,0.08)' }}
           >
@@ -235,14 +247,14 @@ function RestaurantsModal({ onClose }) {
 
           <div className="text-[0.7rem] font-semibold tracking-[0.18em] uppercase mb-2"
             style={{ color: '#c5611a' }}>
-            Explorer
+            {t('hero.modal_label')}
           </div>
           <h2 className="font-serif font-black leading-tight"
             style={{ color: '#f8f8f8', fontSize: 'clamp(1.5rem, 2.6vw, 2rem)' }}>
-            Tous les <em style={{ color: '#c5611a', fontStyle: 'italic' }}>Restaurants</em>
+            {t('hero.modal_title_before')} <em style={{ color: '#c5611a', fontStyle: 'italic' }}>{t('hero.modal_title_em')}</em>
           </h2>
           <p className="text-sm mt-1" style={{ color: 'rgba(248,248,248,0.65)' }}>
-            {restaurants.length} restaurants et cuisiniers de la diaspora au Maroc
+            {t('hero.modal_count', { count: restaurants.length })}
           </p>
         </div>
 
@@ -262,7 +274,7 @@ function RestaurantsModal({ onClose }) {
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Rechercher un restaurant, une cuisine…"
+                placeholder={t('hero.search_placeholder')}
                 className="w-full pl-11 pr-4 py-3 rounded-xl border text-sm focus:outline-none transition-all"
                 style={{
                   borderColor: 'rgba(0,0,0,0.10)',
@@ -275,25 +287,25 @@ function RestaurantsModal({ onClose }) {
             <div className="flex flex-wrap gap-3">
               <div className="flex-1 min-w-[160px]">
                 <label className="block text-[0.68rem] font-bold uppercase tracking-widest mb-1.5"
-                  style={{ color: '#80716a' }}>Cuisine</label>
+                  style={{ color: '#80716a' }}>{t('hero.cuisine')}</label>
                 <select value={cuisine} onChange={e => setCuisine(e.target.value)}
                   className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none border"
                   style={{ borderColor: 'rgba(0,0,0,0.10)', backgroundColor: '#eae5d9', color: '#1f1f1f' }}>
-                  {TABS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  {TABS.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
                 </select>
               </div>
               <div className="flex-1 min-w-[140px]">
                 <label className="block text-[0.68rem] font-bold uppercase tracking-widest mb-1.5"
-                  style={{ color: '#80716a' }}>Ville</label>
+                  style={{ color: '#80716a' }}>{t('hero.city')}</label>
                 <select value={ville} onChange={e => setVille(e.target.value)}
                   className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none border"
                   style={{ borderColor: 'rgba(0,0,0,0.10)', backgroundColor: '#eae5d9', color: '#1f1f1f' }}>
-                  {VILLES.map(v => <option key={v}>{v}</option>)}
+                  {VILLES.map(v => <option key={v.val} value={v.val}>{v.label}</option>)}
                 </select>
               </div>
               <div className="flex-1 min-w-[140px]">
                 <label className="block text-[0.68rem] font-bold uppercase tracking-widest mb-1.5"
-                  style={{ color: '#80716a' }}>Note minimum</label>
+                  style={{ color: '#80716a' }}>{t('hero.min_rating')}</label>
                 <select value={note} onChange={e => setNote(parseFloat(e.target.value))}
                   className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none border"
                   style={{ borderColor: 'rgba(0,0,0,0.10)', backgroundColor: '#eae5d9', color: '#1f1f1f' }}>
@@ -301,33 +313,35 @@ function RestaurantsModal({ onClose }) {
                 </select>
               </div>
               <button
-                onClick={() => { setCuisine('all'); setVille('Toutes'); setNote(0); setSearch('') }}
+                onClick={() => { setCuisine('all'); setVille(''); setNote(0); setSearch('') }}
                 className="self-end px-4 py-2.5 rounded-xl border text-sm transition-all"
                 style={{ borderColor: 'rgba(0,0,0,0.10)', color: '#80716a' }}
                 onMouseEnter={e => { e.currentTarget.style.color = '#c5611a'; e.currentTarget.style.borderColor = '#c5611a' }}
                 onMouseLeave={e => { e.currentTarget.style.color = '#80716a'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.10)' }}
               >
-                Réinitialiser
+                {t('hero.reset')}
               </button>
             </div>
           </div>
 
           <p className="text-sm mb-5" style={{ color: '#80716a' }}>
-            <span className="font-semibold" style={{ color: '#1f1f1f' }}>{filtered.length}</span> résultat{filtered.length !== 1 ? 's' : ''}
+            <span className="font-semibold" style={{ color: '#1f1f1f' }}>{filtered.length}</span>{' '}
+            {filtered.length === 1 ? t('hero.results_one') : t('hero.results_other')}
           </p>
 
           {loading ? (
-            <div className="text-center py-16" style={{ color: '#80716a' }}>Chargement…</div>
+            <div className="text-center py-16" style={{ color: '#80716a' }}>{t('hero.loading')}</div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-16">
               <Utensils size={48} className="mx-auto mb-3" style={{ color: '#c5611a' }} />
-              <h3 className="font-serif text-lg font-bold mb-1" style={{ color: '#1f1f1f' }}>Aucun résultat</h3>
-              <p className="text-sm" style={{ color: '#80716a' }}>Essayez de modifier vos filtres.</p>
+              <h3 className="font-serif text-lg font-bold mb-1" style={{ color: '#1f1f1f' }}>{t('hero.no_results')}</h3>
+              <p className="text-sm" style={{ color: '#80716a' }}>{t('hero.no_results_sub')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {filtered.map((r) => {
                 const CuisineIcon = getCuisineIcon(r.cuisine)
+                const isOpen = getEffectivelyOpen(r)
                 return (
                   <Link
                     key={r.id}
@@ -353,12 +367,28 @@ function RestaurantsModal({ onClose }) {
                         style={{ backgroundColor: 'rgba(31,31,31,0.75)' }}>
                         {r.flag} {r.cuisine_label}
                       </div>
-                      {r.is_verified && (
-                        <div className="absolute top-3 right-3 text-white text-[0.65rem] font-bold px-2 py-1 rounded-full flex items-center gap-1"
-                          style={{ backgroundColor: 'rgba(34,197,94,0.92)' }}>
-                          <ShieldCheck size={11} /> Vérifié
+                      {r.plan === 'premium' && (
+                        <div className="absolute top-3 right-3 text-[0.65rem] font-bold px-2 py-1 rounded-full flex items-center gap-1"
+                          style={{ backgroundColor: 'rgba(197,97,26,0.90)', color: '#fff' }}>
+                          <Crown size={10} /> Premium
                         </div>
                       )}
+                      {r.plan === 'pro' && (
+                        <div className="absolute top-3 right-3 text-[0.65rem] font-bold px-2 py-1 rounded-full flex items-center gap-1"
+                          style={{ backgroundColor: 'rgba(124,58,237,0.88)', color: '#fff' }}>
+                          <Sparkles size={10} /> Pro
+                        </div>
+                      )}
+                      {r.plan !== 'premium' && r.plan !== 'pro' && r.is_verified && (
+                        <div className="absolute top-3 right-3 text-white text-[0.65rem] font-bold px-2 py-1 rounded-full flex items-center gap-1"
+                          style={{ backgroundColor: 'rgba(34,197,94,0.92)' }}>
+                          <ShieldCheck size={11} /> {t('hero.verified')}
+                        </div>
+                      )}
+                      <div className={`absolute bottom-3 left-3 text-[0.65rem] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${isOpen ? 'bg-green-500/90 text-white' : 'bg-black/60 text-white/80'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-white' : 'bg-white/50'}`} />
+                        {isOpen ? t('hero.open') : t('hero.closed')}
+                      </div>
                     </div>
                     <div className="p-4">
                       <h3 className="font-serif font-bold text-sm leading-snug mb-2" style={{ color: '#1f1f1f' }}>{r.name}</h3>
@@ -372,11 +402,11 @@ function RestaurantsModal({ onClose }) {
                             {r.rating} <span className="font-normal" style={{ color: '#80716a' }}>({r.reviews})</span>
                           </span>
                         ) : (
-                          <span className="text-xs italic" style={{ color: '#80716a' }}>Aucun avis</span>
+                          <span className="text-xs italic" style={{ color: '#80716a' }}>{t('hero.no_reviews')}</span>
                         )}
                       </div>
                       <div className="text-xs font-semibold flex items-center gap-1" style={{ color: '#c5611a' }}>
-                        Voir le profil <ArrowRight size={12} />
+                        {t('hero.view_profile')} <ArrowRight size={12} />
                       </div>
                     </div>
                   </Link>

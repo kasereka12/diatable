@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -9,30 +10,6 @@ import {
   Truck, Store, Navigation
 } from 'lucide-react'
 import AddressAutocomplete from '../components/AddressAutocomplete'
-
-const PAYMENT_METHODS = [
-  {
-    id: 'cash_on_delivery',
-    label: 'Paiement à la livraison / au retrait',
-    desc: 'Payez en espèces à la réception',
-    icon: Banknote,
-    available: true,
-  },
-  {
-    id: 'card',
-    label: 'Carte bancaire',
-    desc: 'Visa, Mastercard, CMI',
-    icon: CreditCard,
-    available: false,
-  },
-  {
-    id: 'mobile_payment',
-    label: 'Paiement mobile',
-    desc: 'CashPlus, Wafacash, Orange Money',
-    icon: Smartphone,
-    available: false,
-  },
-]
 
 // Haversine distance in km
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -51,6 +28,32 @@ function estimateTravelMin(distKm) {
 }
 
 export default function Checkout() {
+  const { t } = useTranslation()
+
+  const PAYMENT_METHODS = [
+    {
+      id: 'cash_on_delivery',
+      label: t('checkout.pay_cash'),
+      desc: t('checkout.pay_cash_desc'),
+      icon: Banknote,
+      available: true,
+    },
+    {
+      id: 'card',
+      label: t('checkout.pay_card'),
+      desc: t('checkout.pay_card_desc'),
+      icon: CreditCard,
+      available: false,
+    },
+    {
+      id: 'mobile_payment',
+      label: t('checkout.pay_mobile'),
+      desc: t('checkout.pay_mobile_desc'),
+      icon: Smartphone,
+      available: false,
+    },
+  ]
+
   const {
     cart, itemCount, subtotal, deliveryFee, total,
     deliveryMode, setDeliveryMode, setDeliveryFeeOverride, clearCart
@@ -151,7 +154,7 @@ export default function Checkout() {
     if (rawQuartier === null) return // no address selected yet
 
     function norm(s) {
-      return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '')
+      return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, '')
     }
 
     if (deliveryZones.length > 0) {
@@ -180,21 +183,21 @@ export default function Checkout() {
     if (itemCount === 0) return
 
     if (!form.name.trim() || !form.phone.trim()) {
-      setError('Veuillez remplir votre nom et téléphone.')
+      setError(t('checkout.err_fields'))
       return
     }
     // Validate Moroccan phone number: 06/07/05 or +212 6/7/5
     const cleanPhone = form.phone.replace(/[\s\-\.]/g, '')
     if (!/^(\+212|0)(5|6|7)\d{8}$/.test(cleanPhone)) {
-      setError('Numéro de téléphone invalide. Format attendu : 06 XX XX XX XX ou +212 6XX XX XX XX')
+      setError(t('checkout.err_phone'))
       return
     }
     if (!isPickup && !form.address.trim()) {
-      setError('Veuillez remplir l\'adresse de livraison.')
+      setError(t('checkout.err_address'))
       return
     }
     if (!isPickup && !form.addressComplement.trim()) {
-      setError('Veuillez compléter votre adresse (bâtiment, étage, etc.).')
+      setError(t('checkout.err_complement'))
       return
     }
 
@@ -229,7 +232,7 @@ export default function Checkout() {
       .single()
 
     if (orderErr) {
-      setError('Impossible de passer la commande. Vérifiez votre connexion et réessayez.')
+      setError(t('checkout.err_order'))
       setSubmitting(false)
       return
     }
@@ -247,7 +250,7 @@ export default function Checkout() {
       .insert(orderItems)
 
     if (itemsErr) {
-      setError('Votre commande a été créée mais un problème est survenu avec les détails. Contactez le restaurant.')
+      setError(t('checkout.err_items'))
       setSubmitting(false)
       return
     }
@@ -271,30 +274,30 @@ export default function Checkout() {
           <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-6">
             <CheckCircle size={40} className="text-green-500" />
           </div>
-          <h1 className="font-serif text-2xl font-bold text-dark mb-2">Commande confirmée !</h1>
+          <h1 className="font-serif text-2xl font-bold text-dark mb-2">{t('checkout.success_title')}</h1>
           <p className="text-muted text-sm mb-2">
-            Votre commande #{orderSuccess.id.slice(0, 8)} a été envoyée au restaurant.
+            {t('checkout.success_sub', { id: orderSuccess.id.slice(0, 8) })}
           </p>
           <p className="text-muted text-sm mb-6">
             {orderSuccess.delivery_mode === 'pickup'
-              ? 'Retrait sur place — le restaurant vous préviendra quand ce sera prêt.'
-              : 'Paiement à la livraison — le vendeur vous contactera pour confirmer.'
+              ? t('checkout.success_pickup')
+              : t('checkout.success_delivery')
             }
           </p>
 
           <div className="bg-cream rounded-xl p-4 mb-6">
             <div className="flex items-center gap-2 text-sm text-dark">
               <Clock size={16} className="text-gold" />
-              <span className="font-semibold">Temps estimé : {estLabel}</span>
+              <span className="font-semibold">{t('checkout.est_label', { time: estLabel })}</span>
             </div>
           </div>
 
           <div className="flex gap-3">
             <Link to="/mes-commandes" className="btn btn-gold flex-1 justify-center text-sm">
-              Suivre ma commande
+              {t('checkout.track')}
             </Link>
             <Link to="/restaurants" className="btn btn-dark flex-1 justify-center text-sm">
-              Continuer
+              {t('checkout.continue')}
             </Link>
           </div>
         </div>
@@ -308,10 +311,10 @@ export default function Checkout() {
       <div className="min-h-screen bg-cream pt-24 flex items-center justify-center px-6">
         <div className="text-center">
           <ShoppingBag size={56} className="text-muted/30 mx-auto mb-4" />
-          <h1 className="font-serif text-2xl font-bold text-dark mb-2">Votre panier est vide</h1>
-          <p className="text-muted text-sm mb-6">Ajoutez des plats depuis un restaurant</p>
+          <h1 className="font-serif text-2xl font-bold text-dark mb-2">{t('checkout.empty_title')}</h1>
+          <p className="text-muted text-sm mb-6">{t('checkout.empty_sub')}</p>
           <Link to="/restaurants" className="btn btn-gold text-sm">
-            Explorer les restaurants
+            {t('checkout.explore')}
           </Link>
         </div>
       </div>
@@ -329,10 +332,10 @@ export default function Checkout() {
         {/* Header */}
         <div className="mb-8">
           <Link to="/restaurants" className="text-muted text-sm hover:text-dark transition-colors flex items-center gap-1 mb-4">
-            <ArrowLeft size={16} /> Continuer les achats
+            <ArrowLeft size={16} /> {t('checkout.back')}
           </Link>
-          <h1 className="font-serif text-3xl font-bold text-dark">Finaliser la commande</h1>
-          <p className="text-muted text-sm mt-1">Commande chez {cart.restaurantName}</p>
+          <h1 className="font-serif text-3xl font-bold text-dark">{t('checkout.title')}</h1>
+          <p className="text-muted text-sm mt-1">{t('checkout.order_at', { name: cart.restaurantName })}</p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -343,7 +346,7 @@ export default function Checkout() {
               {/* Delivery mode selector */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05]">
                 <h2 className="font-serif font-bold text-dark text-lg mb-5 flex items-center gap-2">
-                  <Truck size={18} className="text-gold" /> Mode de réception
+                  <Truck size={18} className="text-gold" /> {t('checkout.delivery_mode')}
                 </h2>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -360,9 +363,9 @@ export default function Checkout() {
                     </div>
                     <div className="text-center">
                       <p className={`text-sm font-bold ${deliveryMode === 'delivery' ? 'text-dark' : 'text-muted'}`}>
-                        Livraison
+                        {t('checkout.delivery')}
                       </p>
-                      <p className="text-xs text-muted mt-0.5">Le vendeur livre chez vous</p>
+                      <p className="text-xs text-muted mt-0.5">{t('checkout.delivery_desc')}</p>
                     </div>
                   </button>
 
@@ -380,10 +383,10 @@ export default function Checkout() {
                     </div>
                     <div className="text-center">
                       <p className={`text-sm font-bold ${deliveryMode === 'pickup' ? 'text-dark' : 'text-muted'}`}>
-                        Retrait sur place
+                        {t('checkout.pickup')}
                       </p>
-                      <p className="text-xs text-muted mt-0.5">Récupérez au restaurant</p>
-                      <p className="text-xs font-semibold text-green-600 mt-1">Gratuit</p>
+                      <p className="text-xs text-muted mt-0.5">{t('checkout.pickup_desc')}</p>
+                      <p className="text-xs font-semibold text-green-600 mt-1">{t('checkout.free')}</p>
                     </div>
                   </button>
                 </div>
@@ -394,9 +397,9 @@ export default function Checkout() {
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3">
                   <Phone size={20} className="text-amber-500 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-semibold text-amber-800">Frais de livraison non renseignés</p>
+                    <p className="text-sm font-semibold text-amber-800">{t('checkout.no_zones_title')}</p>
                     <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-                      Ce restaurant n'a pas encore configuré ses tarifs de livraison. Vous serez contacté par le restaurant pour confirmer les frais et les détails de livraison.
+                      {t('checkout.no_zones_desc')}
                     </p>
                   </div>
                 </div>
@@ -406,27 +409,27 @@ export default function Checkout() {
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05]">
                 <h2 className="font-serif font-bold text-dark text-lg mb-5 flex items-center gap-2">
                   {isPickup
-                    ? <><Phone size={18} className="text-gold" /> Vos coordonnées</>
-                    : <><MapPin size={18} className="text-gold" /> Informations de livraison</>
+                    ? <><Phone size={18} className="text-gold" /> {t('checkout.contact_info')}</>
+                    : <><MapPin size={18} className="text-gold" /> {t('checkout.delivery_info')}</>
                   }
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">
-                      Nom complet <span className="text-red-400">*</span>
+                      {t('checkout.full_name')} <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="text"
                       value={form.name}
                       onChange={e => updateForm('name', e.target.value)}
-                      placeholder="Votre nom"
+                      placeholder={t('checkout.full_name')}
                       required
                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-gold/50"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">
-                      Téléphone <span className="text-red-400">*</span>
+                      {t('checkout.phone')} <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="tel"
@@ -440,7 +443,7 @@ export default function Checkout() {
                         }`}
                     />
                     {form.phone && !/^(\+212|0)(5|6|7)\d{8}$/.test(form.phone.replace(/[\s\-\.]/g, '')) && (
-                      <p className="text-red-500 text-xs mt-1">Format : 06 XX XX XX XX ou +212 6XX XX XX XX</p>
+                      <p className="text-red-500 text-xs mt-1">{t('checkout.phone_format_hint')}</p>
                     )}
                   </div>
 
@@ -448,7 +451,7 @@ export default function Checkout() {
                     <>
                       <div className="md:col-span-2">
                         <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Adresse <span className="text-red-400">*</span>
+                          {t('checkout.address')} <span className="text-red-400">*</span>
                         </label>
                         <AddressAutocomplete
                           value={form.address}
@@ -456,19 +459,19 @@ export default function Checkout() {
                           onPlaceSelect={handlePlaceSelect}
                         />
                         <p className="text-xs text-muted mt-1.5 flex items-center gap-1">
-                          <Navigation size={10} /> Commencez à taper pour rechercher via Google Maps
+                          <Navigation size={10} /> {t('checkout.phone_hint')}
                         </p>
                       </div>
 
                       <div className="md:col-span-2">
                         <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Complément d'adresse <span className="text-red-400">*</span>
+                          {t('checkout.address_complement')} <span className="text-red-400">*</span>
                         </label>
                         <input
                           type="text"
                           value={form.addressComplement}
                           onChange={e => updateForm('addressComplement', e.target.value)}
-                          placeholder="N° bâtiment, étage, appartement, résidence, code interphone..."
+                          placeholder={t('checkout.address_complement_placeholder')}
                           required
                           className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-gold/50"
                         />
@@ -482,8 +485,7 @@ export default function Checkout() {
                               <div className="flex items-center gap-2">
                                 <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
                                 <div>
-
-                                  <p className="text-xs text-green-600 mt-0.5">Livraison disponible dans votre zone</p>
+                                  <p className="text-xs text-green-600 mt-0.5">{t('checkout.zone_available')}</p>
                                 </div>
                               </div>
                               <span className="text-sm font-bold text-green-700">
@@ -495,10 +497,13 @@ export default function Checkout() {
                               <Phone size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
                               <div>
                                 <p className="text-sm font-semibold text-amber-800">
-                                  Quartier {detectedQuartier.name ? `"${detectedQuartier.name}"` : 'non reconnu'} — hors zone configurée
+                                  {detectedQuartier.name
+                                    ? t('checkout.zone_out', { name: `"${detectedQuartier.name}"` })
+                                    : t('checkout.zone_out_anon')
+                                  }
                                 </p>
                                 <p className="text-xs text-amber-700 mt-0.5">
-                                  Le restaurant vous contactera pour confirmer la disponibilité et les frais de livraison.
+                                  {t('checkout.zone_out_desc')}
                                 </p>
                               </div>
                             </div>
@@ -512,22 +517,22 @@ export default function Checkout() {
                     <div className="md:col-span-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-3">
                       <Store size={18} className="text-green-600 flex-shrink-0" />
                       <div>
-                        <p className="text-sm font-semibold text-green-800">Retrait chez {cart.restaurantName}</p>
-                        <p className="text-xs text-green-600 mt-0.5">Vous recevrez une notification quand votre commande sera prête</p>
+                        <p className="text-sm font-semibold text-green-800">{t('checkout.pickup_ready', { name: cart.restaurantName })}</p>
+                        <p className="text-xs text-green-600 mt-0.5">{t('checkout.pickup_ready_desc')}</p>
                       </div>
                     </div>
                   )}
 
                   <div className="md:col-span-2">
                     <label className="block text-xs font-medium text-gray-500 mb-1">
-                      <FileText size={12} className="inline mr-1" /> Notes (optionnel)
+                      <FileText size={12} className="inline mr-1" /> {t('checkout.notes')}
                     </label>
                     <textarea
                       value={form.notes}
                       onChange={e => updateForm('notes', e.target.value)}
                       placeholder={isPickup
-                        ? "Heure de retrait souhaitée, allergies..."
-                        : "Instructions spéciales, code d'accès, étage..."
+                        ? t('checkout.notes_pickup')
+                        : t('checkout.notes_delivery')
                       }
                       rows={2}
                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-gold/50 resize-none"
@@ -540,20 +545,20 @@ export default function Checkout() {
               {!isPickup && estimatedTime && (
                 <div className="bg-gradient-to-r from-gold/10 to-gold/5 rounded-2xl p-5 border border-gold/20">
                   <h3 className="font-serif font-bold text-dark text-sm mb-3 flex items-center gap-2">
-                    <Clock size={16} className="text-gold" /> Temps estimé de livraison
+                    <Clock size={16} className="text-gold" /> {t('checkout.est_time_title')}
                   </h3>
                   <div className="grid grid-cols-3 gap-3 text-center">
                     <div className="bg-white rounded-xl p-3">
                       <p className="text-lg font-bold text-dark">{estimatedTime.prep} min</p>
-                      <p className="text-xs text-muted">Préparation</p>
+                      <p className="text-xs text-muted">{t('checkout.prep')}</p>
                     </div>
                     <div className="bg-white rounded-xl p-3">
                       <p className="text-lg font-bold text-dark">{estimatedTime.travel} min</p>
-                      <p className="text-xs text-muted">Trajet ({estimatedTime.distance} km)</p>
+                      <p className="text-xs text-muted">{t('checkout.travel', { distance: estimatedTime.distance })}</p>
                     </div>
                     <div className="bg-gold/20 rounded-xl p-3">
                       <p className="text-lg font-bold text-gold-dark">{estimatedTime.total} min</p>
-                      <p className="text-xs text-gold-dark font-semibold">Total estimé</p>
+                      <p className="text-xs text-gold-dark font-semibold">{t('checkout.total_estimated')}</p>
                     </div>
                   </div>
                 </div>
@@ -562,7 +567,7 @@ export default function Checkout() {
               {/* Payment methods */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05]">
                 <h2 className="font-serif font-bold text-dark text-lg mb-5 flex items-center gap-2">
-                  <CreditCard size={18} className="text-gold" /> Mode de paiement
+                  <CreditCard size={18} className="text-gold" /> {t('checkout.payment_title')}
                 </h2>
                 <div className="space-y-3">
                   {PAYMENT_METHODS.map(method => (
@@ -592,7 +597,7 @@ export default function Checkout() {
                           <span className="text-sm font-semibold text-dark">{method.label}</span>
                           {!method.available && (
                             <span className="bg-dark/10 text-dark/50 text-[0.6rem] font-bold px-2 py-0.5 rounded-full uppercase flex items-center gap-1">
-                              <Lock size={8} /> Coming soon
+                              <Lock size={8} /> {t('checkout.coming_soon')}
                             </span>
                           )}
                         </div>
@@ -607,13 +612,18 @@ export default function Checkout() {
             {/* Right: Order summary */}
             <div>
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05] sticky top-24">
-                <h2 className="font-serif font-bold text-dark text-lg mb-5">Résumé</h2>
+                <h2 className="font-serif font-bold text-dark text-lg mb-5">{t('checkout.summary')}</h2>
 
                 {/* Mode badge */}
                 <div className={`flex items-center gap-2 mb-4 px-3 py-2 rounded-lg text-xs font-bold ${isPickup ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'
                   }`}>
                   {isPickup ? <Store size={14} /> : <Truck size={14} />}
-                  {isPickup ? 'Retrait sur place' : detectedQuartier?.matched ? `Livraison — ${detectedQuartier.zone.quartier}` : 'Livraison à domicile'}
+                  {isPickup
+                    ? t('checkout.mode_pickup')
+                    : detectedQuartier?.matched
+                      ? t('checkout.mode_delivery_zone', { zone: detectedQuartier.zone.quartier })
+                      : t('checkout.mode_delivery')
+                  }
                 </div>
 
                 <div className="space-y-3 mb-5">
@@ -631,19 +641,19 @@ export default function Checkout() {
 
                 <div className="border-t border-black/[0.06] pt-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted">Sous-total</span>
+                    <span className="text-muted">{t('checkout.subtotal')}</span>
                     <span className="text-dark">{subtotal.toFixed(2)} MAD</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted">
-                      {isPickup ? 'Retrait' : 'Livraison'}
+                      {isPickup ? t('checkout.pickup_fee') : t('checkout.delivery_fee')}
                     </span>
                     <span className={`font-semibold ${isPickup ? 'text-green-600' : detectedQuartier?.matched ? 'text-dark' : 'text-amber-600'}`}>
                       {isPickup
-                        ? 'Gratuit'
+                        ? t('checkout.free')
                         : detectedQuartier?.matched
                           ? `${deliveryFee.toFixed(2)} MAD`
-                          : 'À confirmer'
+                          : t('checkout.to_confirm')
                       }
                     </span>
                   </div>
@@ -651,13 +661,13 @@ export default function Checkout() {
                   {/* Estimated time in summary */}
                   {!isPickup && estimatedTime && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted flex items-center gap-1"><Clock size={12} /> Estimé</span>
+                      <span className="text-muted flex items-center gap-1"><Clock size={12} /> {t('checkout.estimated')}</span>
                       <span className="text-dark font-semibold">{estimatedTime.total} min</span>
                     </div>
                   )}
 
                   <div className="flex justify-between text-lg pt-2 border-t border-black/[0.06]">
-                    <span className="font-bold text-dark">Total</span>
+                    <span className="font-bold text-dark">{t('checkout.total')}</span>
                     <span className="font-bold text-gold-dark">{total.toFixed(2)} MAD</span>
                   </div>
                 </div>
@@ -671,11 +681,11 @@ export default function Checkout() {
                   disabled={submitting}
                   className="btn btn-gold w-full justify-center text-sm mt-5 disabled:opacity-50"
                 >
-                  {submitting ? 'Envoi en cours...' : 'Confirmer la commande'}
+                  {submitting ? t('checkout.confirming') : t('checkout.confirm')}
                 </button>
 
                 <p className="text-center text-xs text-muted mt-3">
-                  En confirmant, vous acceptez nos conditions de service
+                  {t('checkout.terms')}
                 </p>
               </div>
             </div>

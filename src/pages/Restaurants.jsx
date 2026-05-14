@@ -1,27 +1,40 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { useRestaurants } from '../hooks/useRestaurants'
 import { TABS } from '../data/restaurants'
 import StarRating from '../components/ui/StarRating'
 import { getCuisineIcon } from '../lib/cuisineIcons'
-import { Search, MapPin, ShieldCheck, ArrowRight, Utensils } from 'lucide-react'
+import { Search, MapPin, ShieldCheck, ArrowRight, Utensils, Crown, Sparkles } from 'lucide-react'
 import { getGradient } from '../lib/gradients'
-
-const VILLES  = ['Toutes', 'Casablanca', 'Rabat', 'Marrakech', 'Tanger']
-const NOTES   = [{ label: 'Toutes', val: 0 }, { label: '4.5+', val: 4.5 }, { label: '4.8+', val: 4.8 }]
+import { getEffectivelyOpen } from '../lib/scheduleParser'
 
 export default function Restaurants() {
+  const { t } = useTranslation()
   const { restaurants, loading } = useRestaurants()
   const [cuisine, setCuisine]   = useState('all')
-  const [ville,   setVille]     = useState('Toutes')
+  const [ville,   setVille]     = useState('')
   const [note,    setNote]      = useState(0)
   const [search,  setSearch]    = useState('')
   const ref = useScrollReveal()
 
+  const VILLES = [
+    { label: t('restaurants_page.all'), val: '' },
+    { label: 'Casablanca', val: 'Casablanca' },
+    { label: 'Rabat', val: 'Rabat' },
+    { label: 'Marrakech', val: 'Marrakech' },
+    { label: 'Tanger', val: 'Tanger' },
+  ]
+  const NOTES = [
+    { label: t('restaurants_page.all'), val: 0 },
+    { label: '4.5+', val: 4.5 },
+    { label: '4.8+', val: 4.8 },
+  ]
+
   const filtered = useMemo(() => restaurants.filter(r => {
     if (cuisine !== 'all' && r.cuisine !== cuisine) return false
-    if (ville !== 'Toutes' && r.location !== ville) return false
+    if (ville !== '' && r.location !== ville) return false
     if (note > 0 && (r.reviews === 0 || r.rating === null || r.rating < note)) return false
     if (search && !r.name.toLowerCase().includes(search.toLowerCase()) &&
         !r.cuisine_label.toLowerCase().includes(search.toLowerCase())) return false
@@ -35,12 +48,12 @@ export default function Restaurants() {
         <div className="absolute inset-0 zellige-pattern opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-dark/80" />
         <div className="relative max-w-6xl mx-auto px-6 text-center">
-          <p className="section-label" data-reveal>Explorer</p>
+          <p className="section-label" data-reveal>{t('nav.explore')}</p>
           <h1 className="font-serif text-4xl md:text-5xl font-black text-white mb-4" data-reveal data-delay="0.1s">
-            Tous les <em style={{ color: '#c5611a', fontStyle: 'italic' }}>Restaurants</em>
+            {t('restaurants_page.title')}
           </h1>
           <p className="text-light/70 max-w-xl mx-auto" data-reveal data-delay="0.2s">
-            {restaurants.length} restaurants et cuisiniers de la diaspora au Maroc
+            {t('restaurants_page.subtitle')}
           </p>
         </div>
       </div>
@@ -55,7 +68,7 @@ export default function Restaurants() {
             </span>
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher un restaurant, une cuisine…"
+              placeholder={t('restaurants_page.search_placeholder')}
               className="w-full pl-11 pr-4 py-3 rounded-xl border border-black/10 bg-cream text-dark text-sm
                          focus:outline-none focus:border-gold transition-all"
             />
@@ -64,55 +77,57 @@ export default function Restaurants() {
           <div className="flex flex-wrap gap-3">
             {/* Cuisine */}
             <div className="flex-1 min-w-[160px]">
-              <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">Cuisine</label>
+              <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">{t('restaurants_page.cuisine')}</label>
               <select value={cuisine} onChange={e => setCuisine(e.target.value)}
                 className="w-full bg-cream border border-black/10 rounded-xl px-3 py-2.5 text-dark text-sm focus:outline-none focus:border-gold">
-                {TABS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                {TABS.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
               </select>
             </div>
             {/* Ville */}
             <div className="flex-1 min-w-[140px]">
-              <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">Ville</label>
+              <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">{t('restaurants_page.city')}</label>
               <select value={ville} onChange={e => setVille(e.target.value)}
                 className="w-full bg-cream border border-black/10 rounded-xl px-3 py-2.5 text-dark text-sm focus:outline-none focus:border-gold">
-                {VILLES.map(v => <option key={v}>{v}</option>)}
+                {VILLES.map(v => <option key={v.val} value={v.val}>{v.label}</option>)}
               </select>
             </div>
             {/* Note */}
             <div className="flex-1 min-w-[140px]">
-              <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">Note minimum</label>
+              <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">{t('restaurants_page.min_rating')}</label>
               <select value={note} onChange={e => setNote(parseFloat(e.target.value))}
                 className="w-full bg-cream border border-black/10 rounded-xl px-3 py-2.5 text-dark text-sm focus:outline-none focus:border-gold">
                 {NOTES.map(n => <option key={n.val} value={n.val}>{n.label}</option>)}
               </select>
             </div>
             {/* Reset */}
-            <button onClick={() => { setCuisine('all'); setVille('Toutes'); setNote(0); setSearch('') }}
+            <button onClick={() => { setCuisine('all'); setVille(''); setNote(0); setSearch('') }}
               className="self-end px-4 py-2.5 rounded-xl border border-black/10 text-muted text-sm hover:text-gold hover:border-gold transition-all">
-              Réinitialiser
+              {t('hero.reset')}
             </button>
           </div>
         </div>
 
         {/* Results count */}
         <p className="text-muted text-sm mb-6" data-reveal>
-          <span className="text-dark font-semibold">{filtered.length}</span> résultat{filtered.length !== 1 ? 's' : ''}
+          <span className="text-dark font-semibold">{filtered.length}</span>{' '}
+          {filtered.length === 1 ? t('restaurants_page.results_one') : t('restaurants_page.results_other')}
         </p>
 
         {loading ? (
-          <div className="text-center py-24 text-muted">Chargement…</div>
+          <div className="text-center py-24 text-muted">{t('restaurants_page.loading')}</div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-24">
             <div className="flex justify-center mb-4">
               <Utensils size={56} className="text-gold" />
             </div>
-            <h3 className="font-serif text-xl font-bold text-dark mb-2">Aucun résultat</h3>
-            <p className="text-muted">Essayez de modifier vos filtres ou votre recherche.</p>
+            <h3 className="font-serif text-xl font-bold text-dark mb-2">{t('restaurants_page.no_results')}</h3>
+            <p className="text-muted">{t('restaurants_page.no_results_sub')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
             {filtered.map((r, i) => {
               const CuisineIcon = getCuisineIcon(r.cuisine)
+              const isOpen = getEffectivelyOpen(r)
               return (
                 <Link
                   key={r.id}
@@ -134,11 +149,27 @@ export default function Restaurants() {
                     <div className="absolute top-3 left-3 bg-dark/75 backdrop-blur-sm text-white text-[0.72rem] font-semibold px-3 py-1 rounded-full">
                       {r.flag} {r.cuisine_label}
                     </div>
-                    {r.is_verified && (
-                      <div className="absolute top-3 right-3 bg-green-500/90 text-white text-[0.68rem] font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                        <ShieldCheck size={12} /> Vérifié
+                    {r.plan === 'premium' && (
+                      <div className="absolute top-3 right-3 text-[0.65rem] font-bold px-2 py-1 rounded-full flex items-center gap-1"
+                        style={{ backgroundColor: 'rgba(197,97,26,0.90)', color: '#fff' }}>
+                        <Crown size={10} /> {t('restaurants_page.premium')}
                       </div>
                     )}
+                    {r.plan === 'pro' && (
+                      <div className="absolute top-3 right-3 text-[0.65rem] font-bold px-2 py-1 rounded-full flex items-center gap-1"
+                        style={{ backgroundColor: 'rgba(124,58,237,0.88)', color: '#fff' }}>
+                        <Sparkles size={10} /> {t('restaurants_page.pro')}
+                      </div>
+                    )}
+                    {r.plan !== 'premium' && r.plan !== 'pro' && r.is_verified && (
+                      <div className="absolute top-3 right-3 bg-green-500/90 text-white text-[0.68rem] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                        <ShieldCheck size={12} /> {t('restaurants_page.verified')}
+                      </div>
+                    )}
+                    <div className={`absolute bottom-3 left-3 text-[0.68rem] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${isOpen ? 'bg-green-500/90 text-white' : 'bg-black/60 text-white/80'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-white' : 'bg-white/50'}`} />
+                      {isOpen ? t('restaurants_page.open') : t('restaurants_page.closed')}
+                    </div>
                   </div>
                   <div className="p-5">
                     <h3 className="font-serif font-bold text-dark text-base leading-snug mb-2">{r.name}</h3>
@@ -152,11 +183,11 @@ export default function Restaurants() {
                           {r.rating} <span className="text-muted font-normal">({r.reviews})</span>
                         </span>
                       ) : (
-                        <span className="text-xs text-muted italic">Aucun avis</span>
+                        <span className="text-xs text-muted italic">{t('restaurants_page.no_reviews')}</span>
                       )}
                     </div>
                     <div className=" text-sm font-semibold flex items-center gap-1" style={{ color: '#c5611a' }}>
-                      Voir le profil <ArrowRight size={14} />
+                      {t('restaurants_page.view_profile')} <ArrowRight size={14} />
                     </div>
                   </div>
                 </Link>

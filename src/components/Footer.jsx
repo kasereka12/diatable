@@ -1,32 +1,8 @@
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Facebook, Instagram, MessageCircle, Heart, Globe } from 'lucide-react'
+import { Facebook, Instagram, MessageCircle } from 'lucide-react'
 import Logo from '../assets/LogoBlanc.png';
-
-
-const ABOUT_LINKS = [
-  { label: 'Notre histoire', to: '/a-propos' },
-  { label: 'Comment ça marche', to: '/comment-ca-marche' },
-  { label: 'Presse', to: '/presse' },
-  { label: 'Carrières', to: '/carrieres' },
-]
-
-const CUISINE_LINKS = [
-  { label: '🇸🇳 Sénégalaise', to: '/restaurants?cuisine=senegalaise' },
-  { label: '🇱🇧 Libanaise', to: '/restaurants?cuisine=libanaise' },
-  { label: '🇨🇳 Chinoise', to: '/restaurants?cuisine=chinoise' },
-  { label: '🇳🇬 Nigériane', to: '/restaurants?cuisine=nigeriane' },
-  { label: 'Toutes les cuisines', to: '/cuisines' },
-]
-
-const CONTACT_LINKS = [
-  { label: 'contact@datable.ma', href: 'mailto:contact@datable.ma' },
-  { label: '+212 76 18 41 41', href: 'tel:+21276184141' },
-  { label: 'Casablanca, Maroc', href: null },
-  { label: 'Devenir vendeur', to: '/devenir-vendeur' },
-  { label: 'Mes commandes', to: '/mes-commandes' },
-  { label: 'Aide & Support', to: '/aide' },
-]
 
 const SOCIAL = [
   { Icon: Facebook, title: 'Facebook', href: '#' },
@@ -55,11 +31,38 @@ function FooterCol({ title, links }) {
 }
 
 export default function Footer() {
+  const { t } = useTranslation()
   const { profile } = useAuth()
+
+  const ABOUT_LINKS = [
+    { label: t('footer.our_story'), to: '/a-propos' },
+    { label: t('footer.how_it_works'), to: '/comment-ca-marche' },
+    { label: t('footer.press'), to: '/presse' },
+    { label: t('footer.careers'), to: '/carrieres' },
+  ]
+
+  const CUISINE_LINKS = [
+    { label: '🇸🇳 Sénégalaise', to: '/restaurants?cuisine=senegalaise' },
+    { label: '🇱🇧 Libanaise', to: '/restaurants?cuisine=libanaise' },
+    { label: '🇨🇳 Chinoise', to: '/restaurants?cuisine=chinoise' },
+    { label: '🇳🇬 Nigériane', to: '/restaurants?cuisine=nigeriane' },
+    { label: t('footer.all_cuisines'), to: '/cuisines' },
+  ]
+
+  const CONTACT_LINKS = [
+    { label: 'contact@datable.ma', href: 'mailto:contact@datable.ma' },
+    { label: '+212 76 18 41 41', href: 'tel:+21276184141' },
+    { label: 'Casablanca, Maroc', href: null },
+    { label: t('footer.become_vendor'), to: '/devenir-vendeur' },
+    { label: t('footer.my_orders'), to: '/mes-commandes' },
+    { label: t('footer.help'), to: '/aide' },
+  ]
+
   const isVendor = profile?.role === 'vendor'
   const contactLinks = isVendor
-    ? CONTACT_LINKS.filter(l => l.label !== 'Devenir vendeur')
+    ? CONTACT_LINKS.filter(l => l.label !== t('footer.become_vendor'))
     : CONTACT_LINKS
+
   return (
     <footer id="contact" className="bg-dark border-t border-white/[0.05] pt-18 pb-0">
       <div className="max-w-6xl mx-auto px-6">
@@ -74,7 +77,7 @@ export default function Footer() {
                       />
                     </Link>
             <p className="text-muted text-sm leading-[1.7] max-w-[260px] mb-7">
-              Relier les communautés de la diaspora à travers la nourriture. Retrouvez le goût de chez vous, ici au Maroc.
+              {t('footer.tagline')}
             </p>
             <div className="flex gap-3">
               {SOCIAL.map((s) => (
@@ -92,14 +95,14 @@ export default function Footer() {
             </div>
           </div>
 
-          <FooterCol title="À propos"  links={ABOUT_LINKS} />
-          <FooterCol title="Cuisines"  links={CUISINE_LINKS} />
-          <FooterCol title="Contact"   links={contactLinks} />
+          <FooterCol title={t('footer.col_about')}    links={ABOUT_LINKS} />
+          <FooterCol title={t('footer.col_cuisines')} links={CUISINE_LINKS} />
+          <FooterCol title={t('footer.col_contact')}  links={contactLinks} />
         </div>
 
         {/* Bottom bar */}
         <div className="border-t border-white/[0.06] py-6 flex flex-wrap items-center justify-between gap-3">
-          <span className="text-muted text-xs">© 2026 DiaTable. Tous droits réservés.</span>
+          <span className="text-muted text-xs">{t('footer.copyright')}</span>
         </div>
       </div>
     </footer>

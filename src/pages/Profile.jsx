@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { getCuisineIcon } from '../lib/cuisineIcons'
@@ -8,15 +9,6 @@ import {
   Package, Heart, Settings, MapPin, Check, ChefHat, Utensils,
   MessageCircle, Clock, ArrowRight, ShoppingBag
 } from 'lucide-react'
-
-const STATUS_LABELS = {
-  pending: 'En attente',
-  confirmed: 'Confirmée',
-  preparing: 'En préparation',
-  ready: 'Prête',
-  delivered: 'Livrée',
-  cancelled: 'Annulée',
-}
 
 const STATUS_COLORS = {
   pending: 'bg-amber-50 text-amber-600',
@@ -28,17 +20,35 @@ const STATUS_COLORS = {
 }
 
 export default function Profile() {
+  const { t, i18n } = useTranslation()
   const { user, profile, signOut } = useAuth()
   const navigate = useNavigate()
-const isCustomer = !profile?.role || profile?.role === 'customer'
-const [activeTab, setActiveTab] = useState(isCustomer ? 'commandes' : 'favoris')
+  const isCustomer = !profile?.role || profile?.role === 'customer'
+  const [activeTab, setActiveTab] = useState(isCustomer ? 'commandes' : 'favoris')
   const [orders, setOrders] = useState([])
   const [favorites, setFavorites] = useState([])
   const [loadingOrders, setLoadingOrders] = useState(true)
   const [loadingFavorites, setLoadingFavorites] = useState(true)
 
-  const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utilisateur'
+  const STATUS_LABELS = {
+    pending: t('profile.status_pending'),
+    confirmed: t('profile.status_confirmed'),
+    preparing: t('profile.status_preparing'),
+    ready: t('profile.status_ready'),
+    delivered: t('profile.status_delivered'),
+    cancelled: t('profile.status_cancelled'),
+  }
+
+  const TABS = [
+    ...(isCustomer ? [{ id: 'commandes', label: t('profile.tab_orders'), Icon: Package }] : []),
+    { id: 'favoris', label: t('profile.tab_favorites'), Icon: Heart },
+    { id: 'compte', label: t('profile.tab_account'), Icon: Settings },
+  ]
+
+  const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('profile.default_user')
   const initials    = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+  const dateLocale = i18n.language?.startsWith('en') ? 'en-US' : 'fr-FR'
 
   // Fetch real orders
   useEffect(() => {
@@ -74,13 +84,6 @@ const [activeTab, setActiveTab] = useState(isCustomer ? 'commandes' : 'favoris')
     navigate('/')
   }
 
-
-const TABS = [
-  ...(isCustomer ? [{ id: 'commandes', label: 'Commandes', Icon: Package }] : []),
-  { id: 'favoris', label: 'Favoris', Icon: Heart },
-  { id: 'compte',  label: 'Mon Compte', Icon: Settings },
-]
-
   return (
     <div className="bg-cream min-h-screen pt-24">
       {/* Header */}
@@ -96,24 +99,24 @@ const TABS = [
             <p className="text-muted text-sm mt-0.5">{user?.email}</p>
             <span className="inline-flex items-center gap-1.5 mt-2 bg-gold/15 border border-gold/30 text-gold text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
               {profile?.role === 'vendor'
-                ? <><ChefHat size={12} /> Vendeur</>
+                ? <><ChefHat size={12} /> {t('profile.role_vendor')}</>
                 : profile?.role === 'admin'
-                ? <><Settings size={12} /> Admin</>
-                : <><Utensils size={12} /> Client</>
+                ? <><Settings size={12} /> {t('profile.role_admin')}</>
+                : <><Utensils size={12} /> {t('profile.role_client')}</>
               }
             </span>
           </div>
-       <div className="ml-auto flex gap-2">
-          {profile?.role === 'vendor' && (
-            <Link to="/tableau-de-bord" className="btn btn-gold text-sm">
-              Tableau de bord
-            </Link>
-          )}
-          {profile?.role === 'admin' && (
-            <Link to="/admin" className="btn btn-gold text-sm">
-              Dashboard Admin
-            </Link>
-          )}
+          <div className="ml-auto flex gap-2">
+            {profile?.role === 'vendor' && (
+              <Link to="/tableau-de-bord" className="btn btn-gold text-sm">
+                {t('profile.dashboard')}
+              </Link>
+            )}
+            {profile?.role === 'admin' && (
+              <Link to="/admin" className="btn btn-gold text-sm">
+                {t('profile.admin_dashboard')}
+              </Link>
+            )}
             <Link to="/messages" className="btn btn-outline text-sm px-4 py-2.5 flex items-center gap-1.5">
               <MessageCircle size={14} /> Messages
             </Link>
@@ -124,34 +127,34 @@ const TABS = [
       <div className="max-w-4xl mx-auto px-6 mt-4">
         {/* Nav tabs */}
         <div className="bg-white rounded-2xl shadow-sm border border-black/[0.05] p-1.5 flex gap-1 mb-8">
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)}
+          {TABS.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5
-                ${activeTab === t.id ? 'bg-gold text-dark shadow-sm' : 'text-muted hover:text-dark'}`}>
-              <t.Icon size={14} /> {t.label}
+                ${activeTab === tab.id ? 'bg-gold text-dark shadow-sm' : 'text-muted hover:text-dark'}`}>
+              <tab.Icon size={14} /> {tab.label}
             </button>
           ))}
         </div>
 
         {/* Commandes */}
         {activeTab === 'commandes' && isCustomer && (
-            <div className="space-y-4 pb-12">
+          <div className="space-y-4 pb-12">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif text-xl font-bold text-dark">Dernières commandes</h2>
+              <h2 className="font-serif text-xl font-bold text-dark">{t('profile.last_orders')}</h2>
               <Link to="/mes-commandes" className="text-gold text-sm font-semibold flex items-center gap-1 hover:underline">
-                Voir tout <ArrowRight size={14} />
+                {t('profile.see_all')} <ArrowRight size={14} />
               </Link>
             </div>
 
             {loadingOrders ? (
-              <div className="text-center py-12 text-muted text-sm">Chargement...</div>
+              <div className="text-center py-12 text-muted text-sm">{t('profile.loading')}</div>
             ) : orders.length === 0 ? (
               <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-black/[0.05]">
                 <ShoppingBag size={40} className="text-muted/20 mx-auto mb-3" />
-                <p className="font-serif font-bold text-dark mb-2">Aucune commande</p>
-                <p className="text-muted text-sm mb-5">Commandez votre premier repas !</p>
+                <p className="font-serif font-bold text-dark mb-2">{t('profile.no_orders')}</p>
+                <p className="text-muted text-sm mb-5">{t('profile.no_orders_sub')}</p>
                 <Link to="/restaurants" className="btn btn-gold text-sm">
-                  Explorer les restaurants
+                  {t('profile.explore_restaurants')}
                 </Link>
               </div>
             ) : (
@@ -172,7 +175,7 @@ const TABS = [
                     <div className="flex-1">
                       <div className="font-semibold text-dark text-sm">{o.restaurant?.name || 'Restaurant'}</div>
                       <div className="text-muted text-xs mt-0.5">
-                        {new Date(o.created_at).toLocaleDateString('fr-FR', {
+                        {new Date(o.created_at).toLocaleDateString(dateLocale, {
                           day: 'numeric', month: 'long', year: 'numeric'
                         })} · #{o.id.slice(0, 8)}
                       </div>
@@ -194,17 +197,17 @@ const TABS = [
         {/* Favoris */}
         {activeTab === 'favoris' && (
           <div className="pb-12">
-            <h2 className="font-serif text-xl font-bold text-dark mb-6">Mes restaurants favoris</h2>
+            <h2 className="font-serif text-xl font-bold text-dark mb-6">{t('profile.my_favorites')}</h2>
 
             {loadingFavorites ? (
-              <div className="text-center py-12 text-muted text-sm">Chargement...</div>
+              <div className="text-center py-12 text-muted text-sm">{t('profile.loading')}</div>
             ) : favorites.length === 0 ? (
               <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-black/[0.05]">
                 <Heart size={40} className="text-muted/20 mx-auto mb-3" />
-                <p className="font-serif font-bold text-dark mb-2">Aucun favori</p>
-                <p className="text-muted text-sm mb-5">Ajoutez des restaurants en cliquant sur le coeur</p>
+                <p className="font-serif font-bold text-dark mb-2">{t('profile.no_favorites')}</p>
+                <p className="text-muted text-sm mb-5">{t('profile.no_favorites_sub')}</p>
                 <Link to="/restaurants" className="btn btn-gold text-sm">
-                  Explorer les restaurants
+                  {t('profile.explore_restaurants')}
                 </Link>
               </div>
             ) : (
@@ -244,15 +247,15 @@ const TABS = [
         {/* Compte */}
         {activeTab === 'compte' && (
           <div className="pb-12 space-y-5">
-            <h2 className="font-serif text-xl font-bold text-dark">Informations du compte</h2>
+            <h2 className="font-serif text-xl font-bold text-dark">{t('profile.account_info')}</h2>
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05]">
               <div className="space-y-5">
                 {[
-                  { label: 'Nom complet', value: displayName },
-                  { label: 'Adresse email', value: user?.email },
-                  { label: 'Rôle', value: profile?.role === 'vendor' ? 'Vendeur' : 'Client' },
-                  { label: 'Membre depuis', value: profile?.created_at
-                    ? new Date(profile.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+                  { label: t('profile.field_name'), value: displayName },
+                  { label: t('profile.field_email'), value: user?.email },
+                  { label: t('profile.field_role'), value: profile?.role === 'vendor' ? t('profile.role_vendor') : t('profile.role_client') },
+                  { label: t('profile.field_member_since'), value: profile?.created_at
+                    ? new Date(profile.created_at).toLocaleDateString(dateLocale, { month: 'long', year: 'numeric' })
                     : 'Mars 2026'
                   },
                 ].map(f => (
@@ -263,18 +266,18 @@ const TABS = [
                 ))}
               </div>
               <button className="mt-5 w-full py-3 rounded-xl border-2 border-gold text-gold-dark font-semibold text-sm hover:bg-gold hover:text-dark transition-all">
-                Modifier mes informations
+                {t('profile.edit_info')}
               </button>
             </div>
 
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05]">
-              <h3 className="font-serif font-bold text-dark mb-4">Sécurité</h3>
+              <h3 className="font-serif font-bold text-dark mb-4">{t('profile.security')}</h3>
               <button className="w-full py-3 rounded-xl border border-black/10 text-dark text-sm font-medium hover:bg-cream transition-all mb-3">
-                Changer le mot de passe
+                {t('profile.change_password')}
               </button>
               <button onClick={handleSignOut}
                 className="w-full py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-100 transition-all">
-                Se déconnecter
+                {t('profile.sign_out')}
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import SectionHeader from './ui/SectionHeader'
 import { getCuisineIcon } from '../lib/cuisineIcons'
@@ -24,6 +25,7 @@ const CUISINE_META = {
 const DEFAULT_BG = 'linear-gradient(160deg,#1f1f1f,#c5611a)'
 
 function FeaturedCard({ f, delay = '0s' }) {
+  const { t } = useTranslation()
   const CuisineIcon = getCuisineIcon(f.cuisine)
   const meta = CUISINE_META[f.cuisine] || { bg: DEFAULT_BG, country: f.cuisine_label, dish: f.cuisine_label, desc: '' }
 
@@ -59,12 +61,12 @@ function FeaturedCard({ f, delay = '0s' }) {
         <div className="flex items-center justify-between">
           <span className="inline-flex items-center gap-1 text-sm font-semibold"
             style={{ color: '#bd9f87' }}>
-            Explorer cette cuisine
+            {t('featured.explore')}
             <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-1" />
           </span>
           {f.avg_rating && (
             <span className="text-xs" style={{ color: 'rgba(248,248,248,0.45)' }}>
-              {parseFloat(f.avg_rating).toFixed(1)} ★ · {f.count} resto{f.count > 1 ? 's' : ''}
+              {parseFloat(f.avg_rating).toFixed(1)} ★ · {f.count} {f.count > 1 ? t('featured.restos_other') : t('featured.restos_one')}
             </span>
           )}
         </div>
@@ -74,6 +76,7 @@ function FeaturedCard({ f, delay = '0s' }) {
 }
 
 export default function FeaturedCuisines() {
+  const { t } = useTranslation()
   const ref = useScrollReveal()
   const [featured, setFeatured] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -110,7 +113,7 @@ export default function FeaturedCuisines() {
   return (
     <section id="cuisines" className="py-24" style={{ backgroundColor: '#eae5d9' }} ref={ref}>
       <div className="max-w-6xl mx-auto px-6">
-        <SectionHeader label="Les Plus Populaires" title="Cuisines les plus <em>Aimées</em>" />
+        <SectionHeader label={t('featured.label')} title={t('featured.title')} />
         {loading ? (
           <div className="flex justify-center py-16">
             <div className="w-10 h-10 rounded-full animate-spin"
@@ -118,7 +121,7 @@ export default function FeaturedCuisines() {
           </div>
         ) : featured.length === 0 ? (
           <p className="text-center py-12" style={{ color: '#bd9f87' }}>
-            Aucune cuisine disponible pour le moment.
+            {t('featured.no_cuisine')}
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

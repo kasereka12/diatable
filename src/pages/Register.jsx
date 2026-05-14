@@ -1,26 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
-import { Globe, Utensils, ChefHat, Check, Sparkles, Eye, EyeOff } from 'lucide-react'
+import { Utensils, ChefHat, Check, Sparkles, Eye, EyeOff } from 'lucide-react'
 import Logo from '../assets/Logo.png';
 
-
-const ROLES = [
-  {
-    id: 'client',
-    Icon: Utensils,
-    title: 'Je cherche de la nourriture',
-    desc: 'Trouvez des cuisines authentiques de votre pays ou découvrez de nouvelles saveurs au Maroc.',
-  },
-  {
-    id: 'vendor',
-    Icon: ChefHat,
-    title: 'Je cuisine & vends',
-    desc: 'Référencez votre restaurant, cuisine à domicile ou pop-up et touchez des milliers d\'expatriés.',
-  },
-]
-
 export default function Register() {
+  const { t } = useTranslation()
   const { signUp, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -35,10 +21,41 @@ export default function Register() {
   const [loading,  setLoading]  = useState(false)
   const [showPwd,  setShowPwd]  = useState(false)
 
+  const ROLES = [
+    {
+      id: 'client',
+      Icon: Utensils,
+      title: t('register_page.role_client'),
+      desc: t('register_page.role_client_desc'),
+    },
+    {
+      id: 'vendor',
+      Icon: ChefHat,
+      title: t('register_page.role_vendor'),
+      desc: t('register_page.role_vendor_desc'),
+    },
+  ]
+
+  const strengthLabels = [
+    t('register_page.strength_weak'),
+    t('register_page.strength_ok'),
+    t('register_page.strength_good'),
+    t('register_page.strength_strong'),
+  ]
+
+  function getStrength(pwd) {
+    return (
+      (pwd.length >= 6 ? 1 : 0) +
+      (pwd.length >= 8 ? 1 : 0) +
+      (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd) ? 1 : 0) +
+      (/\d/.test(pwd) || /[^a-zA-Z0-9]/.test(pwd) ? 1 : 0)
+    )
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
-    if (password !== confirm) { setError('Les mots de passe ne correspondent pas.'); return }
-    if (password.length < 6)  { setError('Le mot de passe doit contenir au moins 6 caractères.'); return }
+    if (password !== confirm) { setError(t('register_page.pwd_mismatch')); return }
+    if (password.length < 6)  { setError(t('register_page.pwd_short')); return }
     setError('')
     setLoading(true)
     const { error } = await signUp(email, password, fullName, role)
@@ -52,7 +69,6 @@ export default function Register() {
     if (error) setError(error.message)
   }
 
-  // Shared input style helpers
   const inputBase = {
     backgroundColor: 'rgba(248,248,248,0.06)',
     border: '1px solid rgba(248,248,248,0.10)',
@@ -75,16 +91,12 @@ export default function Register() {
 
       <div className="relative flex-1 flex flex-col items-center justify-center px-4 py-20">
         {/* Logo */}
-            <div className="flex justify-center mb-8">
-              <Link to="/" aria-label="DiaTable - Accueil">
-                <img
-                  src={Logo}
-                  alt="DiaTable"
-                  className="h-16 w-auto object-contain"
-                />
-              </Link>
-            </div>
-        
+        <div className="flex justify-center mb-8">
+          <Link to="/" aria-label="DiaTable">
+            <img src={Logo} alt="DiaTable" className="h-16 w-auto object-contain" />
+          </Link>
+        </div>
+
         {/* Step indicator */}
         <div className="flex items-center gap-2 mb-8">
           {[1, 2].map(s => (
@@ -115,11 +127,11 @@ export default function Register() {
             {step === 1 && (
               <>
                 <div className="flex items-center gap-3 mb-1">
-                  <h1 className="font-serif text-2xl font-bold" style={{ color: '#f8f8f8' }}>Bienvenue !</h1>
+                  <h1 className="font-serif text-2xl font-bold" style={{ color: '#f8f8f8' }}>{t('register_page.step1_title')}</h1>
                   <Sparkles size={24} style={{ color: '#c5611a' }} />
                 </div>
                 <p className="text-sm mb-8" style={{ color: '#80716a' }}>
-                  Comment souhaitez-vous utiliser DiaTable ?
+                  {t('register_page.subtitle')}
                 </p>
 
                 <div className="space-y-3 mb-8">
@@ -172,7 +184,7 @@ export default function Register() {
                     e.currentTarget.style.boxShadow = 'none'
                   }}
                 >
-                  Continuer →
+                  {t('register_page.continue')} →
                 </button>
               </>
             )}
@@ -181,12 +193,12 @@ export default function Register() {
             {step === 2 && (
               <>
                 <h1 className="font-serif text-2xl font-bold mb-1" style={{ color: '#f8f8f8' }}>
-                  Créer votre compte
+                  {t('register_page.title')}
                 </h1>
                 <p className="text-sm mb-6" style={{ color: '#80716a' }}>
-                  En tant que{' '}
+                  {t('register_page.step2_title')}{' '}
                   <span className="font-semibold" style={{ color: '#c5611a' }}>
-                    {role === 'vendor' ? 'vendeur' : 'client'}
+                    {role === 'vendor' ? t('register_page.role_vendor') : t('register_page.role_client')}
                   </span>
                 </p>
 
@@ -204,22 +216,22 @@ export default function Register() {
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
-                  Continuer avec Google
+                  {t('register_page.google_btn')}
                 </button>
 
                 <div className="flex items-center gap-3 mb-5">
                   <div className="flex-1 h-px" style={{ backgroundColor: 'rgba(248,248,248,0.10)' }} />
-                  <span className="text-xs" style={{ color: '#80716a' }}>ou par email</span>
+                  <span className="text-xs" style={{ color: '#80716a' }}>{t('register_page.or_email')}</span>
                   <div className="flex-1 h-px" style={{ backgroundColor: 'rgba(248,248,248,0.10)' }} />
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Nom */}
+                  {/* Name */}
                   <div>
                     <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide"
-                      style={{ color: 'rgba(248,248,248,0.60)' }}>Nom complet</label>
+                      style={{ color: 'rgba(248,248,248,0.60)' }}>{t('register_page.name_label')}</label>
                     <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} required
-                      placeholder="Aminata Sow"
+                      placeholder={t('register_page.name_placeholder')}
                       className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-all"
                       style={inputBase} onFocus={inputFocus} onBlur={inputBlur} />
                   </div>
@@ -227,21 +239,21 @@ export default function Register() {
                   {/* Email */}
                   <div>
                     <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide"
-                      style={{ color: 'rgba(248,248,248,0.60)' }}>Email</label>
+                      style={{ color: 'rgba(248,248,248,0.60)' }}>{t('register_page.email_label')}</label>
                     <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                      placeholder="vous@exemple.com"
+                      placeholder={t('register_page.email_placeholder')}
                       className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-all"
                       style={inputBase} onFocus={inputFocus} onBlur={inputBlur} />
                   </div>
 
-                  {/* Mot de passe */}
+                  {/* Password */}
                   <div>
                     <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide"
-                      style={{ color: 'rgba(248,248,248,0.60)' }}>Mot de passe</label>
+                      style={{ color: 'rgba(248,248,248,0.60)' }}>{t('register_page.pwd_label')}</label>
                     <div className="relative">
                       <input type={showPwd ? 'text' : 'password'} value={password}
                         onChange={e => setPassword(e.target.value)} required
-                        placeholder="Minimum 6 caractères"
+                        placeholder={t('register_page.pwd_placeholder')}
                         className="w-full rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none transition-all"
                         style={inputBase} onFocus={inputFocus} onBlur={inputBlur} />
                       <button type="button" onClick={() => setShowPwd(v => !v)}
@@ -252,16 +264,11 @@ export default function Register() {
                         {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
-                    {/* Indicateur de force */}
                     {password && (
                       <div className="mt-2">
                         <div className="flex gap-1">
                           {[1, 2, 3, 4].map(level => {
-                            const strength =
-                              (password.length >= 6 ? 1 : 0) +
-                              (password.length >= 8 ? 1 : 0) +
-                              (/[A-Z]/.test(password) && /[a-z]/.test(password) ? 1 : 0) +
-                              (/\d/.test(password) || /[^a-zA-Z0-9]/.test(password) ? 1 : 0)
+                            const strength = getStrength(password)
                             const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e']
                             return (
                               <div key={level} className="h-1 flex-1 rounded-full transition-all"
@@ -270,16 +277,16 @@ export default function Register() {
                           })}
                         </div>
                         <p className="text-[0.65rem] mt-1" style={{ color: '#80716a' }}>
-                          {password.length < 6 ? 'Trop court' : password.length < 8 ? 'Acceptable' : 'Bon mot de passe'}
+                          {strengthLabels[getStrength(password) - 1] || strengthLabels[0]}
                         </p>
                       </div>
                     )}
                   </div>
 
-                  {/* Confirmer */}
+                  {/* Confirm */}
                   <div>
                     <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide"
-                      style={{ color: 'rgba(248,248,248,0.60)' }}>Confirmer le mot de passe</label>
+                      style={{ color: 'rgba(248,248,248,0.60)' }}>{t('register_page.pwd_confirm_label')}</label>
                     <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required
                       placeholder="••••••••"
                       className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-all"
@@ -302,7 +309,7 @@ export default function Register() {
                     />
                     {confirm && confirm !== password && (
                       <p className="text-xs mt-1" style={{ color: '#f87171' }}>
-                        Les mots de passe ne correspondent pas
+                        {t('register_page.pwd_mismatch')}
                       </p>
                     )}
                   </div>
@@ -320,7 +327,7 @@ export default function Register() {
                       style={{ border: '1px solid rgba(248,248,248,0.20)', color: '#f8f8f8' }}
                       onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(248,248,248,0.05)'}
                       onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                      ← Retour
+                      ← {t('register_page.back')}
                     </button>
                     <button type="submit" disabled={loading}
                       className="flex-[2] font-semibold py-3.5 rounded-xl transition-all text-sm disabled:opacity-60"
@@ -335,7 +342,7 @@ export default function Register() {
                         e.currentTarget.style.backgroundColor = '#c5611a'
                         e.currentTarget.style.boxShadow = 'none'
                       }}>
-                      {loading ? 'Création…' : 'Créer mon compte'}
+                      {loading ? t('register_page.submit_loading') : t('register_page.submit')}
                     </button>
                   </div>
                 </form>
@@ -344,12 +351,12 @@ export default function Register() {
           </div>
 
           <p className="text-center text-sm mt-6" style={{ color: '#80716a' }}>
-            Déjà un compte ?{' '}
+            {t('register_page.already_account')}{' '}
             <Link to="/connexion" className="font-semibold transition-colors"
               style={{ color: '#c5611a' }}
               onMouseEnter={e => e.currentTarget.style.color = '#d9722a'}
               onMouseLeave={e => e.currentTarget.style.color = '#c5611a'}>
-              Se connecter
+              {t('register_page.sign_in')}
             </Link>
           </p>
         </div>

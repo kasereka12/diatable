@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { useAuth } from '../context/AuthContext'
 import { ChefHat } from 'lucide-react'
 
 export default function VendorCTA() {
+  const { t } = useTranslation()
   const ref = useScrollReveal()
   const { profile } = useAuth()
   if (profile?.role === 'vendor') return null
@@ -26,20 +28,19 @@ export default function VendorCTA() {
           className="font-serif font-black text-dark leading-[1.15] mb-4"
           style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)' }}
         >
-          Vous Cuisinez les Plats de Votre Pays au Maroc ?
+          {t('vendor_cta.title')}
         </h2>
 
         <p className="text-dark/70 text-[1.05rem] leading-[1.65] mb-9 max-w-xl mx-auto">
-          Rejoignez DiaTable et touchez des milliers d'expatriés qui cherchent votre cuisine.
-          Référencez votre restaurant, cuisine à domicile ou pop-up gratuitement.
+          {t('vendor_cta.desc')}
         </p>
 
         <a href="#contact" className="btn btn-dark text-base px-9 py-4">
-          Devenir Vendeur
+          {t('vendor_cta.button')}
         </a>
 
         <p className="mt-4 text-xs text-dark/55">
-          Inscription gratuite · Aucune commission les 3 premiers mois · Rejoignez 200+ vendeurs déjà sur DiaTable
+          {t('vendor_cta.sub')}
         </p>
       </div>
     </section>
