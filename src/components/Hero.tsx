@@ -195,14 +195,9 @@ export default function Hero() {
       >
         <div className="w-full max-w-7xl mx-auto px-6 md:px-12 pb-20 md:pb-28">
 
-          {/* Content area — crossfade between headline and restaurant info */}
-          <div className="relative">
-
-            {/* Slide 0 — headline + subtitle */}
-            <div
-              className="transition-opacity duration-700"
-              style={{ opacity: isStatic ? 1 : 0, pointerEvents: isStatic ? 'auto' : 'none' }}
-            >
+          {/* Content area */}
+          {isStatic ? (
+            <div key="static" style={{ animation: 'fadeInUp 0.6s ease both' }}>
               <h1
                 className="font-serif font-black leading-[1.05] tracking-tight text-white"
                 style={{ fontSize: 'clamp(2.4rem, 6vw, 5rem)', textShadow: '0 4px 24px rgba(0,0,0,0.45)' }}
@@ -219,38 +214,30 @@ export default function Hero() {
                 {t('hero.subtext')}
               </p>
             </div>
-
-            {/* Slides 1..n — restaurant spotlight */}
-            <div
-              className="absolute inset-0 transition-opacity duration-700"
-              style={{ opacity: isStatic ? 0 : 1, pointerEvents: isStatic ? 'none' : 'auto' }}
-            >
-              {currentRestaurant && (
-                <>
-                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.22em] mb-3"
-                    style={{ color: '#f4a828' }}>
-                    {currentRestaurant.flag}&nbsp; {currentRestaurant.cuisine_label}
-                  </p>
-                  <h2
-                    className="font-serif font-black text-white leading-[1.05] tracking-tight mb-4"
-                    style={{ fontSize: 'clamp(2rem, 5vw, 4rem)', textShadow: '0 4px 24px rgba(0,0,0,0.55)' }}
-                  >
-                    {currentRestaurant.name}
-                  </h2>
-                  <p className="text-white/60 text-sm flex items-center gap-1.5 mb-7">
-                    <MapPin size={13} /> {currentRestaurant.location}
-                  </p>
-                  <Link
-                    to={`/restaurants/${currentRestaurant.id}`}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm text-dark transition-all hover:shadow-[0_8px_24px_rgba(244,168,40,0.45)] hover:-translate-y-0.5"
-                    style={{ backgroundColor: '#f4a828' }}
-                  >
-                    Découvrir ce restaurant <ArrowRight size={15} />
-                  </Link>
-                </>
-              )}
+          ) : currentRestaurant ? (
+            <div key={currentRestaurant.id} style={{ animation: 'fadeInUp 0.6s ease both' }}>
+              <p className="text-[0.68rem] font-bold uppercase tracking-[0.22em] mb-3"
+                style={{ color: '#f4a828' }}>
+                {currentRestaurant.flag}&nbsp; {currentRestaurant.cuisine_label}
+              </p>
+              <h2
+                className="font-serif font-black text-white leading-[1.05] tracking-tight mb-4"
+                style={{ fontSize: 'clamp(2rem, 5vw, 4rem)', textShadow: '0 4px 24px rgba(0,0,0,0.55)' }}
+              >
+                {currentRestaurant.name}
+              </h2>
+              <p className="text-white/60 text-sm flex items-center gap-1.5 mb-7">
+                <MapPin size={13} /> {currentRestaurant.location}
+              </p>
+              <Link
+                to={`/restaurants/${currentRestaurant.id}`}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm text-dark transition-all hover:shadow-[0_8px_24px_rgba(244,168,40,0.45)] hover:-translate-y-0.5"
+                style={{ backgroundColor: '#f4a828' }}
+              >
+                Découvrir ce restaurant <ArrowRight size={15} />
+              </Link>
             </div>
-          </div>
+          ) : null}
 
           {/* Dots — visible only when restaurant slides exist */}
           {slides.length > 0 && (
