@@ -162,6 +162,12 @@ export interface Database {
           estimated_time: number | null
           delivery_mode: 'delivery' | 'pickup'
           delivery_zone: string | null
+          delivery_lat: number | null
+          delivery_lng: number | null
+          estimated_delivery_at: string | null
+          estimated_prep_min: number | null
+          driver_id: string | null
+          driver_name: string | null
           created_at: string
           updated_at: string
         }
@@ -182,10 +188,51 @@ export interface Database {
           estimated_time?: number | null
           delivery_mode?: 'delivery' | 'pickup'
           delivery_zone?: string | null
+          delivery_lat?: number | null
+          delivery_lng?: number | null
+          estimated_delivery_at?: string | null
+          estimated_prep_min?: number | null
+          driver_id?: string | null
+          driver_name?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: Partial<Database['public']['Tables']['orders']['Insert']>
+      }
+      delivery_drivers: {
+        Row: {
+          id: string
+          profile_id: string | null
+          type: 'external' | 'restaurant'
+          restaurant_id: string | null
+          full_name: string
+          phone: string | null
+          email: string | null
+          vehicle_type: 'moto' | 'voiture' | 'velo' | 'pieton' | null
+          is_active: boolean
+          is_available: boolean
+          current_lat: number | null
+          current_lng: number | null
+          location_updated_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          profile_id?: string | null
+          type: 'external' | 'restaurant'
+          restaurant_id?: string | null
+          full_name: string
+          phone?: string | null
+          email?: string | null
+          vehicle_type?: 'moto' | 'voiture' | 'velo' | 'pieton' | null
+          is_active?: boolean
+          is_available?: boolean
+          current_lat?: number | null
+          current_lng?: number | null
+          location_updated_at?: string | null
+          created_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['delivery_drivers']['Insert']>
       }
       order_items: {
         Row: {
@@ -477,6 +524,7 @@ export type Notification        = Database['public']['Tables']['notifications'][
 export type Subscription        = Database['public']['Tables']['subscriptions']['Row']
 export type SubscriptionPayment = Database['public']['Tables']['subscription_payments']['Row']
 export type DeliveryZone        = Database['public']['Tables']['delivery_zones']['Row']
+export type DeliveryDriver      = Database['public']['Tables']['delivery_drivers']['Row']
 export type RestaurantLike      = Database['public']['Tables']['restaurant_likes']['Row']
 export type Testimonial         = Database['public']['Tables']['testimonials']['Row']
 export type Dish                = Database['public']['Tables']['dishes']['Row']

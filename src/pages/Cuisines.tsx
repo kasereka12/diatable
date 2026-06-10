@@ -78,8 +78,20 @@ export default function Cuisines() {
       {/* Grid */}
       <div className="max-w-6xl mx-auto px-6 py-16">
         {loading ? (
-          <div className="flex justify-center py-24">
-            <div className="w-10 h-10 rounded-full border-4 border-gold/30 border-t-gold animate-spin" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl overflow-hidden border border-black/[0.05] animate-pulse">
+                <div className="h-28 bg-black/[0.06]" />
+                <div className="p-4 space-y-2.5">
+                  <div className="h-4 bg-black/[0.06] rounded w-2/3" />
+                  <div className="h-3 bg-black/[0.06] rounded w-1/2" />
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="h-5 bg-black/[0.06] rounded-full w-20" />
+                    <div className="h-3 bg-black/[0.06] rounded w-8" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : cuisines.length === 0 ? (
           <div className="text-center py-24">

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import type React from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
-import { Utensils, ChefHat, Check, Sparkles, Eye, EyeOff } from 'lucide-react'
+import { Utensils, ChefHat, Bike, Check, Sparkles, Eye, EyeOff } from 'lucide-react'
 import Logo from '../assets/Logo.png'
 import { registerSchema, flattenErrors } from '../lib/schemas'
 
@@ -36,6 +37,12 @@ export default function Register() {
       Icon: ChefHat,
       title: t('register_page.role_vendor'),
       desc: t('register_page.role_vendor_desc'),
+    },
+    {
+      id: 'driver',
+      Icon: Bike,
+      title: 'Livreur',
+      desc: 'Livrez des commandes pour les restaurants DiaTable.',
     },
   ]
 
@@ -176,7 +183,7 @@ export default function Register() {
                 </div>
 
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => role === 'driver' ? navigate('/connexion-livreur') : setStep(2)}
                   className="w-full font-semibold py-3.5 rounded-xl transition-all text-sm"
                   style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}
                   onMouseEnter={e => {

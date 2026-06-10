@@ -16,6 +16,9 @@ interface AuthContextValue {
   signUp:            (email: string, password: string, fullName: string, role?: string) => Promise<AuthResult>
   signOut:           () => Promise<void>
   signInWithGoogle:  () => Promise<AuthResult>
+  signInWithMagicLink: (email: string) => Promise<AuthResult>
+  signInWithPhone:     (phone: string) => Promise<AuthResult>
+  verifyPhoneOtp:      (phone: string, token: string) => Promise<AuthResult>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -140,12 +143,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/profil` } })
   }
 
+  async function signInWithMagicLink(email: string): Promise<AuthResult> {
+    if (!supabase) return { error: { message: 'Supabase non configuré' } }
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/livreur` },
+    })
+    return { error: error ? { message: error.message } : null }
+  }
+
+  async function signInWithPhone(phone: string): Promise<AuthResult> {
+    if (!supabase) return { error: { message: 'Supabase non configuré' } }
+    const { error } = await supabase.auth.signInWithOtp({ phone })
+    return { error: error ? { message: error.message } : null }
+  }
+
+  async function verifyPhoneOtp(phone: string, token: string): Promise<AuthResult> {
+    if (!supabase) return { error: { message: 'Supabase non configuré' } }
+    const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' })
+    return { data, error: error ? { message: error.message } : null }
+  }
+
   const isVendor = profile?.role === 'vendor'
   const isClient = profile?.role === 'client' || (!profile && !!user)
   const isAdmin  = profile?.role === 'admin'
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isVendor, isClient, isAdmin, signIn, signUp, signOut, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, profile, loading, isVendor, isClient, isAdmin, signIn, signUp, signOut, signInWithGoogle, signInWithMagicLink, signInWithPhone, verifyPhoneOtp }}>
       {children}
     </AuthContext.Provider>
   )

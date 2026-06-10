@@ -1,0 +1,253 @@
+import { useState, useEffect } from 'react'
+import type React from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Globe, Bike, CheckCircle, AlertCircle, Mail } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
+
+interface Restaurant { id: string; name: string; flag: string }
+
+const VEHICLE_OPTIONS = [
+  { value: 'moto',    label: '🛵 Moto' },
+  { value: 'voiture', label: '🚗 Voiture' },
+  { value: 'velo',    label: '🚲 Vélo' },
+  { value: 'pieton',  label: '🚶 Piéton' },
+]
+
+export default function DriverOnboarding() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
+  const [form, setForm] = useState({
+    full_name:    '',
+    phone:        '',
+    email:        '',
+    vehicle_type: 'moto',
+    type:         'external' as 'external' | 'restaurant',
+    restaurant_id: '',
+  })
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [loading,  setLoading]  = useState(false)
+  const [success,  setSuccess]  = useState(false)
+  const [error,    setError]    = useState('')
+
+  useEffect(() => {
+    if (form.type === 'restaurant') {
+      supabase.from('restaurants').select('id, name, flag').eq('is_active', true).order('name')
+        .then(({ data }) => setRestaurants((data || []) as Restaurant[]))
+    }
+  }, [form.type])
+
+  function set(field: string, value: string) {
+    setForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    if (!form.full_name.trim()) return setError('Le nom complet est requis.')
+    if (!form.phone.trim())     return setError('Le numéro de téléphone est requis.')
+    if (!form.email.trim())     return setError('L\'adresse email est requise pour la connexion.')
+    if (form.type === 'restaurant' && !form.restaurant_id) return setError('Choisissez un restaurant.')
+
+    setLoading(true)
+    const { error: dbErr } = await supabase.from('delivery_drivers').insert({
+      profile_id:    user?.id ?? null,
+      full_name:     form.full_name.trim(),
+      phone:         form.phone.trim(),
+      email:         form.email.trim() || null,
+      vehicle_type:  form.vehicle_type,
+      type:          form.type,
+      restaurant_id: form.type === 'restaurant' ? form.restaurant_id : null,
+      is_active:     true,
+      is_available:  true,
+    })
+
+    setLoading(false)
+    if (dbErr) return setError(dbErr.message)
+    setSuccess(true)
+  }
+
+  const inputCls = `w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3
+    text-white text-sm placeholder-white/30
+    focus:outline-none focus:border-[#c5611a] focus:bg-white/[0.08] transition-all`
+
+  return (
+    <div className="min-h-screen bg-dark flex flex-col">
+      <div className="absolute inset-0 zellige-pattern opacity-40 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-dark via-dark to-dark2 pointer-events-none" />
+
+      <div className="relative flex-1 flex flex-col items-center justify-center px-4 py-20">
+        <Link to="/" className="font-serif text-3xl font-bold text-white mb-10 flex items-center gap-1.5">
+          Dia<span className="text-[#f4a828]">Table</span>
+          <Globe size={24} className="text-[#f4a828]" />
+        </Link>
+
+        <div className="w-full max-w-md">
+          <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+
+            {success ? (
+              <div className="text-center py-4">
+                <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-5">
+                  <CheckCircle size={36} className="text-green-400" />
+                </div>
+                <h2 className="font-serif text-xl font-bold text-white mb-3">Profil créé !</h2>
+                <p className="text-white/55 text-sm leading-relaxed mb-6">
+                  Votre profil livreur a été enregistré. Connectez-vous avec votre email pour accéder à votre espace.
+                </p>
+                <button
+                  onClick={() => navigate('/connexion-livreur')}
+                  className="bg-[#c5611a] text-white font-semibold px-6 py-3 rounded-xl text-sm transition-all hover:bg-[#d9722a]"
+                >
+                  Se connecter
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-center mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-[#c5611a]/15 flex items-center justify-center">
+                    <Bike size={28} className="text-[#f4a828]" />
+                  </div>
+                </div>
+                <h1 className="font-serif text-2xl font-bold text-white mb-1 text-center">
+                  Devenir livreur
+                </h1>
+                <p className="text-white/45 text-sm mb-8 text-center">
+                  Créez votre profil pour être assigné aux commandes DiaTable.
+                </p>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Nom */}
+                  <div>
+                    <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">
+                      Nom complet
+                    </label>
+                    <input
+                      type="text" value={form.full_name}
+                      onChange={e => set('full_name', e.target.value)}
+                      placeholder="Ex : Youssef Benali"
+                      className={inputCls}
+                    />
+                  </div>
+
+                  {/* Téléphone */}
+                  <div>
+                    <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">
+                      Téléphone
+                    </label>
+                    <input
+                      type="tel" value={form.phone}
+                      onChange={e => set('phone', e.target.value)}
+                      placeholder="+212 6XX XXX XXX"
+                      className={inputCls}
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">
+                      Email <span className="normal-case text-white/30 font-normal">(pour se connecter)</span>
+                    </label>
+                    <div className="relative">
+                      <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                      <input
+                        type="email" value={form.email}
+                        onChange={e => set('email', e.target.value)}
+                        placeholder="votre@email.com"
+                        className={`${inputCls} pl-10`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Véhicule */}
+                  <div>
+                    <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">
+                      Véhicule
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {VEHICLE_OPTIONS.map(v => (
+                        <button
+                          key={v.value}
+                          type="button"
+                          onClick={() => set('vehicle_type', v.value)}
+                          className={`py-2.5 px-3 rounded-xl text-sm font-medium border transition-all ${
+                            form.vehicle_type === v.value
+                              ? 'bg-[#c5611a] border-[#c5611a] text-white'
+                              : 'border-white/10 text-white/60 hover:border-white/25'
+                          }`}
+                        >
+                          {v.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Type de livreur */}
+                  <div>
+                    <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">
+                      Type
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: 'external',   label: 'Livreur externe', sub: 'Toutes enseignes' },
+                        { value: 'restaurant', label: 'Rattaché',        sub: 'Un restaurant' },
+                      ].map(t => (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => set('type', t.value)}
+                          className={`py-3 px-3 rounded-xl text-left border transition-all ${
+                            form.type === t.value
+                              ? 'bg-[#c5611a]/15 border-[#c5611a] text-white'
+                              : 'border-white/10 text-white/60 hover:border-white/25'
+                          }`}
+                        >
+                          <p className="text-xs font-bold">{t.label}</p>
+                          <p className="text-[0.65rem] opacity-60 mt-0.5">{t.sub}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sélection restaurant si type = restaurant */}
+                  {form.type === 'restaurant' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">
+                        Restaurant
+                      </label>
+                      <select
+                        value={form.restaurant_id}
+                        onChange={e => set('restaurant_id', e.target.value)}
+                        className={inputCls}
+                      >
+                        <option value="">Sélectionner un restaurant…</option>
+                        {restaurants.map(r => (
+                          <option key={r.id} value={r.id}>{r.flag} {r.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
+                      <AlertCircle size={14} /> {error}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-[#c5611a] hover:bg-[#d9722a] text-white font-semibold py-3.5 rounded-xl
+                               transition-all duration-200 disabled:opacity-60 text-sm mt-2"
+                  >
+                    {loading ? 'Création…' : 'Créer mon profil livreur'}
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -58,8 +58,8 @@ export default function FeaturedCarousel() {
   if (loading || featured.length === 0) return null
 
   return (
-    <section className="bg-[#1a1410] py-16 px-6">
-      <div className="max-w-6xl mx-auto">
+    <section className="bg-[#1a1410] py-16 overflow-hidden">
+      <div className="max-w-6xl mx-auto px-6">
 
         {/* Header */}
         <div className="flex items-end justify-between mb-8">
@@ -97,12 +97,12 @@ export default function FeaturedCarousel() {
           </div>
         </div>
 
-        {/* Track */}
+        {/* Track — déborde intentionnellement à droite pour montrer l'amorce de la carte suivante */}
         <div
           ref={trackRef}
           onMouseEnter={() => { hoverRef.current = true }}
           onMouseLeave={() => { hoverRef.current = false }}
-          className="flex overflow-x-auto snap-x snap-mandatory pb-2"
+          className="flex overflow-x-auto snap-x snap-mandatory pb-2 -mx-6 px-6"
           style={{ gap: GAP, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {featured.map((r) => {
@@ -111,7 +111,7 @@ export default function FeaturedCarousel() {
               <Link
                 key={r.id}
                 to={`/restaurants/${r.id}`}
-                className="snap-start shrink-0 w-[290px] md:w-[320px] rounded-2xl overflow-hidden group
+                className="snap-start shrink-0 w-[82vw] sm:w-[290px] md:w-[320px] rounded-2xl overflow-hidden group
                            transition-transform duration-300 hover:-translate-y-1.5"
                 style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.45)' }}
               >

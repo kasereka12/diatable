@@ -7,11 +7,12 @@ import {
   Eye, LogOut, TrendingUp, TrendingDown, Minus, Phone,
   Instagram, Menu, ChevronRight, ChevronLeft, Edit2, Trash2, Plus,
   CheckCircle, AlertCircle, MessageSquare, Lock, ImageIcon, X as XIcon,
-  Heart, Package, MessageCircle, Crown, Sparkles, Zap, MapPin, Power, Clock
+  Heart, Package, MessageCircle, Crown, Sparkles, Zap, MapPin, Power, Clock, Bike
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import VendorOrders from '../components/vendor/VendorOrders'
+import VendorDrivers from '../components/vendor/VendorDrivers'
 import { getEffectivelyOpen, getClosedReason, parseSchedule } from '../lib/scheduleParser'
 
 // ─── Palette DiaTable ─────────────────────────────────────────────────────────
@@ -558,6 +559,7 @@ export default function VendorDashboard() {
         <NavItem icon={BarChart2}       label={t('vd.stats')}           active={activeSection === 'stats'}       onClick={() => navigate_to('stats')}       collapsed={collapsed} />
         <NavItem icon={Crown}           label={t('vd.subscription')}    active={activeSection === 'abonnement'}  onClick={() => navigate_to('abonnement')}  collapsed={collapsed} />
         <NavItem icon={Bell}            label={t('vd.notifications')}   active={activeSection === 'notifs'}      onClick={() => navigate_to('notifs')}      badge={unreadCount > 0 ? unreadCount : undefined} collapsed={collapsed} />
+        <NavItem icon={Bike}            label="Livreurs"                active={activeSection === 'livreurs'}    onClick={() => navigate_to('livreurs')}    collapsed={collapsed} />
       </nav>
 
       <div className="px-3 py-4 space-y-1" style={{ borderTop: '1px solid rgba(248,248,248,0.10)' }}>
@@ -2587,6 +2589,11 @@ export default function VendorDashboard() {
     }
   }
 
+  function renderDrivers() {
+    if (!restaurant) return null
+    return <VendorDrivers restaurantId={restaurant.id} />
+  }
+
   function renderSection() {
     if (dbLoading) return renderSkeletonForSection()
 
@@ -2637,6 +2644,7 @@ export default function VendorDashboard() {
       case 'stats':       return renderStats()
       case 'abonnement':  return renderSubscription()
       case 'notifs':      return renderNotifs()
+      case 'livreurs':    return renderDrivers()
       default:            return renderApercu()
     }
   }

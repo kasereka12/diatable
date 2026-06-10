@@ -7,7 +7,7 @@ import {
   Globe, ShieldCheck, AlertCircle, RefreshCw, Menu, X, ChevronLeft,
   Phone, MessageCircle, Instagram, Clock, MapPin, Utensils, Eye, ChevronRight,
   Package, Star, TrendingUp, Ban, UserCheck, Mail, Calendar, ArrowLeft,
-  BarChart2, ShoppingBag, Heart, Crown, Sparkles, Zap, CreditCard, Monitor
+  BarChart2, ShoppingBag, Heart, Crown, Sparkles, Zap, CreditCard, Monitor, Bike
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -2085,6 +2085,170 @@ function SectionVitrineAccueil() {
   )
 }
 
+// ─── Section Livreurs ─────────────────────────────────────────────────────────
+
+const VEHICLE_LABEL: Record<string, string> = {
+  moto: '🛵 Moto', voiture: '🚗 Voiture', velo: '🚲 Vélo', pieton: '🚶 Piéton',
+}
+
+function SectionDrivers() {
+  const [drivers, setDrivers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch]   = useState('')
+  const [toggling, setToggling] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase
+      .from('delivery_drivers')
+      .select('*, restaurant:restaurants(name, flag)')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setDrivers(data || []); setLoading(false) })
+  }, [])
+
+  async function toggleActive(id: string, current: boolean) {
+    setToggling(id)
+    await supabase.from('delivery_drivers').update({ is_active: !current }).eq('id', id)
+    setDrivers(prev => prev.map(d => d.id === id ? { ...d, is_active: !current } : d))
+    setToggling(null)
+  }
+
+  async function toggleAvailable(id: string, current: boolean) {
+    setToggling(id + '_avail')
+    await supabase.from('delivery_drivers').update({ is_available: !current }).eq('id', id)
+    setDrivers(prev => prev.map(d => d.id === id ? { ...d, is_available: !current } : d))
+    setToggling(null)
+  }
+
+  const filtered = drivers.filter(d =>
+    d.full_name.toLowerCase().includes(search.toLowerCase()) ||
+    (d.phone || '').includes(search)
+  )
+
+  const active = filtered.filter(d => d.is_active)
+  const inactive = filtered.filter(d => !d.is_active)
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-2xl font-serif font-bold text-dark flex items-center gap-2">
+          <Bike size={24} className="text-[#c5611a]" /> Livreurs
+        </h1>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-[#c5611a] bg-[#c5611a]/10 px-3 py-1.5 rounded-full">
+            {active.length} actifs
+          </span>
+          <a
+            href="/devenir-livreur"
+            target="_blank"
+            className="flex items-center gap-1.5 bg-[#c5611a] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#d9722a] transition-colors"
+          >
+            <Plus size={14} /> Ajouter
+          </a>
+        </div>
+      </div>
+
+      <div className="relative">
+        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+        <input
+          type="text"
+          placeholder="Rechercher par nom ou téléphone…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full pl-9 pr-4 py-2.5 border border-black/[0.08] rounded-xl text-sm bg-white focus:outline-none focus:border-[#c5611a]/50"
+        />
+      </div>
+
+      {loading ? <Spinner /> : filtered.length === 0 ? (
+        <EmptyState text="Aucun livreur trouvé" />
+      ) : (
+        <div className="space-y-6">
+          {[
+            { label: 'Actifs', items: active },
+            { label: 'Inactifs', items: inactive },
+          ].map(({ label, items }) => items.length === 0 ? null : (
+            <div key={label}>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted mb-3">{label} ({items.length})</p>
+              <div className="space-y-2">
+                {items.map(d => (
+                  <div key={d.id} className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${
+                    d.is_active ? 'border-black/[0.06]' : 'border-black/[0.04] opacity-60'
+                  }`}>
+                    {/* Avatar */}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                      d.is_available && d.is_active ? 'bg-green-100 text-green-700' : 'bg-black/[0.06] text-muted'
+                    }`}>
+                      {d.full_name.charAt(0).toUpperCase()}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-dark truncate">{d.full_name}</p>
+                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                        {d.phone && (
+                          <span className="text-xs text-muted flex items-center gap-0.5">
+                            <Phone size={10} /> {d.phone}
+                          </span>
+                        )}
+                        {d.vehicle_type && (
+                          <span className="text-xs text-muted">{VEHICLE_LABEL[d.vehicle_type] ?? d.vehicle_type}</span>
+                        )}
+                        <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${
+                          d.type === 'external'
+                            ? 'bg-sky-50 text-sky-700'
+                            : 'bg-violet-50 text-violet-700'
+                        }`}>
+                          {d.type === 'external' ? 'Externe' : `Restaurant${d.restaurant ? ` — ${d.restaurant.flag} ${d.restaurant.name}` : ''}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Toggles */}
+                    <div className="flex items-center gap-4 shrink-0">
+                      {/* Disponible */}
+                      <div className="text-center">
+                        <p className="text-[0.6rem] font-semibold text-muted mb-1">Dispo</p>
+                        <button
+                          onClick={() => toggleAvailable(d.id, d.is_available)}
+                          disabled={toggling === d.id + '_avail' || !d.is_active}
+                          aria-label={d.is_available ? 'Marquer occupé' : 'Marquer disponible'}
+                          className={`relative w-9 h-5 rounded-full transition-colors disabled:opacity-40 ${
+                            d.is_available ? 'bg-green-500' : 'bg-black/15'
+                          }`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                            d.is_available ? 'left-[calc(100%-1.125rem)]' : 'left-0.5'
+                          }`} />
+                        </button>
+                      </div>
+
+                      {/* Actif */}
+                      <div className="text-center">
+                        <p className="text-[0.6rem] font-semibold text-muted mb-1">Actif</p>
+                        <button
+                          onClick={() => toggleActive(d.id, d.is_active)}
+                          disabled={toggling === d.id}
+                          aria-label={d.is_active ? 'Désactiver' : 'Activer'}
+                          className={`relative w-9 h-5 rounded-full transition-colors disabled:opacity-40 ${
+                            d.is_active ? 'bg-[#c5611a]' : 'bg-black/15'
+                          }`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                            d.is_active ? 'left-[calc(100%-1.125rem)]' : 'left-0.5'
+                          }`} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const NAV_ITEMS = [
   { key: 'overview',       label: 'Vue globale',   icon: LayoutDashboard },
   { key: 'users',          label: 'Utilisateurs',  icon: Users },
@@ -2095,6 +2259,7 @@ const NAV_ITEMS = [
   { key: 'subscriptions',  label: 'Abonnements',   icon: Crown },
   { key: 'gallery',        label: 'Galerie',       icon: ImageIcon },
   { key: 'team',           label: 'Équipe',        icon: Users2 },
+  { key: 'drivers',        label: 'Livreurs',      icon: Bike },
 ]
 
 function Sidebar({ active, setActive, onSignOut, user, mobileOpen, setMobileOpen, collapsed, setCollapsed }: {
@@ -2231,6 +2396,7 @@ export default function AdminDashboard() {
       case 'subscriptions': return <SectionSubscriptions />
       case 'gallery': return <SectionGallery />
       case 'team': return <SectionTeam />
+      case 'drivers': return <SectionDrivers />
       default: return <SectionOverview />
     }
   }

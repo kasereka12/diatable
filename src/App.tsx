@@ -36,6 +36,9 @@ const Carrieres         = lazy(() => import('./pages/Carrieres'))
 const Aide              = lazy(() => import('./pages/Aide'))
 const ForgotPassword    = lazy(() => import('./pages/ForgotPassword'))
 const Galerie           = lazy(() => import('./pages/Galerie'))
+const DriverOnboarding  = lazy(() => import('./pages/DriverOnboarding'))
+const DriverLogin       = lazy(() => import('./pages/DriverLogin'))
+const DriverDashboard   = lazy(() => import('./pages/DriverDashboard'))
 const NotFound          = lazy(() => import('./pages/NotFound'))
 
 function PageLoader() {
@@ -116,6 +119,17 @@ export default function App() {
                   <ProtectedRoute>
                     <SuspenseLayout><Messages /></SuspenseLayout>
                   </ProtectedRoute>
+                } />
+
+                {/* Driver auth + onboarding (public) */}
+                <Route path="/connexion-livreur" element={
+                  <Suspense fallback={<PageLoader />}><DriverLogin /></Suspense>
+                } />
+                <Route path="/devenir-livreur" element={
+                  <Suspense fallback={<PageLoader />}><DriverOnboarding /></Suspense>
+                } />
+                <Route path="/livreur" element={
+                  <Suspense fallback={<PageLoader />}><DriverDashboard /></Suspense>
                 } />
 
                 {/* Protected: vendor onboarding (any user — sets up vendor profile) */}

@@ -3,9 +3,10 @@ import type { LucideIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import {
   Package, Clock, CheckCircle, ChefHat, Utensils, Truck, XCircle,
-  Phone, MapPin, MessageCircle
+  Phone, MapPin, MessageCircle, Bike
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import AssignDriverModal from '../AssignDriverModal'
 
 interface OrderItem { id: string; quantity: number; name: string; price: number }
 interface OrderCustomer { full_name: string | null; email: string | null }
@@ -19,6 +20,8 @@ interface Order {
   delivery_notes: string | null
   customer_name: string | null
   created_at: string
+  driver_id: string | null
+  driver_name: string | null
   order_items: OrderItem[]
   customer: OrderCustomer | null
 }
@@ -53,6 +56,7 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('active')
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
+  const [assignModal, setAssignModal] = useState<string | null>(null) // order id
 
   useEffect(() => {
     if (!supabase || !restaurantId) { setLoading(false); return }
@@ -92,6 +96,12 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
     if (!supabase) return
     await (supabase.from('orders') as any).update({ status: newStatus }).eq('id', orderId)
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
+  }
+
+  function handleDriverAssigned(orderId: string, driverId: string, driverName: string) {
+    setOrders(prev => prev.map(o =>
+      o.id === orderId ? { ...o, driver_id: driverId || null, driver_name: driverName || null } : o
+    ))
   }
 
   async function cancelOrder(orderId: string) {
@@ -239,6 +249,14 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
                       </div>
                     </div>
 
+                    {/* Livreur assigné */}
+                    {order.driver_name && (
+                      <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700 mb-3">
+                        <Bike size={14} />
+                        <span>Livreur : <strong>{order.driver_name}</strong></span>
+                      </div>
+                    )}
+
                     {/* Actions */}
                     <div className="flex gap-2 flex-wrap">
                       {nextStatus && (
@@ -247,6 +265,16 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
                           className="bg-yellow-400 text-gray-900 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-yellow-500 transition-colors flex items-center gap-1.5"
                         >
                           <CheckCircle size={14} /> {nextLabel}
+                        </button>
+                      )}
+                      {/* Assigner un livreur — visible dès que la commande est en prépa et mode livraison */}
+                      {['preparing', 'ready'].includes(order.status) && order.delivery_mode !== 'pickup' && (
+                        <button
+                          onClick={() => setAssignModal(order.id)}
+                          className="border border-[#c5611a]/40 text-[#c5611a] px-4 py-2 rounded-lg text-sm hover:bg-[#c5611a]/[0.06] transition-colors flex items-center gap-1.5 font-semibold"
+                        >
+                          <Bike size={14} />
+                          {order.driver_id ? 'Changer livreur' : 'Assigner livreur'}
                         </button>
                       )}
                       {order.status === 'pending' && (
@@ -270,6 +298,17 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
             )
           })}
         </div>
+      )}
+
+      {/* Modal assignation livreur */}
+      {assignModal && (
+        <AssignDriverModal
+          orderId={assignModal}
+          restaurantId={restaurantId}
+          currentDriverId={orders.find(o => o.id === assignModal)?.driver_id}
+          onClose={() => setAssignModal(null)}
+          onAssigned={(driverId, driverName) => handleDriverAssigned(assignModal, driverId, driverName)}
+        />
       )}
     </div>
   )

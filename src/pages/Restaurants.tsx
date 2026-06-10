@@ -120,7 +120,21 @@ export default function Restaurants() {
         </p>
 
         {loading ? (
-          <div className="text-center py-24 text-muted">{t('restaurants_page.loading')}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl overflow-hidden border border-black/5 animate-pulse">
+                <div className="h-44 bg-black/[0.06]" />
+                <div className="p-5 space-y-3">
+                  <div className="h-4 bg-black/[0.06] rounded w-3/4" />
+                  <div className="flex items-center justify-between">
+                    <div className="h-3 bg-black/[0.06] rounded w-1/3" />
+                    <div className="h-3 bg-black/[0.06] rounded w-1/4" />
+                  </div>
+                  <div className="h-3 bg-black/[0.06] rounded w-1/4" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-24">
             <div className="flex justify-center mb-4">
