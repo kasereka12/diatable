@@ -183,7 +183,7 @@ export default function Register() {
                 </div>
 
                 <button
-                  onClick={() => role === 'driver' ? navigate('/connexion-livreur') : setStep(2)}
+                  onClick={() => role === 'driver' ? navigate('/devenir-livreur') : setStep(2)}
                   className="w-full font-semibold py-3.5 rounded-xl transition-all text-sm"
                   style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}
                   onMouseEnter={e => {

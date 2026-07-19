@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { X, Bike, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { X, Bike, CheckCircle, Clock, AlertCircle, Zap, Send } from 'lucide-react'
 import { supabase, callEdgeFunction } from '../lib/supabase'
 import { useDeliveryDrivers, VEHICLE_LABEL } from '../hooks/useDeliveryDrivers'
+import { autoAssignDriver, type AssignResult } from '../lib/driverAssignment'
 
 interface Props {
   orderId: string
@@ -15,13 +16,34 @@ export default function AssignDriverModal({ orderId, restaurantId, currentDriver
   const { drivers, loading } = useDeliveryDrivers(restaurantId)
   const [assigning, setAssigning] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [autoLoading, setAutoLoading] = useState(false)
+  const [autoResult, setAutoResult] = useState<AssignResult | null>(null)
+
+  async function runAutoAssign() {
+    setAutoLoading(true)
+    setError(null)
+    setAutoResult(null)
+    try {
+      const result = await autoAssignDriver(orderId, restaurantId)
+      setAutoResult(result)
+      if (result.method === 'restaurant') {
+        onAssigned(result.driver.id, result.driver.full_name)
+        // Laisse le vendeur voir la confirmation avant de fermer
+        setTimeout(onClose, 1400)
+      }
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setAutoLoading(false)
+    }
+  }
 
   async function assign(driverId: string, driverName: string) {
     setAssigning(driverId)
     setError(null)
     try {
-      const { error: dbErr } = await supabase
-        .from('orders')
+      const { error: dbErr } = await (supabase
+        .from('orders') as any)
         .update({ driver_id: driverId })
         .eq('id', orderId)
 
@@ -43,7 +65,7 @@ export default function AssignDriverModal({ orderId, restaurantId, currentDriver
     setAssigning('unassign')
     setError(null)
     try {
-      await supabase.from('orders').update({ driver_id: null }).eq('id', orderId)
+      await (supabase.from('orders') as any).update({ driver_id: null }).eq('id', orderId)
       onAssigned('', '')
       onClose()
     } catch (e) {
@@ -87,6 +109,51 @@ export default function AssignDriverModal({ orderId, restaurantId, currentDriver
           {error && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-3 py-2.5 mb-4">
               <AlertCircle size={14} /> {error}
+            </div>
+          )}
+
+          {/* Attribution automatique */}
+          {!currentDriverId && (
+            <div className="mb-4">
+              <button
+                onClick={runAutoAssign}
+                disabled={autoLoading || loading}
+                className="w-full flex items-center justify-center gap-2 bg-[#c5611a] hover:bg-[#d9722a] text-white text-sm font-bold py-3 rounded-xl transition-all disabled:opacity-60"
+              >
+                <Zap size={16} />
+                {autoLoading ? 'Attribution en cours…' : 'Attribuer automatiquement'}
+              </button>
+
+              {/* Résultat de l'algo */}
+              {autoResult?.method === 'restaurant' && (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-3 py-2.5 mt-3">
+                  <CheckCircle size={15} className="shrink-0" />
+                  <span><strong>{autoResult.driver.full_name}</strong> (rattaché) a été assigné automatiquement
+                    {autoResult.distanceKm != null && <> — {autoResult.distanceKm.toFixed(1)} km du restaurant</>}.
+                  </span>
+                </div>
+              )}
+              {autoResult?.method === 'external_offer' && (
+                <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 text-blue-700 text-sm rounded-xl px-3 py-2.5 mt-3">
+                  <Send size={15} className="shrink-0 mt-0.5" />
+                  <span>Aucun livreur rattaché disponible. Proposition envoyée à{' '}
+                    <strong>{autoResult.offered.length} livreur{autoResult.offered.length > 1 ? 's' : ''} externe{autoResult.offered.length > 1 ? 's' : ''}</strong>.
+                    Le premier qui accepte sera assigné.
+                  </span>
+                </div>
+              )}
+              {autoResult?.method === 'none' && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-xl px-3 py-2.5 mt-3">
+                  <AlertCircle size={15} className="shrink-0" />
+                  <span>Aucun livreur disponible pour le moment. Réessayez plus tard.</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 my-4">
+                <div className="flex-1 h-px bg-black/[0.08]" />
+                <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted">ou manuellement</span>
+                <div className="flex-1 h-px bg-black/[0.08]" />
+              </div>
             </div>
           )}
 

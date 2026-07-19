@@ -13,7 +13,7 @@
 //     })
 //   })
 
-const PROD_ORIGIN = 'https://REPLACE_WITH_PROD_DOMAIN.vercel.app'
+const PROD_ORIGIN = 'https://diatable.vercel.app'
 const DEV_ORIGIN  = 'http://localhost:5173'
 
 const ALLOWED_ORIGINS = new Set<string>([PROD_ORIGIN, DEV_ORIGIN])

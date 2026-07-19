@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { Eye, EyeOff } from 'lucide-react'
 import Logo from '../assets/Logo.png'
 import { loginSchema, flattenErrors } from '../lib/schemas'
+import { supabase } from '../lib/supabase'
 
 
 export default function Login() {
@@ -31,8 +32,19 @@ export default function Login() {
     if (!result.success) { setFieldErrors(flattenErrors(result.error)); return }
     setLoading(true)
     const { error } = await signIn(email, password)
+    if (error) { setLoading(false); setError(error.message); return }
+
+    // Redirect based on role
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    if (authUser) {
+      const { data: prof } = await supabase
+        .from('profiles').select('role').eq('id', authUser.id).single()
+      const role = (prof as { role?: string } | null)?.role
+      setLoading(false)
+      if (role === 'admin')  return navigate('/admin', { replace: true })
+      if (role === 'vendor') return navigate('/tableau-de-bord', { replace: true })
+    }
     setLoading(false)
-    if (error) { setError(error.message); return }
     navigate(from, { replace: true })
   }
 
