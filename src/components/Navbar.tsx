@@ -8,7 +8,7 @@ import { useMessages } from '../context/MessageContext'
 import {
   Globe, X, ChevronDown, LogOut, User, BarChart2, Utensils,
   ShieldCheck, Image, MapPin, ShoppingBag, MessageCircle, Bell,
-  Package
+  Package, Bike
 } from 'lucide-react'
 import Logo from '../assets/LogoBlanc.png'
 
@@ -26,6 +26,8 @@ export default function Navbar() {
   const explorerRef = useRef<HTMLLIElement | null>(null)
   const notifRef    = useRef<HTMLDivElement | null>(null)
   const navigate    = useNavigate()
+
+  const isDriver = profile?.role === 'driver'
 
   const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || ''
   const initials    = displayName ? displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0,2) : '?'
@@ -104,36 +106,38 @@ export default function Navbar() {
               </NavLink>
             </li>
 
-            {/* Explorer dropdown */}
-            <li ref={explorerRef} className="relative">
-              <button
-                onClick={() => setExplorerOpen(v => !v)}
-                className="flex items-center gap-1.5 text-sm font-semibold px-5 py-2 rounded-full transition-all duration-200"
-                style={{ backgroundColor: '#f8f8f8', color: '#c5611a', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
-                {t('nav.explore')}
-                <ChevronDown size={14} strokeWidth={2.5} className={`transition-transform duration-200 ${explorerOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {explorerOpen && (
-                <div className="absolute top-full left-0 mt-2 w-52 rounded-2xl overflow-hidden z-50"
-                  style={{ backgroundColor: '#504640', border: '1px solid rgba(248,248,248,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
-                  {EXPLORER_LINKS.map(({ label, to, icon: Icon, desc }) => (
-                    <NavLink key={to} to={to}
-                      onClick={() => setExplorerOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 transition-all hover:bg-white/[0.08]"
-                      style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.80)' })}>
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: 'rgba(197,97,26,0.2)' }}>
-                        <Icon size={15} style={{ color: '#c5611a' }} />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium leading-none mb-0.5">{label}</div>
-                        <div className="text-xs" style={{ color: 'rgba(189,159,135,0.6)' }}>{desc}</div>
-                      </div>
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </li>
+            {!isDriver && (
+              /* Explorer dropdown */
+              <li ref={explorerRef} className="relative">
+                <button
+                  onClick={() => setExplorerOpen(v => !v)}
+                  className="flex items-center gap-1.5 text-sm font-semibold px-5 py-2 rounded-full transition-all duration-200"
+                  style={{ backgroundColor: '#f8f8f8', color: '#c5611a', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                  {t('nav.explore')}
+                  <ChevronDown size={14} strokeWidth={2.5} className={`transition-transform duration-200 ${explorerOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {explorerOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-52 rounded-2xl overflow-hidden z-50"
+                    style={{ backgroundColor: '#504640', border: '1px solid rgba(248,248,248,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+                    {EXPLORER_LINKS.map(({ label, to, icon: Icon, desc }) => (
+                      <NavLink key={to} to={to}
+                        onClick={() => setExplorerOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 transition-all hover:bg-white/[0.08]"
+                        style={({ isActive }) => ({ color: isActive ? '#f8f8f8' : 'rgba(248,248,248,0.80)' })}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: 'rgba(197,97,26,0.2)' }}>
+                          <Icon size={15} style={{ color: '#c5611a' }} />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium leading-none mb-0.5">{label}</div>
+                          <div className="text-xs" style={{ color: 'rgba(189,159,135,0.6)' }}>{desc}</div>
+                        </div>
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </li>
+            )}
           </ul>
 
           {/* Center logo */}
@@ -146,6 +150,14 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="hidden md:flex items-center gap-2 justify-end">
+            {isDriver && user ? (
+              <Link to="/livreur"
+                className="flex items-center gap-2 text-sm font-semibold px-5 py-2 rounded-full transition-all duration-200"
+                style={{ backgroundColor: '#f8f8f8', color: '#c5611a', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                <Bike size={15} /> {t('nav.dashboard')}
+              </Link>
+            ) : (
+            <>
             {NAV_LINKS.slice(1).map((l) => (
               <NavLink key={l.to} to={l.to}
                 className={({ isActive }) =>
@@ -293,6 +305,8 @@ export default function Navbar() {
                 </button>
               </>
             )}
+            </>
+            )}
           </div>
 
           {/* Hamburger */}
@@ -333,7 +347,7 @@ export default function Navbar() {
             <X size={20} />
           </button>
 
-          {[NAV_LINKS[0], ...EXPLORER_LINKS, ...NAV_LINKS.slice(1)].map((l) => (
+          {(isDriver ? [NAV_LINKS[0]] : [NAV_LINKS[0], ...EXPLORER_LINKS, ...NAV_LINKS.slice(1)]).map((l) => (
             <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}
               className="font-serif text-3xl font-semibold transition-colors"
               style={{ color: '#f8f8f8' }}
@@ -344,7 +358,15 @@ export default function Navbar() {
           ))}
 
           <div className="flex flex-col gap-3 mt-4 w-48">
-            {user ? (
+            {isDriver && user ? (
+              <>
+                <Link to="/livreur" onClick={() => setMenuOpen(false)} className="btn btn-gold justify-center flex items-center gap-2">
+                  <Bike size={16} /> {t('nav.dashboard')}
+                </Link>
+                <button onClick={() => { handleSignOut(); setMenuOpen(false) }}
+                  className="text-red-400 text-sm font-medium py-2">{t('nav.sign_out')}</button>
+              </>
+            ) : user ? (
               <>
                 <Link to="/profil" onClick={() => setMenuOpen(false)} className="btn btn-gold justify-center">{t('nav.my_profile')}</Link>
                 <Link to="/mes-commandes" onClick={() => setMenuOpen(false)}

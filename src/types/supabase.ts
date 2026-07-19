@@ -16,7 +16,7 @@ export interface Database {
         Row: {
           id: string
           full_name: string | null
-          role: 'client' | 'vendor' | 'admin'
+          role: 'client' | 'vendor' | 'admin' | 'driver'
           email: string | null
           avatar_url: string | null
           created_at: string
