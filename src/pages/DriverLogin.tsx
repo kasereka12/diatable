@@ -26,14 +26,15 @@ export default function DriverLogin() {
     if (authErr) { setLoading(false); return setError(authErr.message) }
 
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: driver } = await supabase
-      .from('delivery_drivers')
-      .select('id')
-      .eq('profile_id', user?.id ?? '')
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user?.id ?? '')
       .maybeSingle()
 
     setLoading(false)
-    navigate(driver ? '/livreur' : '/devenir-livreur', { replace: true })
+    const role = (prof as { role?: string } | null)?.role
+    navigate(role === 'driver' ? '/livreur' : '/devenir-livreur', { replace: true })
   }
 
   const inputCls = `w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3

@@ -1,5 +1,5 @@
 const ALLOWED_ORIGINS = [
-  'https://diatble.ma',
+  'https://diatable.vercel.app',
   'http://localhost:5173',
 ]
 

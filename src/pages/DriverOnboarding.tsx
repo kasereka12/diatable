@@ -78,8 +78,12 @@ export default function DriverOnboarding() {
       is_available:  true,
     })
 
+    if (dbErr) { setLoading(false); return setError(dbErr.message) }
+
+    // 4. Marquer le profil comme livreur
+    await (supabase.from('profiles') as any).update({ role: 'driver' }).eq('id', user.id)
+
     setLoading(false)
-    if (dbErr) return setError(dbErr.message)
     navigate('/livreur', { replace: true })
   }
 

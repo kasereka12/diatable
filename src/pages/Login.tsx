@@ -43,6 +43,7 @@ export default function Login() {
       setLoading(false)
       if (role === 'admin')  return navigate('/admin', { replace: true })
       if (role === 'vendor') return navigate('/tableau-de-bord', { replace: true })
+      if (role === 'driver') return navigate('/livreur', { replace: true })
     }
     setLoading(false)
     navigate(from, { replace: true })
