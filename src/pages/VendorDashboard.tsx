@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import VendorOrders from '../components/vendor/VendorOrders'
 import VendorDrivers from '../components/vendor/VendorDrivers'
+import MessagingPanel from '../components/MessagingPanel'
 import { getEffectivelyOpen, getClosedReason, parseSchedule } from '../lib/scheduleParser'
 
 // ─── Palette DiaTable ─────────────────────────────────────────────────────────
@@ -2063,24 +2064,10 @@ export default function VendorDashboard() {
     }
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-2xl font-serif font-bold flex items-center gap-2" style={{ color: C.dark }}>
-            <MessageCircle size={24} style={{ color: C.terra }} /> {t('vd.messages_title')}
-          </h1>
-          <Link to="/messages" className="text-sm font-medium hover:underline" style={{ color: C.terra }}>
-            {t('vd.open_full_messages')}
-          </Link>
-        </div>
-        <div className="rounded-xl p-8 shadow-sm text-center" style={{ backgroundColor: C.creamLight, border: `1px solid rgba(80,70,64,0.10)` }}>
-          <MessageCircle size={40} className="mx-auto mb-3" style={{ color: 'rgba(80,70,64,0.20)' }} />
-          <p className="font-semibold mb-2" style={{ color: C.dark }}>{t('vd.messaging_integrated')}</p>
-          <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: C.muted }}>
-            {t('vd.messaging_desc')}
-          </p>
-          <Link to="/messages" className="btn btn-gold text-sm inline-flex items-center gap-2">
-            <MessageCircle size={16} /> {t('vd.go_to_messages')}
-          </Link>
-        </div>
+        <h1 className="text-2xl font-serif font-bold flex items-center gap-2" style={{ color: C.dark }}>
+          <MessageCircle size={24} style={{ color: C.terra }} /> {t('vd.messages_title')}
+        </h1>
+        <MessagingPanel heightClass="h-[calc(100vh-260px)] min-h-[500px]" />
       </div>
     )
   }

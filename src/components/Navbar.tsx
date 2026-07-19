@@ -28,6 +28,10 @@ export default function Navbar() {
   const navigate    = useNavigate()
 
   const isDriver = profile?.role === 'driver'
+  const isVendor = profile?.role === 'vendor'
+  const isRestrictedRole = isDriver || isVendor
+  const dashboardPath  = isDriver ? '/livreur' : '/tableau-de-bord'
+  const DashboardIcon  = isDriver ? Bike : BarChart2
 
   const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || ''
   const initials    = displayName ? displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0,2) : '?'
@@ -106,7 +110,7 @@ export default function Navbar() {
               </NavLink>
             </li>
 
-            {!isDriver && (
+            {!isRestrictedRole && (
               /* Explorer dropdown */
               <li ref={explorerRef} className="relative">
                 <button
@@ -150,11 +154,11 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="hidden md:flex items-center gap-2 justify-end">
-            {isDriver && user ? (
-              <Link to="/livreur"
+            {isRestrictedRole && user ? (
+              <Link to={dashboardPath}
                 className="flex items-center gap-2 text-sm font-semibold px-5 py-2 rounded-full transition-all duration-200"
                 style={{ backgroundColor: '#f8f8f8', color: '#c5611a', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
-                <Bike size={15} /> {t('nav.dashboard')}
+                <DashboardIcon size={15} /> {t('nav.dashboard')}
               </Link>
             ) : (
             <>
@@ -251,13 +255,6 @@ export default function Navbar() {
                             <Icon size={15} /> {label}
                           </Link>
                         ))}
-                        {profile?.role === 'vendor' && (
-                          <Link to="/tableau-de-bord" onClick={() => setUserMenu(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm transition-all hover:bg-white/[0.06]"
-                            style={{ color: 'rgba(248,248,248,0.80)' }}>
-                            <BarChart2 size={15} /> {t('nav.dashboard')}
-                          </Link>
-                        )}
                         {isAdmin && (
                           <Link to="/admin" onClick={() => setUserMenu(false)}
                             className="flex items-center gap-2 px-4 py-2.5 text-sm transition-all"
@@ -347,7 +344,7 @@ export default function Navbar() {
             <X size={20} />
           </button>
 
-          {(isDriver ? [NAV_LINKS[0]] : [NAV_LINKS[0], ...EXPLORER_LINKS, ...NAV_LINKS.slice(1)]).map((l) => (
+          {(isRestrictedRole ? [NAV_LINKS[0]] : [NAV_LINKS[0], ...EXPLORER_LINKS, ...NAV_LINKS.slice(1)]).map((l) => (
             <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}
               className="font-serif text-3xl font-semibold transition-colors"
               style={{ color: '#f8f8f8' }}
@@ -358,10 +355,10 @@ export default function Navbar() {
           ))}
 
           <div className="flex flex-col gap-3 mt-4 w-48">
-            {isDriver && user ? (
+            {isRestrictedRole && user ? (
               <>
-                <Link to="/livreur" onClick={() => setMenuOpen(false)} className="btn btn-gold justify-center flex items-center gap-2">
-                  <Bike size={16} /> {t('nav.dashboard')}
+                <Link to={dashboardPath} onClick={() => setMenuOpen(false)} className="btn btn-gold justify-center flex items-center gap-2">
+                  <DashboardIcon size={16} /> {t('nav.dashboard')}
                 </Link>
                 <button onClick={() => { handleSignOut(); setMenuOpen(false) }}
                   className="text-red-400 text-sm font-medium py-2">{t('nav.sign_out')}</button>
