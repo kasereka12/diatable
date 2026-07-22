@@ -17,6 +17,7 @@ export interface Database {
           id: string
           full_name: string | null
           role: 'client' | 'vendor' | 'admin' | 'driver'
+          status: 'active' | 'suspended' | 'banned'
           email: string | null
           avatar_url: string | null
           created_at: string
@@ -28,6 +29,7 @@ export interface Database {
           id: string
           full_name?: string | null
           role?: 'client' | 'vendor' | 'admin'
+          status?: 'active' | 'suspended' | 'banned'
           email?: string | null
           avatar_url?: string | null
           created_at?: string
@@ -211,9 +213,18 @@ export interface Database {
           vehicle_type: 'moto' | 'voiture' | 'velo' | 'pieton' | null
           is_active: boolean
           is_available: boolean
+          is_suspended: boolean
           current_lat: number | null
           current_lng: number | null
           location_updated_at: string | null
+          license_number: string | null
+          license_photo_url: string | null
+          vehicle_brand: string | null
+          vehicle_plate: string | null
+          photo_front: string | null
+          photo_back: string | null
+          photo_left: string | null
+          photo_right: string | null
           created_at: string
         }
         Insert: {
@@ -227,9 +238,18 @@ export interface Database {
           vehicle_type?: 'moto' | 'voiture' | 'velo' | 'pieton' | null
           is_active?: boolean
           is_available?: boolean
+          is_suspended?: boolean
           current_lat?: number | null
           current_lng?: number | null
           location_updated_at?: string | null
+          license_number?: string | null
+          license_photo_url?: string | null
+          vehicle_brand?: string | null
+          vehicle_plate?: string | null
+          photo_front?: string | null
+          photo_back?: string | null
+          photo_left?: string | null
+          photo_right?: string | null
           created_at?: string
         }
         Update: Partial<Database['public']['Tables']['delivery_drivers']['Insert']>

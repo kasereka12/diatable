@@ -33,6 +33,44 @@ Deno.serve(async (req: Request) => {
     )
 
     const data = await authRes.json()
+
+    // Credentials valid — but block suspended/banned accounts before handing
+    // out a usable session. Checked here (not just client-side) so a
+    // suspended/banned user can't just skip the client-side check.
+    if (authRes.ok && data.access_token && data.user?.id) {
+      const profRes = await fetch(
+        `${Deno.env.get('SUPABASE_URL')}/rest/v1/profiles?id=eq.${data.user.id}&select=status`,
+        {
+          headers: {
+            'apikey': Deno.env.get('SUPABASE_ANON_KEY')!,
+            'Authorization': `Bearer ${data.access_token}`,
+          },
+        },
+      )
+      const profRows = await profRes.json()
+      const status = profRows?.[0]?.status
+
+      if (status === 'suspended' || status === 'banned') {
+        // Invalidate the session we just issued
+        await fetch(`${Deno.env.get('SUPABASE_URL')}/auth/v1/logout`, {
+          method: 'POST',
+          headers: {
+            'apikey': Deno.env.get('SUPABASE_ANON_KEY')!,
+            'Authorization': `Bearer ${data.access_token}`,
+          },
+        })
+
+        const message = status === 'banned'
+          ? 'Votre compte a été banni. Contactez le support si vous pensez qu\'il s\'agit d\'une erreur.'
+          : 'Votre compte a été suspendu temporairement. Contactez le support pour plus d\'informations.'
+
+        return new Response(JSON.stringify({ error: message, error_description: message }), {
+          status: 403,
+          headers: buildResponseHeaders(req, { 'Content-Type': 'application/json' }),
+        })
+      }
+    }
+
     return new Response(JSON.stringify(data), {
       status: authRes.status,
       headers: buildResponseHeaders(req, { 'Content-Type': 'application/json' }),

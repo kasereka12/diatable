@@ -31,6 +31,8 @@ create table if not exists profiles (
   full_name     text,
   role          text not null default 'client'
                 check (role in ('client', 'vendor', 'admin', 'driver')),
+  status        text not null default 'active'
+                check (status in ('active', 'suspended', 'banned')),
   email         text,
   avatar_url    text,
   rib           text,
@@ -55,6 +57,27 @@ create policy "Admin peut lire tous les profils"
 
 create policy "Admin peut modifier tous les profils"
   on profiles for update using (is_admin());
+
+-- Garde-fou : seul un admin peut promouvoir vers 'admin' ou changer le statut
+-- (suspendre/bannir/réactiver). Les transitions client -> vendor/driver
+-- initiées par l'utilisateur lui-même (onboarding) restent autorisées.
+create or replace function protect_profile_privileged_fields()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.role = 'admin' and old.role is distinct from 'admin' and not is_admin() then
+    new.role := old.role;
+  end if;
+  if new.status is distinct from old.status and not is_admin() then
+    new.status := old.status;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists protect_profile_privileged_fields_trigger on profiles;
+create trigger protect_profile_privileged_fields_trigger
+  before update on profiles
+  for each row execute procedure protect_profile_privileged_fields();
 
 -- Trigger : crée un profil automatiquement à l'inscription
 create or replace function handle_new_user()
@@ -401,11 +424,25 @@ create table if not exists delivery_drivers (
   phone                 text,
   email                 text,
   vehicle_type          text check (vehicle_type in ('moto', 'voiture', 'velo', 'pieton')),
-  is_active             boolean not null default true,
+  -- is_active is the admin validation gate (like restaurants.is_verified) —
+  -- new drivers start inactive until an admin reviews their documents below.
+  is_active             boolean not null default false,
   is_available          boolean not null default true,
+  -- Vendor-controlled pause for their own restaurant-attached drivers —
+  -- independent from is_active (the admin validation gate).
+  is_suspended           boolean not null default false,
   current_lat           numeric(10,7),
   current_lng           numeric(10,7),
   location_updated_at   timestamptz,
+  -- Validation documents (external self-signup or internal, added by a vendor)
+  license_number        text,
+  license_photo_url     text,
+  vehicle_brand         text,
+  vehicle_plate         text,
+  photo_front           text,
+  photo_back            text,
+  photo_left            text,
+  photo_right           text,
   created_at            timestamptz default now()
 );
 

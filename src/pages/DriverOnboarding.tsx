@@ -13,8 +13,13 @@ const VEHICLE_OPTIONS = [
 ]
 
 export default function DriverOnboarding() {
-  const { signUp } = useAuth()
+  const { user, signUp } = useAuth()
   const navigate   = useNavigate()
+
+  // Already have an account (came from /inscription with role "Livreur", or
+  // redirected here from the driver dashboard/login) — only the delivery
+  // profile (phone, vehicle) is still missing, no need to sign up again.
+  const hasAccount = !!user
 
   const [form, setForm] = useState({
     full_name:     '',
@@ -36,38 +41,50 @@ export default function DriverOnboarding() {
     e.preventDefault()
     setError('')
 
-    if (!form.full_name.trim())  return setError('Le nom complet est requis.')
-    if (!form.phone.trim())      return setError('Le numéro de téléphone est requis.')
-    if (!form.email.trim())      return setError('L\'adresse email est requise.')
-    if (form.password.length < 6) return setError('Le mot de passe doit contenir au moins 6 caractères.')
-    if (form.password !== form.confirm) return setError('Les mots de passe ne correspondent pas.')
+    if (!hasAccount) {
+      if (!form.full_name.trim())  return setError('Le nom complet est requis.')
+      if (!form.email.trim())      return setError('L\'adresse email est requise.')
+      if (form.password.length < 6) return setError('Le mot de passe doit contenir au moins 6 caractères.')
+      if (form.password !== form.confirm) return setError('Les mots de passe ne correspondent pas.')
+    }
+    if (!form.phone.trim()) return setError('Le numéro de téléphone est requis.')
 
     setLoading(true)
 
-    // 1. Créer le compte auth
-    const { error: signUpErr } = await signUp(form.email.trim(), form.password, form.full_name.trim())
-    if (signUpErr) { setLoading(false); return setError(signUpErr.message) }
+    let driverId: string
+    let driverEmail: string
 
-    // 2. Récupérer l'utilisateur créé
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setLoading(false); return setError('Erreur lors de la création du compte.') }
+    if (hasAccount) {
+      driverId    = user!.id
+      driverEmail = user!.email || ''
+    } else {
+      // 1. Créer le compte auth
+      const { error: signUpErr } = await signUp(form.email.trim(), form.password, form.full_name.trim(), 'driver')
+      if (signUpErr) { setLoading(false); return setError(signUpErr.message) }
+
+      // 2. Récupérer l'utilisateur créé
+      const { data: { user: newUser } } = await supabase.auth.getUser()
+      if (!newUser) { setLoading(false); return setError('Erreur lors de la création du compte.') }
+      driverId    = newUser.id
+      driverEmail = newUser.email || form.email.trim()
+    }
 
     // 3. Créer le profil livreur
     const { error: dbErr } = await (supabase.from('delivery_drivers') as any).insert({
-      profile_id:    user.id,
-      full_name:     form.full_name.trim(),
+      profile_id:    driverId,
+      full_name:     (hasAccount ? user!.user_metadata?.full_name : form.full_name.trim()) || '',
       phone:         form.phone.trim(),
-      email:         form.email.trim(),
+      email:         driverEmail,
       vehicle_type:  form.vehicle_type,
       type:          'external',
-      is_active:     true,
+      is_active:     false,
       is_available:  true,
     })
 
     if (dbErr) { setLoading(false); return setError(dbErr.message) }
 
     // 4. Marquer le profil comme livreur
-    await (supabase.from('profiles') as any).update({ role: 'driver' }).eq('id', user.id)
+    await (supabase.from('profiles') as any).update({ role: 'driver' }).eq('id', driverId)
 
     setLoading(false)
     navigate('/livreur', { replace: true })
@@ -96,19 +113,27 @@ export default function DriverOnboarding() {
                 <Bike size={28} className="text-[#f4a828]" />
               </div>
             </div>
-            <h1 className="font-serif text-2xl font-bold text-white mb-1 text-center">Devenir livreur</h1>
+            <h1 className="font-serif text-2xl font-bold text-white mb-1 text-center">
+              {hasAccount ? 'Complétez votre profil livreur' : 'Devenir livreur'}
+            </h1>
             <p className="text-white/45 text-sm mb-8 text-center">
-              Créez votre compte pour être assigné aux commandes DiaTable.
+              {hasAccount
+                ? 'Encore quelques infos pour recevoir vos premières courses.'
+                : 'Créez votre compte pour être assigné aux commandes DiaTable.'}
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
 
-              {/* Nom */}
-              <div>
-                <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">Nom complet</label>
-                <input type="text" value={form.full_name} onChange={e => set('full_name', e.target.value)}
-                  placeholder="Ex : Youssef Benali" className={inputCls} />
-              </div>
+              {!hasAccount && (
+                <>
+                  {/* Nom */}
+                  <div>
+                    <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">Nom complet</label>
+                    <input type="text" value={form.full_name} onChange={e => set('full_name', e.target.value)}
+                      placeholder="Ex : Youssef Benali" className={inputCls} />
+                  </div>
+                </>
+              )}
 
               {/* Téléphone */}
               <div>
@@ -117,41 +142,45 @@ export default function DriverOnboarding() {
                   placeholder="+212 6XX XXX XXX" className={inputCls} />
               </div>
 
-              {/* Email */}
-              <div>
-                <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">Email</label>
-                <div className="relative">
-                  <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
-                  <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
-                    placeholder="votre@email.com" className={`${inputCls} pl-10`} />
-                </div>
-              </div>
+              {!hasAccount && (
+                <>
+                  {/* Email */}
+                  <div>
+                    <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">Email</label>
+                    <div className="relative">
+                      <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                      <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
+                        placeholder="votre@email.com" className={`${inputCls} pl-10`} />
+                    </div>
+                  </div>
 
-              {/* Mot de passe */}
-              <div>
-                <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">Mot de passe</label>
-                <div className="relative">
-                  <input type={showPwd ? 'text' : 'password'} value={form.password}
-                    onChange={e => set('password', e.target.value)}
-                    placeholder="••••••••" className={`${inputCls} pr-11`} />
-                  <button type="button" onClick={() => setShowPwd(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
-                    {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
+                  {/* Mot de passe */}
+                  <div>
+                    <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">Mot de passe</label>
+                    <div className="relative">
+                      <input type={showPwd ? 'text' : 'password'} value={form.password}
+                        onChange={e => set('password', e.target.value)}
+                        placeholder="••••••••" className={`${inputCls} pr-11`} />
+                      <button type="button" onClick={() => setShowPwd(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
+                        {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Confirmation mot de passe */}
-              <div>
-                <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">Confirmer le mot de passe</label>
-                <input type="password" value={form.confirm} onChange={e => set('confirm', e.target.value)}
-                  placeholder="••••••••" className={`${inputCls} ${
-                    form.confirm && form.confirm !== form.password ? 'border-red-500/50' : ''
-                  }`} />
-                {form.confirm && form.confirm !== form.password && (
-                  <p className="text-xs text-red-400 mt-1">Les mots de passe ne correspondent pas</p>
-                )}
-              </div>
+                  {/* Confirmation mot de passe */}
+                  <div>
+                    <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">Confirmer le mot de passe</label>
+                    <input type="password" value={form.confirm} onChange={e => set('confirm', e.target.value)}
+                      placeholder="••••••••" className={`${inputCls} ${
+                        form.confirm && form.confirm !== form.password ? 'border-red-500/50' : ''
+                      }`} />
+                    {form.confirm && form.confirm !== form.password && (
+                      <p className="text-xs text-red-400 mt-1">Les mots de passe ne correspondent pas</p>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Véhicule */}
               <div>
@@ -178,17 +207,21 @@ export default function DriverOnboarding() {
 
               <button type="submit" disabled={loading}
                 className="w-full bg-[#c5611a] hover:bg-[#d9722a] text-white font-semibold py-3.5 rounded-xl transition-all duration-200 disabled:opacity-60 text-sm mt-2">
-                {loading ? 'Création du compte…' : 'Créer mon compte livreur'}
+                {loading
+                  ? (hasAccount ? 'Enregistrement…' : 'Création du compte…')
+                  : (hasAccount ? 'Valider mon profil livreur' : 'Créer mon compte livreur')}
               </button>
             </form>
           </div>
 
-          <p className="text-center text-sm mt-6 text-white/40">
-            Déjà livreur ?{' '}
-            <Link to="/connexion-livreur" className="text-[#c5611a] hover:text-[#d9722a] font-semibold transition-colors">
-              Se connecter
-            </Link>
-          </p>
+          {!hasAccount && (
+            <p className="text-center text-sm mt-6 text-white/40">
+              Déjà livreur ?{' '}
+              <Link to="/connexion-livreur" className="text-[#c5611a] hover:text-[#d9722a] font-semibold transition-colors">
+                Se connecter
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </div>
