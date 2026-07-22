@@ -1,0 +1,139 @@
+import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useScrollReveal } from '../hooks/useScrollReveal'
+import SectionHeader from './ui/SectionHeader'
+import { getCuisineIcon } from '../lib/cuisineIcons'
+import { supabase } from '../lib/supabase'
+import { ArrowRight } from 'lucide-react'
+
+// UI-only metadata — not stored in DB
+const CUISINE_META = {
+  senegalaise: { bg: 'linear-gradient(160deg,#8b2500,#c5611a,#bd9f87)', country: 'Sénégal',      dish: 'Thiéboudienne',  desc: "Le plat emblématique de la diaspora sénégalaise — riz au poisson, légumes et épices d'Afrique de l'Ouest." },
+  libanaise:   { bg: 'linear-gradient(160deg,#145a32,#1e8449,#76b041)',  country: 'Liban',         dish: 'Mezze & Grills', desc: 'Houmous, falafel, kafta grillée — la générosité libanaise à chaque bouchée.' },
+  chinoise:    { bg: 'linear-gradient(160deg,#7b0000,#c0392b,#e74c3c)',  country: 'Chine',         dish: 'Dim Sum',        desc: 'Bouchées vapeur et saveurs de Canton — une tradition millénaire revisitée à Casablanca.' },
+  syrienne:    { bg: 'linear-gradient(160deg,#2c0042,#6c3483,#9b59b6)',  country: 'Syrie',         dish: 'Shawarma',       desc: 'Viande rôtie à la broche, marinée aux épices du Levant, servie en pita généreux.' },
+  nigeriane:   { bg: 'linear-gradient(160deg,#0a3d0a,#1e8449,#c5611a)',  country: 'Nigéria',       dish: 'Jollof Rice',    desc: "Riz fumé au feu de bois dans une sauce tomate relevée — la fierté de l'Afrique de l'Ouest." },
+  indienne:    { bg: 'linear-gradient(160deg,#7d3200,#c5611a,#bd9f87)',  country: 'Inde',          dish: 'Curry & Biryani',desc: 'Épices dorées, currys crémeux et riz basmati parfumé au safran.' },
+  francaise:   { bg: 'linear-gradient(160deg,#0a1a4a,#1565c0,#42a5f5)', country: 'France',        dish: 'Boulangerie',    desc: 'Croissants pur beurre, bœuf bourguignon et pâtisseries fines — le savoir-faire français au Maroc.' },
+  italienne:   { bg: 'linear-gradient(160deg,#6a0000,#c62828,#1b5e20)', country: 'Italie',        dish: 'Pizza & Pasta',  desc: 'Pâte napolitaine et pasta al dente — la dolce vita à votre table.' },
+  marocaine:   { bg: 'linear-gradient(160deg,#6a0000,#b71c1c,#c5611a)', country: 'Maroc',         dish: 'Tajine',         desc: "Tajine d'agneau aux pruneaux, harira et pastilla — les saveurs authentiques du Maroc." },
+  bresilienne: { bg: 'linear-gradient(160deg,#0a3d0a,#2e7d32,#0d47a1)', country: 'Brésil',        dish: 'Feijoada',       desc: 'Ragoût de haricots noirs, viandes fumées et caïpirinha — le Brésil s\'invite à Casablanca.' },
+  ivoirienne:  { bg: 'linear-gradient(160deg,#7d3200,#c5611a,#bd9f87)', country: "Côte d'Ivoire", dish: 'Alloco',         desc: "Bananes plantains frites, kedjenou de poulet — les saveurs chaleureuses d'Abidjan." },
+  turque:      { bg: 'linear-gradient(160deg,#6a0000,#b71c1c,#e53935)', country: 'Turquie',       dish: 'Kebab Adana',    desc: 'Kebab Adana, börek au fromage et baklava au miel — Istanbul dans votre assiette.' },
+}
+
+const DEFAULT_BG = 'linear-gradient(160deg,#1f1f1f,#c5611a)'
+
+interface FeaturedCuisine { cuisine: string; cuisine_label: string; flag: string; count: number; avg_rating: number }
+interface FeaturedCardProps { f: FeaturedCuisine; delay?: string }
+
+function FeaturedCard({ f, delay = '0s' }: FeaturedCardProps) {
+  const { t } = useTranslation()
+  const CuisineIcon = getCuisineIcon(f.cuisine)
+  const meta = (CUISINE_META as Record<string, typeof CUISINE_META[keyof typeof CUISINE_META] | undefined>)[f.cuisine] ?? { bg: DEFAULT_BG, country: f.cuisine_label, dish: f.cuisine_label, desc: '' }
+
+  return (
+    <a
+      href={`/restaurants?cuisine=${f.cuisine}`}
+      data-reveal
+      data-delay={delay}
+      className="rounded-2xl overflow-hidden relative min-h-[280px] flex flex-col justify-end
+                 cursor-pointer group transition-all duration-300
+                 hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(31,31,31,0.25)]"
+    >
+      <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.03]"
+        style={{ background: meta.bg }} />
+      <div className="absolute inset-0"
+        style={{ background: 'linear-gradient(to top, rgba(31,31,31,0.94) 0%, rgba(31,31,31,0.28) 50%, transparent 100%)' }} />
+
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] z-10
+                      transition-transform duration-300 group-hover:-translate-y-[65%] group-hover:scale-110">
+        <CuisineIcon size={64} className="text-white/90 drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" />
+      </div>
+
+      <div className="relative z-20 p-7">
+        <span className="text-2xl block mb-1.5">{f.flag}</span>
+        <div className="text-[0.68rem] font-bold tracking-[0.15em] uppercase mb-1.5"
+          style={{ color: '#c5611a' }}>
+          {meta.country}
+        </div>
+        <h3 className="font-serif font-bold text-white text-2xl mb-2">{meta.dish}</h3>
+        <p className="text-sm leading-relaxed mb-4 line-clamp-2" style={{ color: 'rgba(248,248,248,0.70)' }}>
+          {meta.desc}
+        </p>
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center gap-1 text-sm font-semibold"
+            style={{ color: '#bd9f87' }}>
+            {t('featured.explore')}
+            <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-1" />
+          </span>
+          {f.avg_rating && (
+            <span className="text-xs" style={{ color: 'rgba(248,248,248,0.45)' }}>
+              {f.avg_rating.toFixed(1)} ★ · {f.count} {f.count > 1 ? t('featured.restos_other') : t('featured.restos_one')}
+            </span>
+          )}
+        </div>
+      </div>
+    </a>
+  )
+}
+
+export default function FeaturedCuisines() {
+  const { t } = useTranslation()
+  const ref = useScrollReveal()
+  const [featured, setFeatured] = useState<FeaturedCuisine[]>([])
+  const [loading, setLoading]   = useState(true)
+
+  useEffect(() => {
+    supabase
+      .from('restaurants')
+      .select('cuisine, cuisine_label, flag, rating')
+      .eq('is_active', true)
+      .then(({ data, error }) => {
+        if (error || !data?.length) { setLoading(false); return }
+        type Row = { cuisine: string; cuisine_label: string; flag: string; rating: number | null }
+        const rows = data as Row[]
+
+        const map: Record<string, { cuisine: string; cuisine_label: string; flag: string; total: number; count: number }> = {}
+        rows.forEach(r => {
+          if (!map[r.cuisine]) {
+            map[r.cuisine] = { cuisine: r.cuisine, cuisine_label: r.cuisine_label, flag: r.flag, total: 0, count: 0 }
+          }
+          map[r.cuisine].total += parseFloat(String(r.rating)) || 0
+          map[r.cuisine].count++
+        })
+
+        const sorted = Object.values(map)
+          .map(c => ({ ...c, avg_rating: c.total / c.count }))
+          .sort((a, b) => b.avg_rating - a.avg_rating)
+          .slice(0, 4)
+
+        setFeatured(sorted)
+        setLoading(false)
+      })
+  }, [])
+
+  return (
+    <section id="cuisines" className="py-24" style={{ backgroundColor: '#eae5d9' }} ref={ref}>
+      <div className="max-w-6xl mx-auto px-6">
+        <SectionHeader label={t('featured.label')} title={t('featured.title')} />
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="w-10 h-10 rounded-full animate-spin"
+              style={{ border: '4px solid rgba(197,97,26,0.25)', borderTopColor: '#c5611a' }} />
+          </div>
+        ) : featured.length === 0 ? (
+          <p className="text-center py-12" style={{ color: '#bd9f87' }}>
+            {t('featured.no_cuisine')}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {featured.map((f, i) => (
+              <FeaturedCard key={f.cuisine} f={f} delay={`${i * 0.1}s`} />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
