@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type React from 'react'
-import { supabase } from '../../lib/supabase'
-import { Bike, Plus, Phone, CheckCircle, Clock, X, AlertCircle, Camera, FileText, PauseCircle, PlayCircle, Trash2 } from 'lucide-react'
+import { supabase, callEdgeFunction } from '../../lib/supabase'
+import { Bike, Plus, Phone, CheckCircle, Clock, X, AlertCircle, Camera, FileText, PauseCircle, PlayCircle, Trash2, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { VEHICLE_LABEL } from '../../hooks/useDeliveryDrivers'
 
 const VEHICLE_OPTIONS = [
@@ -69,7 +69,9 @@ export default function VendorDrivers({ restaurantId }: { restaurantId: string }
   const [form, setForm] = useState({
     full_name: '', phone: '', vehicle_type: 'moto',
     vehicle_brand: '', vehicle_plate: '', license_number: '',
+    email: '', password: '',
   })
+  const [showPwd, setShowPwd] = useState(false)
   const [files, setFiles] = useState<Record<DocKey, File | null>>({
     license: null, front: null, back: null, left: null, right: null,
   })
@@ -107,6 +109,8 @@ export default function VendorDrivers({ restaurantId }: { restaurantId: string }
     e.preventDefault()
     setError('')
     if (!form.full_name.trim())      return setError('Le nom est requis.')
+    if (!form.email.trim())          return setError('L\'adresse email est requise — elle servira à la connexion du livreur.')
+    if (form.password.length < 6)    return setError('Le mot de passe doit contenir au moins 6 caractères.')
     if (!form.vehicle_brand.trim())  return setError('La marque du véhicule est requise.')
     if (!form.vehicle_plate.trim())  return setError("La plaque d'immatriculation est requise.")
     if (!form.license_number.trim()) return setError('Le numéro de permis est requis.')
@@ -126,22 +130,26 @@ export default function VendorDrivers({ restaurantId }: { restaurantId: string }
         uploadDoc(tempId, 'right', files.right),
       ])
 
-      const { error: dbErr } = await (supabase.from('delivery_drivers') as any).insert({
-        type: 'restaurant',
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await callEdgeFunction('create-internal-driver', {
         restaurant_id: restaurantId,
         full_name: form.full_name.trim(),
         phone: form.phone.trim() || null,
+        email: form.email.trim(),
+        password: form.password,
         vehicle_type: form.vehicle_type,
         vehicle_brand: form.vehicle_brand.trim(),
         vehicle_plate: form.vehicle_plate.trim(),
         license_number: form.license_number.trim(),
         license_photo_url, photo_front, photo_back, photo_left, photo_right,
-        is_active: false,
-        is_available: true,
+      }, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
       })
-      if (dbErr) throw dbErr
 
-      setForm({ full_name: '', phone: '', vehicle_type: 'moto', vehicle_brand: '', vehicle_plate: '', license_number: '' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la création du livreur.')
+
+      setForm({ full_name: '', phone: '', vehicle_type: 'moto', vehicle_brand: '', vehicle_plate: '', license_number: '', email: '', password: '' })
       setFiles({ license: null, front: null, back: null, left: null, right: null })
       setPreviews({})
       setShowForm(false)
@@ -168,11 +176,21 @@ export default function VendorDrivers({ restaurantId }: { restaurantId: string }
   }
 
   async function deleteDriver(id: string, name: string) {
-    if (!window.confirm(`Supprimer définitivement ${name} ? Cette action est irréversible.`)) return
+    if (!window.confirm(`Supprimer définitivement ${name} ? Il ne pourra plus se connecter. Cette action est irréversible.`)) return
     setToggling(id + '_del')
-    await supabase.from('delivery_drivers').delete().eq('id', id)
-    setDrivers(prev => prev.filter(d => d.id !== id))
-    setToggling(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await callEdgeFunction('delete-internal-driver', { driver_id: id }, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la suppression.')
+      setDrivers(prev => prev.filter(d => d.id !== id))
+    } catch (err) {
+      setError((err as Error).message || 'Une erreur est survenue.')
+    } finally {
+      setToggling(null)
+    }
   }
 
   const inputCls = 'w-full border border-black/[0.10] rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-[#c5611a]/60 transition-all'
@@ -230,6 +248,43 @@ export default function VendorDrivers({ restaurantId }: { restaurantId: string }
                 className={inputCls}
               />
             </div>
+          </div>
+
+          <div className="bg-black/[0.02] border border-black/[0.06] rounded-xl p-3.5 space-y-3">
+            <p className="text-xs font-semibold text-dark/60 uppercase tracking-wide">Identifiants de connexion du livreur</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-dark/60 mb-1.5 uppercase tracking-wide">Email *</label>
+                <div className="relative">
+                  <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                    placeholder="livreur@email.com"
+                    className={`${inputCls} pl-9`}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-dark/60 mb-1.5 uppercase tracking-wide">Mot de passe *</label>
+                <div className="relative">
+                  <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input
+                    type={showPwd ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                    placeholder="••••••••"
+                    className={`${inputCls} pl-9 pr-9`}
+                  />
+                  <button type="button" onClick={() => setShowPwd(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
+                    {showPwd ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p className="text-[0.7rem] text-gray-400">Le livreur utilisera cet email et ce mot de passe pour se connecter à son espace livreur.</p>
           </div>
 
           <div>
