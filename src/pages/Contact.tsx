@@ -40,7 +40,6 @@ export default function Contact() {
   ]
 
   async function fetchProfile(userId: string) {
-    if (!supabase) return
     const { data } = await supabase
       .from('profiles')
       .select('role')

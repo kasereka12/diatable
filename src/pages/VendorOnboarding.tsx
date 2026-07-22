@@ -57,7 +57,7 @@ function formatPhone(raw: string): string {
 
 export default function VendorOnboarding() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, refreshProfile } = useAuth()
   const [step,        setStep]       = useState(0)
   const [submitting,  setSubmitting] = useState(false)
   const [stepErrors,  setStepErrors] = useState<Record<string, string>>({})
@@ -101,7 +101,7 @@ export default function VendorOnboarding() {
     setStepErrors({})
     const result = vendorStep3Schema.safeParse(STEP_DATA[3])
     if (!result.success) { setStepErrors(flattenErrors(result.error)); return }
-    if (!supabase || !user) { setStep(s => s + 1); return }
+    if (!user) { setStep(s => s + 1); return }
     setSubmitting(true)
     const isCustom = form.cuisine === '__custom__'
     const cuisineId = isCustom ? 'internationale' : form.cuisine
@@ -128,6 +128,7 @@ export default function VendorOnboarding() {
       is_verified:   false,
     })
     await (supabase.from('profiles') as any).update({ role: 'vendor' }).eq('id', user.id)
+    await refreshProfile()
     setSubmitting(false)
     setStep(s => s + 1)
   }

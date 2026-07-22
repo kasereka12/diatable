@@ -25,7 +25,6 @@ export default function About() {
   ]
 
   useEffect(() => {
-    if (!supabase) { setTeamLoading(false); return }
     supabase
       .from('team')
       .select('*')

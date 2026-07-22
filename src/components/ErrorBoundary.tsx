@@ -1,6 +1,7 @@
-import { Component, type ReactNode } from 'react'
+import { Component, type ReactNode, type ErrorInfo } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
+import { Sentry } from '../lib/sentry'
 
 interface Props  { children: ReactNode }
 interface State  { hasError: boolean; error: Error | null }
@@ -13,6 +14,10 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } })
   }
 
   render() {

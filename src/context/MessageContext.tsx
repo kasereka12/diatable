@@ -15,7 +15,7 @@ export function MessageProvider({ children }: { children: ReactNode }) {
   const [unreadMessages, setUnreadMessages] = useState(0)
 
   const fetchUnreadCount = useCallback(async () => {
-    if (!supabase || !user) return
+    if (!user) return
     const { data: convs } = await supabase
       .from('conversations')
       .select('id')
@@ -34,7 +34,7 @@ export function MessageProvider({ children }: { children: ReactNode }) {
   useEffect(() => { fetchUnreadCount() }, [fetchUnreadCount])
 
   useEffect(() => {
-    if (!supabase || !user) return
+    if (!user) return
     const channel = supabase
       .channel('navbar-unread-messages')
       .on(

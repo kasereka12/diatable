@@ -59,7 +59,7 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
   const [assignModal, setAssignModal] = useState<string | null>(null) // order id
 
   useEffect(() => {
-    if (!supabase || !restaurantId) { setLoading(false); return }
+    if (!restaurantId) { setLoading(false); return }
 
     async function load() {
       setLoading(true)
@@ -93,7 +93,6 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
   }, [restaurantId])
 
   async function updateStatus(orderId: string, newStatus: string) {
-    if (!supabase) return
     await (supabase.from('orders') as any).update({ status: newStatus }).eq('id', orderId)
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
   }

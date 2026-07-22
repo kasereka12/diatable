@@ -245,7 +245,7 @@ export default function VendorDashboard() {
   const unreadCount = vendorNotifs.filter(n => !n.is_read).length
 
   useEffect(() => {
-    if (!supabase || !user) { setDbLoading(false); return }
+    if (!user) { setDbLoading(false); return }
     async function load() {
       setDbLoading(true)
 
@@ -319,7 +319,7 @@ export default function VendorDashboard() {
 
   // Fetch notifications from Supabase
   useEffect(() => {
-    if (!supabase || !user) { setNotifsLoading(false); return }
+    if (!user) { setNotifsLoading(false); return }
     async function loadNotifs() {
       setNotifsLoading(true)
       const { data } = await (supabase.from('notifications') as any)
@@ -354,33 +354,32 @@ export default function VendorDashboard() {
   function handleSignOut() { signOut(); navigate('/') }
 
   async function markRead(id: any) {
-    if (!supabase) return
     await (supabase.from('notifications') as any).update({ is_read: true }).eq('id', id)
     setVendorNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
   }
 
   async function markAllNotifsRead() {
-    if (!supabase || !user) return
+    if (!user) return
     await (supabase.from('notifications') as any).update({ is_read: true }).eq('user_id', user.id).eq('is_read', false)
     setVendorNotifs(prev => prev.map(n => ({ ...n, is_read: true })))
   }
 
   async function toggleActive() {
-    if (!supabase || !restaurant) return
+    if (!restaurant) return
     const next = !restaurant.is_active
     const { error } = await (supabase.from('restaurants') as any).update({ is_active: next }).eq('id', restaurant.id)
     if (!error) setRestaurant((prev: any) => ({ ...prev, is_active: next }))
   }
 
   async function toggleOpen() {
-    if (!supabase || !restaurant) return
+    if (!restaurant) return
     const next = !(restaurant.is_open !== false)
     const { error } = await (supabase.from('restaurants') as any).update({ is_open: next }).eq('id', restaurant.id)
     if (!error) setRestaurant((prev: any) => ({ ...prev, is_open: next }))
   }
 
   async function createRestaurant() {
-    if (!supabase || !createForm.nom.trim() || !createForm.cuisine.trim() || !createForm.ville.trim()) return
+    if (!createForm.nom.trim() || !createForm.cuisine.trim() || !createForm.ville.trim()) return
     setCreatingRest(true)
     const { data, error } = await (supabase.from('restaurants') as any).insert({ owner_id: user!.id, name: createForm.nom, cuisine: createForm.cuisine.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ''), cuisine_label: createForm.cuisine, flag: createForm.flag, emoji: createForm.flag, gradient: 'linear-gradient(135deg,#c5611a,#a04d12)', location: createForm.ville, description: createForm.description, is_active: false }).select().single()
     setCreatingRest(false)
@@ -388,7 +387,7 @@ export default function VendorDashboard() {
   }
 
   async function uploadRestaurantImage() {
-    if (!restImageFile || !supabase || !restaurant) return
+    if (!restImageFile || !restaurant) return
     setUploadingRestImage(true)
     const ext = restImageFile.name.split('.').pop()
     const path = `${restaurant.id}/cover.${ext}`
@@ -402,7 +401,7 @@ export default function VendorDashboard() {
   }
 
   async function saveRestaurant() {
-    if (!supabase || !restaurant) return
+    if (!restaurant) return
     setSavingRest(true); setSaveMsg('')
     const hoursString = hoursForm.jours === 'Sur commande uniquement'
       ? 'Sur commande uniquement'
@@ -415,7 +414,7 @@ export default function VendorDashboard() {
   }
 
   async function saveBank() {
-    if (!supabase || !user) return
+    if (!user) return
     setSavingBank(true); setBankMsg('')
     const { error } = await (supabase.from('profiles') as any).update({ rib: bankForm.rib, bank_name: bankForm.bank_name, account_name: bankForm.account_name }).eq('id', user.id)
     setSavingBank(false)
@@ -425,7 +424,7 @@ export default function VendorDashboard() {
 
   function startUpgrade(plan: any) {
     if (plan === 'free') {
-      if (!supabase || !user) return
+      if (!user) return
       ;(supabase.from('subscriptions') as any).update({ plan: 'free' }).eq('vendor_id', user.id).then(() => setSubscription((prev: any) => prev ? { ...prev, plan: 'free' } : null))
       return
     }
@@ -433,7 +432,7 @@ export default function VendorDashboard() {
   }
 
   async function submitPayment() {
-    if (!supabase || !user || !upgradingPlan) return
+    if (!user || !upgradingPlan) return
     if (!paymentForm.bank || !paymentForm.reference.trim() || !paymentForm.sender_name.trim()) { setPaymentMsg(t('vd.payment_err')); return }
     setSubmittingPayment(true); setPaymentMsg('')
     let receiptUrl = null
@@ -451,7 +450,7 @@ export default function VendorDashboard() {
   }
 
   async function addDeliveryZone() {
-    if (!supabase || !restaurant || !newZone.quartier.trim() || !newZone.price) return
+    if (!restaurant || !newZone.quartier.trim() || !newZone.price) return
     setSavingZone(true)
     const { data, error } = await (supabase.from('delivery_zones') as any).insert({ restaurant_id: restaurant.id, quartier: newZone.quartier.trim(), price: parseFloat(newZone.price) }).select().single()
     setSavingZone(false)
@@ -459,7 +458,6 @@ export default function VendorDashboard() {
   }
 
   async function removeDeliveryZone(zoneId: any) {
-    if (!supabase) return
     await supabase.from('delivery_zones').delete().eq('id', zoneId)
     setDeliveryZones(prev => prev.filter(z => z.id !== zoneId))
   }
@@ -473,7 +471,7 @@ export default function VendorDashboard() {
   function clearDishImage() { setDishImageFile(null); setDishImagePreview(null) }
 
   async function uploadDishImage(dishId: any) {
-    if (!dishImageFile || !supabase) return null
+    if (!dishImageFile) return null
     setUploadingImage(true)
     const ext = dishImageFile.name.split('.').pop()
     const path = `${restaurant.id}/${dishId}.${ext}`
@@ -489,28 +487,23 @@ export default function VendorDashboard() {
     const cat = newDish.categorie || menuCategory
     if (!editingDish && (subscription?.plan || 'free') === 'free' && menuItems.length >= 3) return
     if (editingDish) {
-      if (supabase) {
-        let imageUrl = null
-        if (dishImageFile) imageUrl = await uploadDishImage(editingDish)
-        await (supabase.from('menu_items') as any).update({ name: newDish.nom, price: parseFloat(newDish.prix) || 0, description: newDish.description, category: cat, is_popular: newDish.populaire, prep_time_min: parseInt(newDish.prepTime) || 15, ...(imageUrl ? { image_url: imageUrl } : {}) }).eq('id', editingDish)
-      }
+      let imageUrl = null
+      if (dishImageFile) imageUrl = await uploadDishImage(editingDish)
+      await (supabase.from('menu_items') as any).update({ name: newDish.nom, price: parseFloat(newDish.prix) || 0, description: newDish.description, category: cat, is_popular: newDish.populaire, prep_time_min: parseInt(newDish.prepTime) || 15, ...(imageUrl ? { image_url: imageUrl } : {}) }).eq('id', editingDish)
       setMenuItems(prev => prev.map(d => d.id === editingDish ? { ...d, name: newDish.nom, price: newDish.prix, description: newDish.description, category: cat, is_popular: newDish.populaire, ...(dishImageFile && dishImagePreview ? { image_url: dishImagePreview } : {}) } : d))
       setEditingDish(null)
     } else {
-      if (supabase) {
-        const { data } = await (supabase.from('menu_items') as any).insert({ restaurant_id: restaurant.id, name: newDish.nom, price: parseFloat(newDish.prix) || 0, description: newDish.description, category: cat, is_popular: newDish.populaire, is_available: true, prep_time_min: parseInt(newDish.prepTime) || 15 }).select().single()
-        if (data) {
-          if (dishImageFile) { const imageUrl = await uploadDishImage(data.id); if (imageUrl) { await (supabase.from('menu_items') as any).update({ image_url: imageUrl }).eq('id', data.id); data.image_url = imageUrl } }
-          setMenuItems(prev => [...prev, data]); setNewDish({ nom: '', prix: '', description: '', categorie: menuCategory, populaire: false, prepTime: '' }); clearDishImage(); setShowAddForm(false); return
-        }
+      const { data } = await (supabase.from('menu_items') as any).insert({ restaurant_id: restaurant.id, name: newDish.nom, price: parseFloat(newDish.prix) || 0, description: newDish.description, category: cat, is_popular: newDish.populaire, is_available: true, prep_time_min: parseInt(newDish.prepTime) || 15 }).select().single()
+      if (data) {
+        if (dishImageFile) { const imageUrl = await uploadDishImage(data.id); if (imageUrl) { await (supabase.from('menu_items') as any).update({ image_url: imageUrl }).eq('id', data.id); data.image_url = imageUrl } }
+        setMenuItems(prev => [...prev, data]); setNewDish({ nom: '', prix: '', description: '', categorie: menuCategory, populaire: false, prepTime: '' }); clearDishImage(); setShowAddForm(false); return
       }
-      setMenuItems(prev => [...prev, { id: Date.now(), name: newDish.nom, price: newDish.prix, description: newDish.description, category: cat, is_popular: newDish.populaire }])
     }
     setNewDish({ nom: '', prix: '', description: '', categorie: menuCategory, populaire: false, prepTime: '' }); clearDishImage(); setShowAddForm(false)
   }
 
   async function deleteDish(id: any) {
-    if (supabase) await supabase.from('menu_items').delete().eq('id', id)
+    await supabase.from('menu_items').delete().eq('id', id)
     setMenuItems(prev => prev.filter(d => d.id !== id))
   }
 

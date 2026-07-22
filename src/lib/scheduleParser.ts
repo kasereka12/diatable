@@ -4,6 +4,8 @@
 //   "Tous les jours : 10h00 – 23h00"
 //   "Lun–Ven : 12h – 22h / Sam–Dim : 10h – 23h"
 //   "Lundi au Vendredi : 11h30–22h"
+//   "Lundi – Vendredi · 11h00–22h00" (vendor onboarding format)
+//   "Weekends uniquement · 11h00–22h00"
 //   "11h – 22h" (no day → all days)
 
 const DAY_MAP: Record<string, number> = {
@@ -25,6 +27,7 @@ function parseMinutes(str: string): number | null {
 function parseDays(str: string): number[] | null {
   const s = str.trim().toLowerCase()
   if (/tous\s*(les)?\s*jours/.test(s)) return [0, 1, 2, 3, 4, 5, 6]
+  if (/week[ -]?ends?\s*(uniquement)?/.test(s)) return [6, 0]
   const rangeMatch = s.match(/^([a-z]+)\s*(?:[–\-]|au)\s*([a-z]+)$/)
   if (rangeMatch) {
     const start = DAY_MAP[rangeMatch[1]]
@@ -66,7 +69,7 @@ export function parseSchedule(hoursStr: string | null | undefined): boolean | nu
 
     parsedAny = true
 
-    const dayPart = seg.slice(0, timeMatch.index).replace(/:/g, '').trim()
+    const dayPart = seg.slice(0, timeMatch.index).replace(/[:·]/g, '').trim()
     let days = dayPart ? parseDays(dayPart) : null
     if (!days) days = [0, 1, 2, 3, 4, 5, 6]
 

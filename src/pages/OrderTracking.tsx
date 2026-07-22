@@ -184,7 +184,7 @@ export default function OrderTracking() {
   const [activeTab, setActiveTab]     = useState('active')
 
   useEffect(() => {
-    if (!supabase || !user) { setLoading(false); return }
+    if (!user) { setLoading(false); return }
 
     async function load() {
       setLoading(true)

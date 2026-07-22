@@ -19,6 +19,8 @@ interface AuthContextValue {
   signInWithMagicLink: (email: string) => Promise<AuthResult>
   signInWithPhone:     (phone: string) => Promise<AuthResult>
   verifyPhoneOtp:      (phone: string, token: string) => Promise<AuthResult>
+  updatePassword:      (password: string) => Promise<AuthResult>
+  refreshProfile:      () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -29,8 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!supabase) { setLoading(false); return }
-
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) await fetchProfile(session.user.id)
@@ -47,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function fetchProfile(userId: string) {
-    if (!supabase) return
     const { data } = await supabase
       .from('profiles')
       .select('*')
@@ -57,13 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signIn(email: string, password: string): Promise<AuthResult> {
-    if (!supabase) {
-      const fakeUser = { id: 'demo', email, user_metadata: { full_name: 'Demo Utilisateur' } } as unknown as User
-      setUser(fakeUser)
-      setProfile({ id: 'demo', full_name: 'Demo Utilisateur', role: 'client', email, avatar_url: null, created_at: new Date().toISOString(), rib: null, bank_name: null, account_name: null })
-      return { error: null }
-    }
-
     const res = await callEdgeFunction('auth-login', { email, password })
     const data = await res.json()
 
@@ -93,8 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(email: string, password: string, fullName: string, role = 'client'): Promise<AuthResult> {
-    if (!supabase) return { error: null }
-
     const res = await callEdgeFunction('auth-signup', {
       email,
       password,
@@ -135,16 +125,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut(): Promise<void> {
     setUser(null)
     setProfile(null)
-    if (supabase) await supabase.auth.signOut()
+    await supabase.auth.signOut()
   }
 
   async function signInWithGoogle(): Promise<AuthResult> {
-    if (!supabase) return { error: { message: 'Supabase non configuré' } }
     return supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/profil` } })
   }
 
   async function signInWithMagicLink(email: string): Promise<AuthResult> {
-    if (!supabase) return { error: { message: 'Supabase non configuré' } }
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${window.location.origin}/livreur` },
@@ -153,15 +141,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signInWithPhone(phone: string): Promise<AuthResult> {
-    if (!supabase) return { error: { message: 'Supabase non configuré' } }
     const { error } = await supabase.auth.signInWithOtp({ phone })
     return { error: error ? { message: error.message } : null }
   }
 
   async function verifyPhoneOtp(phone: string, token: string): Promise<AuthResult> {
-    if (!supabase) return { error: { message: 'Supabase non configuré' } }
     const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' })
     return { data, error: error ? { message: error.message } : null }
+  }
+
+  async function updatePassword(password: string): Promise<AuthResult> {
+    const { error } = await supabase.auth.updateUser({ password })
+    return { error: error ? { message: error.message } : null }
+  }
+
+  async function refreshProfile(): Promise<void> {
+    if (!user) return
+    await fetchProfile(user.id)
   }
 
   const isVendor = profile?.role === 'vendor'
@@ -169,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin  = profile?.role === 'admin'
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isVendor, isClient, isAdmin, signIn, signUp, signOut, signInWithGoogle, signInWithMagicLink, signInWithPhone, verifyPhoneOtp }}>
+    <AuthContext.Provider value={{ user, profile, loading, isVendor, isClient, isAdmin, signIn, signUp, signOut, signInWithGoogle, signInWithMagicLink, signInWithPhone, verifyPhoneOtp, updatePassword, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

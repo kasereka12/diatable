@@ -111,8 +111,6 @@ export default function Galerie() {
   const [selected,     setSelected]    = useState<Dish | null>(null)
 
   useEffect(() => {
-    if (!supabase) { setLoading(false); return }
-
     supabase
       .from('dishes')
       .select('*')

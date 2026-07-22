@@ -143,8 +143,8 @@ export default function DriverDashboard() {
   const [editErr,  setEditErr]  = useState('')
 
   // ── Load ───────────────────────────────────────────────────────────────────
+  // `user` is guaranteed here — the /livreur route is wrapped in ProtectedRoute.
   useEffect(() => {
-    if (!user) { navigate('/connexion-livreur', { replace: true }); return }
     load()
     return () => stopGps()
   }, [user])

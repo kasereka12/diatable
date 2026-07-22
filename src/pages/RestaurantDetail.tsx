@@ -209,7 +209,7 @@ export default function RestaurantDetail() {
   }
 
   async function startConversation() {
-    if (!user || !supabase || !restaurant) return
+    if (!user || !restaurant) return
     const { data: existingRaw } = await supabase
       .from('conversations').select('id')
       .eq('customer_id', user.id).eq('restaurant_id', restaurant.id).maybeSingle()

@@ -41,7 +41,7 @@ export default function MessagingPanel({ heightClass = 'h-[calc(100vh-240px)] mi
 
   // Fetch conversations
   useEffect(() => {
-    if (!supabase || !user) { setLoading(false); return }
+    if (!user) { setLoading(false); return }
 
     async function load() {
       if (conversations.length === 0) setLoading(true)
@@ -95,7 +95,7 @@ export default function MessagingPanel({ heightClass = 'h-[calc(100vh-240px)] mi
 
   // Fetch messages for active conversation
   const loadMessages = useCallback(async (convId: string) => {
-    if (!supabase || !convId) return
+    if (!convId) return
     const { data } = await supabase
       .from('messages')
       .select('*, sender:profiles!messages_sender_id_fkey(full_name)')
@@ -126,7 +126,7 @@ export default function MessagingPanel({ heightClass = 'h-[calc(100vh-240px)] mi
 
   // Realtime subscription for new messages in active conversation
   useEffect(() => {
-    if (!supabase || !activeConv) return
+    if (!activeConv) return
 
     const channel = supabase
       .channel('chat-' + activeConv.id)
@@ -157,7 +157,7 @@ export default function MessagingPanel({ heightClass = 'h-[calc(100vh-240px)] mi
 
   // Realtime subscription for unread counts on other conversations
   useEffect(() => {
-    if (!supabase || !user || conversations.length === 0) return
+    if (!user || conversations.length === 0) return
 
     const channel = supabase
       .channel('unread-global')
@@ -191,7 +191,7 @@ export default function MessagingPanel({ heightClass = 'h-[calc(100vh-240px)] mi
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault()
-    if (!activeConv || !supabase) return
+    if (!activeConv) return
     const result = messageSchema.safeParse({ text: newMessage })
     if (!result.success) return
 

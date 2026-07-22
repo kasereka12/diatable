@@ -85,8 +85,6 @@ export default function FeaturedCuisines() {
   const [loading, setLoading]   = useState(true)
 
   useEffect(() => {
-    if (!supabase) { setLoading(false); return }
-
     supabase
       .from('restaurants')
       .select('cuisine, cuisine_label, flag, rating')

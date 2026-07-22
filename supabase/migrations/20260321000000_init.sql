@@ -148,28 +148,7 @@ create policy "Public peut lire les témoignages actifs"
 
 
 -- ── 6. SEED DATA ─────────────────────────────────────
-insert into restaurants (name, cuisine, cuisine_label, flag, emoji, gradient, location, rating, reviews, is_verified)
-values
-  ('Chez Fatou — Saveurs du Sénégal', 'senegalaise', 'Sénégalaise', '🇸🇳', '🍚', 'grad-senegal',   'Casablanca', 4.9, 128, true),
-  ('Dragon Palace — Chef Wei',         'chinoise',    'Chinoise',    '🇨🇳', '🥟', 'grad-chinese',   'Marrakech',  4.8, 94,  true),
-  ('Beit Beirut — Mezze & Grills',     'libanaise',   'Libanaise',   '🇱🇧', '🧆', 'grad-lebanese',  'Rabat',      4.7, 76,  true),
-  ('Damas Kitchen — Shawarma & Plus',  'syrienne',    'Syrienne',    '🇸🇾', '🌯', 'grad-syrian',    'Casablanca', 4.6, 112, true),
-  ('Maison Dupont — Boulangerie',      'francaise',   'Française',   '🇫🇷', '🥐', 'grad-french',    'Tanger',     4.9, 203, true),
-  ('Mama Chidi''s — Jollof & Soul',    'nigeriane',   'Nigériane',   '🇳🇬', '🍲', 'grad-nigerian',  'Casablanca', 4.5, 88,  false),
-  ('Spice Route — Chef Priya',         'indienne',    'Indienne',    '🇮🇳', '🍛', 'grad-indian',    'Marrakech',  4.8, 67,  true),
-  ('Trattoria Romano — Pasta & Vino',  'italienne',   'Italienne',   '🇮🇹', '🍝', 'grad-italian',   'Rabat',      4.6, 45,  false),
-  ('Rio Sabor — Feijoada & Caipi',     'bresilienne', 'Brésilienne', '🇧🇷', '🫘', 'grad-brazilian', 'Casablanca', 4.7, 52,  true)
-on conflict do nothing;
-
-insert into testimonials (initials, name, origin, text, rating)
-values
-  ('AS', 'Aminata S.', 'Dakar 🇸🇳 · Vit à Casablanca',
-   'J''ai enfin trouvé du vrai Thiéboudienne à Casablanca ! DiaTable m''a sauvé l''âme. C''était exactement comme chez ma grand-mère.',
-   5),
-  ('KM', 'Karim M.', 'Beyrouth 🇱🇧 · Vit à Rabat',
-   'En tant qu''expatrié libanais, j''avais envie de vrais mezze depuis des mois. DiaTable m''a mis en contact avec une cuisinière extraordinaire à Rabat.',
-   5),
-  ('ZW', 'Zhang Wei', 'Chef & Vendeur 🇨🇳 · Marrakech',
-   'Mon restaurant est passé de l''invisibilité au complet en 3 semaines après avoir rejoint DiaTable. Merci !',
-   5)
-on conflict do nothing;
+-- Demo seed data removed — see 20260720_remove_demo_seed_data.sql for cleanup
+-- of any environment where it was already applied. Do not reintroduce demo
+-- restaurants/testimonials into this migration; use a separate dev-only seed
+-- script instead so production never ships fictitious content.

@@ -1,6 +1,19 @@
 -- ──────────────────────────────────────────────────────
--- DiaTable — Supabase schema complet
--- Copiez-collez ce fichier dans l'éditeur SQL Supabase
+-- DiaTable — Schéma complet consolidé (état actuel)
+--
+-- Ce fichier est régénéré à partir de l'historique complet de
+-- supabase/migrations/*.sql — il reflète l'état final de la base après
+-- application de toutes les migrations, colonnes et politiques comprises.
+-- Il peut être collé tel quel dans l'éditeur SQL Supabase pour provisionner
+-- une base neuve : toutes les instructions sont idempotentes
+-- (if not exists / or replace).
+--
+-- ⚠️ Ne PAS modifier ce fichier à la main en production : les migrations
+-- datées dans supabase/migrations/ restent la source de vérité pour toute
+-- base déjà en service. Après avoir ajouté une nouvelle migration,
+-- reportez le changement ici aussi pour que ce snapshot reste à jour.
+-- Pour le régénérer automatiquement depuis une base liée :
+--   supabase db dump --linked --schema public -f supabase/schema.sql
 -- ──────────────────────────────────────────────────────
 
 create extension if not exists "uuid-ossp";
@@ -14,17 +27,20 @@ $$;
 
 -- ── 1. PROFILES (liée à auth.users) ─────────────────
 create table if not exists profiles (
-  id          uuid primary key references auth.users(id) on delete cascade,
-  full_name   text,
-  role        text not null default 'client' check (role in ('client', 'vendor', 'admin')),
-  email       text,
-  avatar_url  text,
-  created_at  timestamptz default now()
+  id            uuid primary key references auth.users(id) on delete cascade,
+  full_name     text,
+  role          text not null default 'client'
+                check (role in ('client', 'vendor', 'admin', 'driver')),
+  email         text,
+  avatar_url    text,
+  rib           text,
+  bank_name     text,
+  account_name  text,
+  created_at    timestamptz default now()
 );
 
 alter table profiles enable row level security;
 
--- Chaque utilisateur peut lire et modifier son propre profil
 create policy "Users can read own profile"
   on profiles for select using (auth.uid() = id);
 
@@ -63,28 +79,33 @@ create trigger on_auth_user_created
 
 -- ── 2. RESTAURANTS ──────────────────────────────────
 create table if not exists restaurants (
-  id              uuid primary key default uuid_generate_v4(),
-  owner_id        uuid references profiles(id) on delete set null,
-  type            text not null default 'restaurant' check (type in ('restaurant','homecook','popup')),
-  name            text not null,
-  cuisine         text not null,
-  cuisine_label   text not null,
-  flag            text not null,
-  emoji           text not null,
-  gradient        text not null,
-  location        text not null,
-  address         text,
-  description     text,
-  hours           text,
-  phone           text,
-  whatsapp        text,
-  instagram       text,
-  image_url       text,
-  rating          numeric(2,1) default null,
-  reviews         int default 0,
-  is_verified     boolean default false,
-  is_active       boolean default true,
-  created_at      timestamptz default now()
+  id                uuid primary key default uuid_generate_v4(),
+  owner_id          uuid references profiles(id) on delete set null,
+  type              text not null default 'restaurant'
+                    check (type in ('restaurant','homecook','popup')),
+  name              text not null,
+  cuisine           text not null,
+  cuisine_label     text not null,
+  flag              text not null,
+  emoji             text not null,
+  gradient          text not null,
+  location          text not null,
+  address           text,
+  description       text,
+  hours             text,
+  phone             text,
+  whatsapp          text,
+  instagram         text,
+  image_url         text,
+  rating            numeric(2,1) default null,
+  reviews           int default 0,
+  is_verified       boolean default false,
+  is_active         boolean default true,
+  is_open           boolean not null default true,
+  is_home_featured  boolean not null default false,
+  latitude          numeric(10,7),
+  longitude         numeric(10,7),
+  created_at        timestamptz default now()
 );
 
 alter table restaurants enable row level security;
@@ -122,6 +143,7 @@ create table if not exists menu_items (
   image_url       text,
   is_popular      boolean default false,
   is_available    boolean default true,
+  prep_time_min   integer default 15,
   created_at      timestamptz default now()
 );
 
@@ -156,8 +178,35 @@ create policy "Public peut lire les avis"
 create policy "Utilisateur connecté peut écrire un avis"
   on reviews for insert with check (auth.uid() = user_id);
 
+create policy "Utilisateur peut modifier son avis"
+  on reviews for update using (auth.uid() = user_id);
+
+create policy "Utilisateur peut supprimer son avis"
+  on reviews for delete using (auth.uid() = user_id);
+
+-- Trigger : recalcule rating + nombre d'avis automatiquement
+create or replace function update_restaurant_rating()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare rid uuid;
+begin
+  rid := coalesce(new.restaurant_id, old.restaurant_id);
+  update restaurants
+  set
+    rating  = coalesce((select round(avg(rating)::numeric, 1) from reviews where restaurant_id = rid), rating),
+    reviews = (select count(*) from reviews where restaurant_id = rid)
+  where id = rid;
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists on_review_change on reviews;
+create trigger on_review_change
+  after insert or update or delete on reviews
+  for each row execute procedure update_restaurant_rating();
+
 
 -- ── 5. TESTIMONIALS ──────────────────────────────────
+-- Contenu géré par l'admin (section "Vitrine") — pas de seed ici.
 create table if not exists testimonials (
   id          uuid primary key default uuid_generate_v4(),
   initials    text not null,
@@ -275,31 +324,7 @@ insert into team (initials, name, role, origin, bio, avatar_bg, sort_order) valu
 on conflict do nothing;
 
 
--- ── 8. SEED DATA ─────────────────────────────────────
--- Réinitialiser is_verified pour exiger une validation admin explicite
-update restaurants set is_verified = false where is_verified = true;
-
-insert into restaurants (name, cuisine, cuisine_label, flag, emoji, gradient, location, is_verified)
-values
-  ('Chez Fatou — Saveurs du Sénégal', 'senegalaise', 'Sénégalaise', '🇸🇳', '🍚', 'grad-senegal',   'Casablanca', false),
-  ('Dragon Palace — Chef Wei',         'chinoise',    'Chinoise',    '🇨🇳', '🥟', 'grad-chinese',   'Marrakech',  false),
-  ('Beit Beirut — Mezze & Grills',     'libanaise',   'Libanaise',   '🇱🇧', '🧆', 'grad-lebanese',  'Rabat',      false),
-  ('Damas Kitchen — Shawarma & Plus',  'syrienne',    'Syrienne',    '🇸🇾', '🌯', 'grad-syrian',    'Casablanca', false),
-  ('Maison Dupont — Boulangerie',      'francaise',   'Française',   '🇫🇷', '🥐', 'grad-french',    'Tanger',     false),
-  ('Mama Chidi''s — Jollof & Soul',    'nigeriane',   'Nigériane',   '🇳🇬', '🍲', 'grad-nigerian',  'Casablanca', false),
-  ('Spice Route — Chef Priya',         'indienne',    'Indienne',    '🇮🇳', '🍛', 'grad-indian',    'Marrakech',  false),
-  ('Trattoria Romano — Pasta & Vino',  'italienne',   'Italienne',   '🇮🇹', '🍝', 'grad-italian',   'Rabat',      false),
-  ('Rio Sabor — Feijoada & Caipi',     'bresilienne', 'Brésilienne', '🇧🇷', '🫘', 'grad-brazilian', 'Casablanca', false)
-on conflict do nothing;
-
--- Reset toutes les notes et compteurs (seront recalculés par le trigger au fur et à mesure)
-update restaurants set rating = null, reviews = 0;
-
--- ── Reset is_verified for seed data ─────────────────────────────────────────
-update restaurants set is_verified = false;
-
-
--- ── restaurant_likes ─────────────────────────────────────────────────────────
+-- ── 8. RESTAURANT LIKES ──────────────────────────────
 create table if not exists restaurant_likes (
   id            uuid primary key default uuid_generate_v4(),
   restaurant_id uuid references restaurants(id) on delete cascade,
@@ -320,12 +345,15 @@ create policy "Utilisateur peut supprimer son like"
   on restaurant_likes for delete using (auth.uid() = user_id);
 
 
--- ── restaurant_views ─────────────────────────────────────────────────────────
+-- ── 9. RESTAURANT VIEWS ──────────────────────────────
 create table if not exists restaurant_views (
   id            uuid primary key default uuid_generate_v4(),
   restaurant_id uuid references restaurants(id) on delete cascade,
   created_at    timestamptz default now()
 );
+
+create index if not exists idx_restaurant_views_restaurant
+  on restaurant_views (restaurant_id, created_at desc);
 
 alter table restaurant_views enable row level security;
 
@@ -343,44 +371,684 @@ create policy "Admin peut lire toutes les vues"
   on restaurant_views for select using (is_admin());
 
 
--- ── Trigger : recalcule rating + nombre d'avis automatiquement ───────────────
-create or replace function update_restaurant_rating()
-returns trigger language plpgsql security definer set search_path = public as $$
-declare rid uuid;
+-- ── 10. DELIVERY ZONES (par restaurant) ──────────────
+create table if not exists delivery_zones (
+  id              uuid primary key default uuid_generate_v4(),
+  restaurant_id   uuid references restaurants(id) on delete cascade,
+  quartier        text not null,
+  price           numeric(10,2) not null default 0,
+  created_at      timestamptz default now()
+);
+
+alter table delivery_zones enable row level security;
+
+create policy "Vendor can manage own zones"
+  on delivery_zones for all using (
+    exists (select 1 from restaurants where id = delivery_zones.restaurant_id and owner_id = auth.uid())
+  );
+
+create policy "Anyone can read zones"
+  on delivery_zones for select using (true);
+
+
+-- ── 11. DELIVERY DRIVERS (livreurs) ──────────────────
+create table if not exists delivery_drivers (
+  id                    uuid primary key default uuid_generate_v4(),
+  profile_id            uuid references profiles(id) on delete set null,
+  type                  text not null check (type in ('external', 'restaurant')),
+  restaurant_id         uuid references restaurants(id) on delete set null, -- null pour external
+  full_name             text not null,
+  phone                 text,
+  email                 text,
+  vehicle_type          text check (vehicle_type in ('moto', 'voiture', 'velo', 'pieton')),
+  is_active             boolean not null default true,
+  is_available          boolean not null default true,
+  current_lat           numeric(10,7),
+  current_lng           numeric(10,7),
+  location_updated_at   timestamptz,
+  created_at            timestamptz default now()
+);
+
+create index if not exists idx_drivers_restaurant       on delivery_drivers (restaurant_id) where restaurant_id is not null;
+create index if not exists idx_drivers_available        on delivery_drivers (is_available, is_active) where is_available = true and is_active = true;
+create index if not exists idx_delivery_drivers_email    on delivery_drivers (email) where email is not null;
+create index if not exists idx_delivery_drivers_phone    on delivery_drivers (phone) where phone is not null;
+
+alter table delivery_drivers enable row level security;
+
+create policy "drivers_read" on delivery_drivers
+  for select using (true);
+
+-- INSERT: onboarding non authentifié (profile_id null) ou auto-inscription authentifiée
+create policy "drivers_insert" on delivery_drivers
+  for insert with check (
+    profile_id is null
+    or auth.uid() = profile_id
+  );
+
+-- UPDATE: le livreur gère son propre profil, peut le "réclamer" par email au
+-- premier lien magique, ou le vendeur gère les livreurs de son restaurant
+create policy "drivers_update" on delivery_drivers
+  for update using (
+    auth.uid() = profile_id
+    or (
+      profile_id is null
+      and email = (select email from auth.users where id = auth.uid())
+    )
+    or (
+      restaurant_id is not null
+      and exists (
+        select 1 from restaurants
+        where restaurants.id = restaurant_id
+          and restaurants.owner_id = auth.uid()
+      )
+    )
+  );
+
+
+-- ── 12. ORDERS ───────────────────────────────────────
+create table if not exists orders (
+  id                      uuid primary key default uuid_generate_v4(),
+  customer_id             uuid references profiles(id) on delete set null,
+  restaurant_id           uuid references restaurants(id) on delete set null,
+  status                  text not null default 'pending'
+                          check (status in ('pending','confirmed','preparing','ready','delivered','cancelled')),
+  payment_method          text not null default 'cash_on_delivery'
+                          check (payment_method in ('cash_on_delivery','card','mobile_payment')),
+  payment_status          text not null default 'pending'
+                          check (payment_status in ('pending','paid','refunded')),
+  subtotal                numeric(10,2) not null default 0,
+  delivery_fee            numeric(10,2) not null default 0,
+  total                   numeric(10,2) not null default 0,
+  delivery_address        text,
+  delivery_phone          text,
+  delivery_notes          text,
+  customer_name           text,
+  estimated_time          text, -- legacy free-text ETA (superseded by estimated_prep_min/estimated_delivery_at below)
+  delivery_mode           text not null default 'delivery'
+                          check (delivery_mode in ('delivery','pickup')),
+  delivery_zone           text,
+  delivery_lat            numeric(10,7),
+  delivery_lng            numeric(10,7),
+  estimated_delivery_at   timestamptz,
+  estimated_prep_min      integer,
+  driver_id               uuid references delivery_drivers(id) on delete set null,
+  driver_name             text,
+  created_at              timestamptz default now(),
+  updated_at              timestamptz default now()
+);
+
+create index if not exists idx_orders_customer_id on orders (customer_id, created_at desc);
+create index if not exists idx_orders_driver       on orders (driver_id) where driver_id is not null;
+create index if not exists idx_orders_status       on orders (status, restaurant_id);
+
+alter table orders enable row level security;
+
+create policy "Client peut lire ses commandes"
+  on orders for select using (auth.uid() = customer_id);
+
+create policy "Client peut créer une commande"
+  on orders for insert with check (auth.uid() = customer_id);
+
+create policy "Vendeur peut lire les commandes de son restaurant"
+  on orders for select
+  using (exists (
+    select 1 from restaurants r
+    where r.id = restaurant_id and r.owner_id = auth.uid()
+  ));
+
+create policy "Vendeur peut modifier les commandes de son restaurant"
+  on orders for update
+  using (exists (
+    select 1 from restaurants r
+    where r.id = restaurant_id and r.owner_id = auth.uid()
+  ));
+
+create policy "Admin peut lire toutes les commandes"
+  on orders for select using (is_admin());
+
+create policy "Admin peut modifier toutes les commandes"
+  on orders for update using (is_admin());
+
+-- Trigger : mise à jour updated_at
+create or replace function update_order_timestamp()
+returns trigger language plpgsql as $$
 begin
-  rid := coalesce(new.restaurant_id, old.restaurant_id);
-  update restaurants
-  set
-    rating  = coalesce((select round(avg(rating)::numeric, 1) from reviews where restaurant_id = rid), rating),
-    reviews = (select count(*) from reviews where restaurant_id = rid)
-  where id = rid;
-  return coalesce(new, old);
+  new.updated_at = now();
+  return new;
 end;
 $$;
 
-drop trigger if exists on_review_change on reviews;
-create trigger on_review_change
+drop trigger if exists on_order_update on orders;
+create trigger on_order_update
+  before update on orders
+  for each row execute procedure update_order_timestamp();
+
+
+-- ── 13. ORDER ITEMS ──────────────────────────────────
+create table if not exists order_items (
+  id              uuid primary key default uuid_generate_v4(),
+  order_id        uuid references orders(id) on delete cascade,
+  menu_item_id    uuid references menu_items(id) on delete set null,
+  name            text not null,
+  price           numeric(10,2) not null,
+  quantity        int not null default 1,
+  notes           text,
+  created_at      timestamptz default now()
+);
+
+alter table order_items enable row level security;
+
+create policy "Client peut lire ses order_items"
+  on order_items for select
+  using (exists (
+    select 1 from orders o where o.id = order_id and o.customer_id = auth.uid()
+  ));
+
+create policy "Client peut créer des order_items"
+  on order_items for insert
+  with check (exists (
+    select 1 from orders o where o.id = order_id and o.customer_id = auth.uid()
+  ));
+
+create policy "Vendeur peut lire les order_items de ses commandes"
+  on order_items for select
+  using (exists (
+    select 1 from orders o
+    join restaurants r on r.id = o.restaurant_id
+    where o.id = order_id and r.owner_id = auth.uid()
+  ));
+
+create policy "Admin peut lire tous les order_items"
+  on order_items for select using (is_admin());
+
+
+-- ── 14. CONVERSATIONS ────────────────────────────────
+create table if not exists conversations (
+  id              uuid primary key default uuid_generate_v4(),
+  customer_id     uuid references profiles(id) on delete cascade,
+  vendor_id       uuid references profiles(id) on delete cascade,
+  restaurant_id   uuid references restaurants(id) on delete cascade,
+  order_id        uuid references orders(id) on delete set null,
+  last_message    text,
+  last_message_at timestamptz default now(),
+  created_at      timestamptz default now(),
+  unique(customer_id, restaurant_id)
+);
+
+alter table conversations enable row level security;
+
+create policy "Participants peuvent lire leurs conversations"
+  on conversations for select
+  using (auth.uid() = customer_id or auth.uid() = vendor_id);
+
+create policy "Client peut créer une conversation"
+  on conversations for insert
+  with check (auth.uid() = customer_id);
+
+create policy "Participants peuvent modifier la conversation"
+  on conversations for update
+  using (auth.uid() = customer_id or auth.uid() = vendor_id);
+
+
+-- ── 15. MESSAGES ─────────────────────────────────────
+create table if not exists messages (
+  id              uuid primary key default uuid_generate_v4(),
+  conversation_id uuid references conversations(id) on delete cascade,
+  sender_id       uuid references profiles(id) on delete set null,
+  content         text not null,
+  is_read         boolean default false,
+  created_at      timestamptz default now()
+);
+
+alter table messages enable row level security;
+
+create policy "Participants peuvent lire les messages"
+  on messages for select
+  using (exists (
+    select 1 from conversations c
+    where c.id = conversation_id
+    and (c.customer_id = auth.uid() or c.vendor_id = auth.uid())
+  ));
+
+create policy "Participants peuvent envoyer des messages"
+  on messages for insert
+  with check (
+    auth.uid() = sender_id
+    and exists (
+      select 1 from conversations c
+      where c.id = conversation_id
+      and (c.customer_id = auth.uid() or c.vendor_id = auth.uid())
+    )
+  );
+
+create policy "Participants peuvent modifier les messages"
+  on messages for update
+  using (exists (
+    select 1 from conversations c
+    where c.id = conversation_id
+    and (c.customer_id = auth.uid() or c.vendor_id = auth.uid())
+  ));
+
+
+-- ── 16. NOTIFICATIONS ────────────────────────────────
+create table if not exists notifications (
+  id              uuid primary key default uuid_generate_v4(),
+  user_id         uuid references profiles(id) on delete cascade,
+  type            text not null default 'info'
+                  check (type in ('order','message','review','system','info')),
+  title           text not null,
+  body            text,
+  link            text,
+  is_read         boolean default false,
+  created_at      timestamptz default now()
+);
+
+alter table notifications enable row level security;
+
+create policy "Utilisateur peut lire ses notifications"
+  on notifications for select using (auth.uid() = user_id);
+
+create policy "Utilisateur peut modifier ses notifications"
+  on notifications for update using (auth.uid() = user_id);
+
+create policy "Système peut créer des notifications"
+  on notifications for insert with check (true);
+
+
+-- ── 17. Triggers de notification (commandes / messages) ──
+create or replace function notify_new_order()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  vendor uuid;
+  rest_name text;
+begin
+  select r.owner_id, r.name into vendor, rest_name
+  from restaurants r where r.id = new.restaurant_id;
+
+  if vendor is not null then
+    insert into notifications (user_id, type, title, body, link)
+    values (
+      vendor,
+      'order',
+      'Nouvelle commande reçue',
+      'Commande #' || left(new.id::text, 8) || ' pour ' || rest_name,
+      '/tableau-de-bord?section=commandes'
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_new_order on orders;
+create trigger on_new_order
+  after insert on orders
+  for each row execute procedure notify_new_order();
+
+
+create or replace function notify_new_message()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  conv record;
+  recipient uuid;
+  sender_name text;
+begin
+  select * into conv from conversations where id = new.conversation_id;
+
+  if new.sender_id = conv.customer_id then
+    recipient := conv.vendor_id;
+  else
+    recipient := conv.customer_id;
+  end if;
+
+  select full_name into sender_name from profiles where id = new.sender_id;
+
+  insert into notifications (user_id, type, title, body, link)
+  values (
+    recipient,
+    'message',
+    'Nouveau message de ' || coalesce(sender_name, 'un utilisateur'),
+    left(new.content, 100),
+    '/messages'
+  );
+
+  update conversations
+  set last_message = left(new.content, 100),
+      last_message_at = now()
+  where id = new.conversation_id;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_new_message on messages;
+create trigger on_new_message
+  after insert on messages
+  for each row execute procedure notify_new_message();
+
+
+create or replace function notify_order_status()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  status_labels jsonb := '{"confirmed":"confirmée","preparing":"en préparation","ready":"prête","delivered":"livrée","cancelled":"annulée"}'::jsonb;
+  label text;
+begin
+  if old.status is distinct from new.status then
+    label := coalesce(status_labels->>new.status, new.status);
+
+    insert into notifications (user_id, type, title, body, link)
+    values (
+      new.customer_id,
+      'order',
+      'Commande ' || label,
+      'Votre commande #' || left(new.id::text, 8) || ' est maintenant ' || label || '.',
+      '/mes-commandes'
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_order_status_change on orders;
+create trigger on_order_status_change
+  after update on orders
+  for each row execute procedure notify_order_status();
+
+
+-- ── 18. SUBSCRIPTIONS (plans vendeur) ────────────────
+create table if not exists subscriptions (
+  id              uuid primary key default uuid_generate_v4(),
+  vendor_id       uuid references profiles(id) on delete cascade unique,
+  plan            text not null default 'free'
+                  check (plan in ('free','pro','premium')),
+  status          text not null default 'active'
+                  check (status in ('active','expired','cancelled')),
+  started_at      timestamptz default now(),
+  expires_at      timestamptz,
+  created_at      timestamptz default now()
+);
+
+create index if not exists idx_subscriptions_vendor_id on subscriptions (vendor_id);
+create index if not exists idx_subscriptions_vendor_active
+  on subscriptions (vendor_id, plan) where status = 'active';
+
+alter table subscriptions enable row level security;
+
+create policy "Vendeur peut lire son abonnement"
+  on subscriptions for select using (auth.uid() = vendor_id);
+
+create policy "Vendeur peut modifier son abonnement"
+  on subscriptions for update using (auth.uid() = vendor_id);
+
+create policy "Vendeur peut créer son abonnement"
+  on subscriptions for insert with check (auth.uid() = vendor_id);
+
+create policy "Admin peut lire tous les abonnements"
+  on subscriptions for select using (is_admin());
+
+create policy "Admin peut modifier tous les abonnements"
+  on subscriptions for update using (is_admin());
+
+create policy "Admin peut insérer des abonnements"
+  on subscriptions for insert with check (is_admin());
+
+-- Trigger : crée automatiquement un abonnement "free" pour tout nouveau vendeur
+create or replace function handle_vendor_subscription()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.role = 'vendor' and (old.role is null or old.role <> 'vendor') then
+    insert into subscriptions (vendor_id, plan, status)
+    values (new.id, 'free', 'active')
+    on conflict (vendor_id) do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_vendor_role_change on profiles;
+create trigger on_vendor_role_change
+  after insert or update on profiles
+  for each row execute procedure handle_vendor_subscription();
+
+
+-- ── 19. SUBSCRIPTION PAYMENTS (virements manuels) ────
+create table if not exists subscription_payments (
+  id              uuid primary key default uuid_generate_v4(),
+  vendor_id       uuid references profiles(id) on delete cascade,
+  plan            text not null check (plan in ('pro','premium')),
+  bank            text not null,
+  reference       text not null,
+  sender_name     text not null,
+  receipt_url     text,
+  status          text not null default 'pending'
+                  check (status in ('pending','approved','rejected')),
+  reviewed_at     timestamptz,
+  created_at      timestamptz default now()
+);
+
+alter table subscription_payments enable row level security;
+
+create policy "Vendor can manage own payments"
+  on subscription_payments for all using (auth.uid() = vendor_id);
+
+create policy "Admin can manage all payments"
+  on subscription_payments for all using (is_admin());
+
+
+-- ── 20. DELIVERY OFFERS (propositions aux livreurs externes) ──
+create table if not exists delivery_offers (
+  id            uuid primary key default uuid_generate_v4(),
+  order_id      uuid not null references orders(id) on delete cascade,
+  driver_id     uuid not null references delivery_drivers(id) on delete cascade,
+  status        text not null default 'pending'
+                check (status in ('pending', 'accepted', 'declined', 'expired')),
+  distance_km   numeric(6,2),
+  created_at    timestamptz default now(),
+  expires_at    timestamptz default now() + interval '5 minutes',
+  responded_at  timestamptz,
+  unique (order_id, driver_id)
+);
+
+create index if not exists idx_offers_driver_pending on delivery_offers (driver_id, status) where status = 'pending';
+create index if not exists idx_offers_order          on delivery_offers (order_id, status);
+
+alter table delivery_offers enable row level security;
+
+create policy "offers_select" on delivery_offers
+  for select using (
+    exists (
+      select 1 from delivery_drivers d
+      where d.id = driver_id and d.profile_id = auth.uid()
+    )
+    or exists (
+      select 1 from orders o
+      join restaurants r on r.id = o.restaurant_id
+      where o.id = order_id and r.owner_id = auth.uid()
+    )
+  );
+
+create policy "offers_insert" on delivery_offers
+  for insert with check (
+    exists (
+      select 1 from orders o
+      join restaurants r on r.id = o.restaurant_id
+      where o.id = order_id and r.owner_id = auth.uid()
+    )
+  );
+
+create policy "offers_update" on delivery_offers
+  for update using (
+    exists (
+      select 1 from delivery_drivers d
+      where d.id = driver_id and d.profile_id = auth.uid()
+    )
+    or exists (
+      select 1 from orders o
+      join restaurants r on r.id = o.restaurant_id
+      where o.id = order_id and r.owner_id = auth.uid()
+    )
+  );
+
+-- Notifie le client quand un livreur prend sa commande
+create or replace function notify_driver_assigned()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  driver_name_val text;
+  eta_txt         text := '';
+begin
+  if new.driver_id is not null and (old.driver_id is null or old.driver_id is distinct from new.driver_id) then
+
+    select full_name into driver_name_val
+    from delivery_drivers where id = new.driver_id;
+
+    if new.estimated_delivery_at is not null then
+      eta_txt := ' — livraison estimée à ' ||
+                to_char(new.estimated_delivery_at at time zone 'Africa/Casablanca', 'HH24:MI');
+    end if;
+
+    if new.customer_id is not null then
+      insert into notifications (user_id, type, title, body, link)
+      values (
+        new.customer_id,
+        'order',
+        'Un livreur a pris votre commande',
+        coalesce(driver_name_val, 'Votre livreur') || ' est en route' || eta_txt || '.',
+        '/mes-commandes'
+      );
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_driver_assigned on orders;
+create trigger on_driver_assigned
+  after update of driver_id on orders
+  for each row execute procedure notify_driver_assigned();
+
+-- Notifie le livreur quand il reçoit une nouvelle proposition de course
+create or replace function notify_offer_created()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  driver_profile uuid;
+  rest_name      text;
+begin
+  select profile_id into driver_profile from delivery_drivers where id = new.driver_id;
+
+  select r.name into rest_name
+  from orders o join restaurants r on r.id = o.restaurant_id
+  where o.id = new.order_id;
+
+  if driver_profile is not null then
+    insert into notifications (user_id, type, title, body, link)
+    values (
+      driver_profile,
+      'order',
+      'Nouvelle course proposée',
+      'Une livraison' || coalesce(' pour ' || rest_name, '') ||
+        coalesce(' à ' || new.distance_km || ' km', '') || ' vous attend.',
+      '/livreur'
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_offer_created on delivery_offers;
+create trigger on_offer_created
+  after insert on delivery_offers
+  for each row execute procedure notify_offer_created();
+
+-- Expiration automatique des offres périmées (pg_cron, toutes les minutes)
+create or replace function expire_stale_offers()
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update delivery_offers
+  set status = 'expired'
+  where status = 'pending'
+    and expires_at < now();
+end;
+$$;
+
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.unschedule('expire-stale-offers')
+      where exists (select 1 from cron.job where jobname = 'expire-stale-offers');
+    perform cron.schedule('expire-stale-offers', '* * * * *', 'select expire_stale_offers();');
+  end if;
+end;
+$$;
+
+
+-- ── 21. vendeurs_stats (vue matérialisée) ────────────
+-- Pré-calcule review_count et avg_rating par restaurant pour éviter tout
+-- GROUP BY / calcul JS côté client.
+create materialized view if not exists vendeurs_stats as
+select
+  r.id                              as restaurant_id,
+  count(rv.id)::int                 as review_count,
+  round(avg(rv.rating)::numeric, 1) as avg_rating
+from   restaurants r
+left   join reviews rv on rv.restaurant_id = r.id
+group  by r.id;
+
+create unique index if not exists idx_vendeurs_stats_restaurant_id
+  on vendeurs_stats (restaurant_id);
+
+grant select on vendeurs_stats to anon, authenticated;
+
+create or replace function refresh_vendeurs_stats()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  refresh materialized view concurrently public.vendeurs_stats;
+  return null;
+end;
+$$;
+
+drop trigger if exists trg_vendeurs_stats_on_review on reviews;
+create trigger trg_vendeurs_stats_on_review
   after insert or update or delete on reviews
-  for each row execute procedure update_restaurant_rating();
+  for each statement
+  execute function refresh_vendeurs_stats();
+
+refresh materialized view vendeurs_stats;
 
 
--- ── Permettre aux utilisateurs de modifier/supprimer leur propre avis ────────
-create policy "Utilisateur peut modifier son avis"
-  on reviews for update using (auth.uid() = user_id);
-
-create policy "Utilisateur peut supprimer son avis"
-  on reviews for delete using (auth.uid() = user_id);
+-- ── 22. Realtime ──────────────────────────────────────
+alter publication supabase_realtime add table messages;
+alter publication supabase_realtime add table notifications;
+alter publication supabase_realtime add table orders;
 
 
-insert into testimonials (initials, name, origin, text, rating)
-values
-  ('AS', 'Aminata S.', 'Dakar 🇸🇳 · Vit à Casablanca',
-   'J''ai enfin trouvé du vrai Thiéboudienne à Casablanca ! DiaTable m''a sauvé l''âme. C''était exactement comme chez ma grand-mère.',
-   5),
-  ('KM', 'Karim M.', 'Beyrouth 🇱🇧 · Vit à Rabat',
-   'En tant qu''expatrié libanais, j''avais envie de vrais mezze depuis des mois. DiaTable m''a mis en contact avec une cuisinière extraordinaire à Rabat.',
-   5),
-  ('ZW', 'Zhang Wei', 'Chef & Vendeur 🇨🇳 · Marrakech',
-   'Mon restaurant est passé de l''invisibilité au complet en 3 semaines après avoir rejoint DiaTable. Merci !',
-   5)
-on conflict do nothing;
+-- ── 23. Index de performance ──────────────────────────
+create index if not exists idx_restaurants_location          on restaurants (location);
+create index if not exists idx_restaurants_cuisine            on restaurants (cuisine);
+create index if not exists idx_restaurants_location_cuisine   on restaurants (location, cuisine);
+create index if not exists idx_restaurants_is_active          on restaurants (is_active) where is_active = true;
+create index if not exists idx_restaurants_owner_id           on restaurants (owner_id);
+create index if not exists idx_restaurants_home_featured       on restaurants (is_home_featured) where is_home_featured = true;
+
+create index if not exists idx_reviews_restaurant_id          on reviews (restaurant_id);
+create index if not exists idx_reviews_user_id                on reviews (user_id);
+create index if not exists idx_reviews_restaurant_created     on reviews (restaurant_id, created_at desc);
+
+create index if not exists idx_menu_items_restaurant_id       on menu_items (restaurant_id);
+create index if not exists idx_menu_items_restaurant_available on menu_items (restaurant_id, is_available) where is_available = true;
+
+create index if not exists idx_restaurant_likes_restaurant_id on restaurant_likes (restaurant_id);
+create index if not exists idx_restaurant_likes_user_restaurant on restaurant_likes (user_id, restaurant_id);
+
+create index if not exists idx_delivery_zones_restaurant_id   on delivery_zones (restaurant_id);
+
+
+-- ── 24. Rôle 'driver' — backfill ──────────────────────
+-- Aligne le rôle des profils déjà rattachés à un delivery_drivers existant.
+update profiles
+set role = 'driver'
+where id in (select profile_id from delivery_drivers where profile_id is not null)
+  and role = 'client';

@@ -2,9 +2,9 @@ import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-interface Props { children: ReactNode; requireVendor?: boolean }
+interface Props { children: ReactNode; requireVendor?: boolean; redirectTo?: string }
 
-export default function ProtectedRoute({ children, requireVendor = false }: Props) {
+export default function ProtectedRoute({ children, requireVendor = false, redirectTo = '/connexion' }: Props) {
   const { user, isVendor, loading } = useAuth()
   const location = useLocation()
 
@@ -19,7 +19,7 @@ export default function ProtectedRoute({ children, requireVendor = false }: Prop
     )
   }
 
-  if (!user) return <Navigate to="/connexion" state={{ from: location }} replace />
+  if (!user) return <Navigate to={redirectTo} state={{ from: location }} replace />
   if (requireVendor && !isVendor) return <Navigate to="/profil" replace />
 
   return children

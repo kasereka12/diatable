@@ -21,7 +21,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [loading,       setLoading]       = useState(false)
 
   const fetchNotifications = useCallback(async () => {
-    if (!supabase || !user) return
+    if (!user) return
     setLoading(true)
     const { data } = await supabase
       .from('notifications')
@@ -38,7 +38,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   useEffect(() => { fetchNotifications() }, [fetchNotifications])
 
   useEffect(() => {
-    if (!supabase || !user) return
+    if (!user) return
     const channel = supabase
       .channel('notifications-realtime')
       .on(
@@ -54,14 +54,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, [user])
 
   const markAsRead = useCallback(async (notifId: string) => {
-    if (!supabase) return
     await (supabase.from('notifications') as any).update({ is_read: true }).eq('id', notifId)
     setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n))
     setUnreadCount(prev => Math.max(0, prev - 1))
   }, [])
 
   const markAllAsRead = useCallback(async () => {
-    if (!supabase || !user) return
+    if (!user) return
     await (supabase.from('notifications') as any).update({ is_read: true }).eq('user_id', user.id).eq('is_read', false)
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
     setUnreadCount(0)

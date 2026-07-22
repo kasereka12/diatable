@@ -3,12 +3,15 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { getCuisineIcon } from '../lib/cuisineIcons'
 import { getGradient } from '../lib/gradients'
+import { editProfileSchema, changePasswordSchema, flattenErrors } from '../lib/schemas'
+import { FormInput } from '../components/ui/FormInput'
 import {
   Package, Heart, Settings, MapPin, Check, ChefHat, Utensils,
-  MessageCircle, Clock, ArrowRight, ShoppingBag
+  MessageCircle, Clock, ArrowRight, ShoppingBag, X
 } from 'lucide-react'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -26,6 +29,8 @@ export default function Profile() {
   const navigate = useNavigate()
   const isCustomer = !profile?.role || profile?.role === 'client'
   const [activeTab, setActiveTab] = useState(isCustomer ? 'commandes' : 'favoris')
+  const [editInfoOpen, setEditInfoOpen] = useState(false)
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
 
   const STATUS_LABELS = {
     pending: t('profile.status_pending'),
@@ -260,14 +265,16 @@ export default function Profile() {
                   </div>
                 ))}
               </div>
-              <button className="mt-5 w-full py-3 rounded-xl border-2 border-gold text-gold-dark font-semibold text-sm hover:bg-gold hover:text-dark transition-all">
+              <button onClick={() => setEditInfoOpen(true)}
+                className="mt-5 w-full py-3 rounded-xl border-2 border-gold text-gold-dark font-semibold text-sm hover:bg-gold hover:text-dark transition-all">
                 {t('profile.edit_info')}
               </button>
             </div>
 
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05]">
               <h3 className="font-serif font-bold text-dark mb-4">{t('profile.security')}</h3>
-              <button className="w-full py-3 rounded-xl border border-black/10 text-dark text-sm font-medium hover:bg-cream transition-all mb-3">
+              <button onClick={() => setChangePasswordOpen(true)}
+                className="w-full py-3 rounded-xl border border-black/10 text-dark text-sm font-medium hover:bg-cream transition-all mb-3">
                 {t('profile.change_password')}
               </button>
               <button onClick={handleSignOut}
@@ -277,6 +284,140 @@ export default function Profile() {
             </div>
           </div>
         )}
+      </div>
+
+      {editInfoOpen && <EditInfoModal onClose={() => setEditInfoOpen(false)} />}
+      {changePasswordOpen && <ChangePasswordModal onClose={() => setChangePasswordOpen(false)} />}
+    </div>
+  )
+}
+
+function EditInfoModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
+  const { user, profile, refreshProfile } = useAuth()
+  const toast = useToast()
+  const [fullName, setFullName] = useState(profile?.full_name || user?.user_metadata?.full_name || '')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    const result = editProfileSchema.safeParse({ fullName })
+    if (!result.success) {
+      setErrors(flattenErrors(result.error))
+      return
+    }
+    setErrors({})
+    setSaving(true)
+    const { error } = await (supabase.from('profiles') as any).update({ full_name: result.data.fullName }).eq('id', user!.id)
+    setSaving(false)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    await refreshProfile()
+    toast.success(t('profile.save_success'))
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in fade-in zoom-in duration-200">
+        <button onClick={onClose} className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 transition" aria-label={t('common.close')}>
+          <X size={18} className="text-gray-400" />
+        </button>
+
+        <h3 className="font-serif font-bold text-dark text-lg mb-5">{t('profile.edit_info_title')}</h3>
+
+        <FormInput
+          label={t('profile.full_name_label')}
+          value={fullName}
+          onChange={e => setFullName(e.target.value)}
+          required
+          className="mb-1"
+        />
+        {errors.fullName && <p className="text-red-500 text-xs mb-4">{errors.fullName}</p>}
+
+        <div className="flex gap-3 mt-5">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+            {t('common.cancel')}
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-gold text-white text-sm font-medium hover:bg-gold/90 transition disabled:opacity-60">
+            {t('common.save')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
+  const { updatePassword } = useAuth()
+  const toast = useToast()
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    const result = changePasswordSchema.safeParse({ password, confirm })
+    if (!result.success) {
+      setErrors(flattenErrors(result.error))
+      return
+    }
+    setErrors({})
+    setSaving(true)
+    const { error } = await updatePassword(result.data.password)
+    setSaving(false)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success(t('profile.password_updated'))
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in fade-in zoom-in duration-200">
+        <button onClick={onClose} className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 transition" aria-label={t('common.close')}>
+          <X size={18} className="text-gray-400" />
+        </button>
+
+        <h3 className="font-serif font-bold text-dark text-lg mb-5">{t('profile.change_password_title')}</h3>
+
+        <FormInput
+          label={t('profile.new_password_label')}
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          required
+          className="mb-1"
+        />
+        {errors.password && <p className="text-red-500 text-xs mb-3">{errors.password}</p>}
+
+        <FormInput
+          label={t('profile.confirm_password_label')}
+          type="password"
+          value={confirm}
+          onChange={e => setConfirm(e.target.value)}
+          required
+          className="mb-1 mt-4"
+        />
+        {errors.confirm && <p className="text-red-500 text-xs mb-4">{errors.confirm}</p>}
+
+        <div className="flex gap-3 mt-5">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+            {t('common.cancel')}
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-gold text-white text-sm font-medium hover:bg-gold/90 transition disabled:opacity-60">
+            {t('common.save')}
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -41,6 +41,20 @@ export const forgotPasswordSchema = z.object({
   email: z.string().email('Email invalide'),
 })
 
+export const changePasswordSchema = z
+  .object({
+    password: z.string().min(6, 'Minimum 6 caractères'),
+    confirm:  z.string().min(1, 'Requis'),
+  })
+  .refine(d => d.password === d.confirm, {
+    message: 'Les mots de passe ne correspondent pas',
+    path: ['confirm'],
+  })
+
+export const editProfileSchema = z.object({
+  fullName: z.string().min(2, 'Minimum 2 caractères'),
+})
+
 // ─── Contact ───────────────────────────────────────────────────────────────
 export const contactSchema = z.object({
   name:    z.string().min(2, 'Minimum 2 caractères'),

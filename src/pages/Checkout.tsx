@@ -225,12 +225,6 @@ export default function Checkout() {
       return
     }
 
-    if (!supabase) {
-      setOrderSuccess({ id: 'demo-' + Date.now(), status: 'pending', delivery_mode: deliveryMode })
-      clearCart()
-      return
-    }
-
     placeOrderMutation.mutate({
       orderData: {
         customer_id:      user.id,

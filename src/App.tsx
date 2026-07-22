@@ -129,7 +129,9 @@ export default function App() {
                   <Suspense fallback={<PageLoader />}><DriverOnboarding /></Suspense>
                 } />
                 <Route path="/livreur" element={
-                  <Suspense fallback={<PageLoader />}><DriverDashboard /></Suspense>
+                  <ProtectedRoute redirectTo="/connexion-livreur">
+                    <Suspense fallback={<PageLoader />}><DriverDashboard /></Suspense>
+                  </ProtectedRoute>
                 } />
 
                 {/* Protected: vendor onboarding (any user — sets up vendor profile) */}
@@ -141,7 +143,7 @@ export default function App() {
 
                 {/* Protected: vendor dashboard (pas de navbar/footer) */}
                 <Route path="/tableau-de-bord" element={
-                  <ProtectedRoute>
+                  <ProtectedRoute requireVendor>
                     <Suspense fallback={<PageLoader />}><VendorDashboard /></Suspense>
                   </ProtectedRoute>
                 } />
