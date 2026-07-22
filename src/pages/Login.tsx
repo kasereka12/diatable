@@ -240,26 +240,6 @@ export default function Login() {
               {t('login_page.create_account')}
             </Link>
           </p>
-          <p className="text-center text-sm mt-3" style={{ color: '#80716a' }}>
-            {t('login_page.cook_question')}{' '}
-            <Link to="/inscription?role=vendor"
-              className="font-semibold transition-colors"
-              style={{ color: '#c5611a' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#d9722a'}
-              onMouseLeave={e => e.currentTarget.style.color = '#c5611a'}>
-              {t('login_page.join_vendor')}
-            </Link>
-          </p>
-          <p className="text-center text-sm mt-3" style={{ color: '#80716a' }}>
-            Vous êtes livreur ?{' '}
-            <Link to="/connexion-livreur"
-              className="font-semibold transition-colors"
-              style={{ color: '#c5611a' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#d9722a'}
-              onMouseLeave={e => e.currentTarget.style.color = '#c5611a'}>
-              Connexion livreur →
-            </Link>
-          </p>
         </div>
       </div>
     </div>
