@@ -2326,6 +2326,10 @@ function SectionDrivers() {
                     {isExpanded && hasDocs && (
                       <div className="px-4 pb-4 pt-1 border-t border-black/[0.05]">
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3 text-xs text-muted">
+                          <div><span className="font-semibold text-dark">Nom : </span>{d.full_name || '—'}</div>
+                          <div><span className="font-semibold text-dark">Téléphone : </span>{d.phone || '—'}</div>
+                          <div><span className="font-semibold text-dark">Email : </span>{d.email || '—'}</div>
+                          <div><span className="font-semibold text-dark">Véhicule : </span>{d.vehicle_type ? (VEHICLE_LABEL[d.vehicle_type] ?? d.vehicle_type) : '—'}</div>
                           <div><span className="font-semibold text-dark">Marque : </span>{d.vehicle_brand || '—'}</div>
                           <div><span className="font-semibold text-dark">Plaque : </span>{d.vehicle_plate || '—'}</div>
                           <div><span className="font-semibold text-dark">Permis n° : </span>{d.license_number || '—'}</div>

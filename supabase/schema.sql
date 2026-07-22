@@ -482,6 +482,39 @@ create policy "drivers_update" on delivery_drivers
     )
   );
 
+-- DELETE : le vendeur peut supprimer les livreurs de son propre restaurant
+create policy "drivers_delete" on delivery_drivers
+  for delete using (
+    (
+      restaurant_id is not null
+      and exists (
+        select 1 from restaurants
+        where restaurants.id = restaurant_id
+          and restaurants.owner_id = auth.uid()
+      )
+    )
+    or is_admin()
+  );
+
+-- Suspension/ban en cascade : dès qu'un vendeur ou livreur est suspendu/banni,
+-- son restaurant (resp. sa fiche livreur) passe immédiatement is_active=false
+-- plutôt que de rester visible/assignable pendant que seule la connexion est bloquée.
+create or replace function cascade_profile_suspension()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.status in ('suspended', 'banned') and old.status is distinct from new.status then
+    update restaurants set is_active = false where owner_id = new.id and is_active = true;
+    update delivery_drivers set is_active = false where profile_id = new.id and is_active = true;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_profile_suspension on profiles;
+create trigger on_profile_suspension
+  after update on profiles
+  for each row execute procedure cascade_profile_suspension();
+
 
 -- ── 12. ORDERS ───────────────────────────────────────
 create table if not exists orders (
