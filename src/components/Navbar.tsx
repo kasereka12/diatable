@@ -7,7 +7,7 @@ import { useNotifications } from '../context/NotificationContext'
 import { useMessages } from '../context/MessageContext'
 import {
   Globe, X, ChevronDown, LogOut, User, BarChart2, Utensils,
-  ShieldCheck, Image, MapPin, ShoppingBag, MessageCircle, Bell,
+  ShieldCheck, ShoppingBag, MessageCircle, Bell,
   Package, Bike
 } from 'lucide-react'
 import Logo from '../assets/LogoBlanc.png'
@@ -81,8 +81,6 @@ export default function Navbar() {
 
   const EXPLORER_LINKS = [
     { label: t('nav.restaurants'), to: '/restaurants',  icon: Utensils,  desc: t('nav.all_restaurants') },
-    { label: t('nav.cuisines'),    to: '/cuisines',      icon: MapPin,    desc: t('nav.by_cuisine') },
-    { label: t('nav.gallery'),     to: '/galerie',       icon: Image,     desc: t('nav.dishes_photos') },
   ]
 
   return (

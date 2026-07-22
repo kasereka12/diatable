@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Globe, Bike, AlertCircle, Mail, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-
-interface Restaurant { id: string; name: string; flag: string }
 
 const VEHICLE_OPTIONS = [
   { value: 'moto',    label: '🛵 Moto' },
@@ -25,20 +23,10 @@ export default function DriverOnboarding() {
     password:      '',
     confirm:       '',
     vehicle_type:  'moto',
-    type:          'external' as 'external' | 'restaurant',
-    restaurant_id: '',
   })
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [showPwd,  setShowPwd]  = useState(false)
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
-
-  useEffect(() => {
-    if (form.type === 'restaurant') {
-      supabase.from('restaurants').select('id, name, flag').eq('is_active', true).order('name')
-        .then(({ data }) => setRestaurants((data || []) as Restaurant[]))
-    }
-  }, [form.type])
 
   function set(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -53,7 +41,6 @@ export default function DriverOnboarding() {
     if (!form.email.trim())      return setError('L\'adresse email est requise.')
     if (form.password.length < 6) return setError('Le mot de passe doit contenir au moins 6 caractères.')
     if (form.password !== form.confirm) return setError('Les mots de passe ne correspondent pas.')
-    if (form.type === 'restaurant' && !form.restaurant_id) return setError('Choisissez un restaurant.')
 
     setLoading(true)
 
@@ -72,8 +59,7 @@ export default function DriverOnboarding() {
       phone:         form.phone.trim(),
       email:         form.email.trim(),
       vehicle_type:  form.vehicle_type,
-      type:          form.type,
-      restaurant_id: form.type === 'restaurant' ? form.restaurant_id : null,
+      type:          'external',
       is_active:     true,
       is_available:  true,
     })
@@ -183,41 +169,6 @@ export default function DriverOnboarding() {
                   ))}
                 </div>
               </div>
-
-              {/* Type de livreur */}
-              <div>
-                <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">Type</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: 'external',   label: 'Livreur externe', sub: 'Toutes enseignes' },
-                    { value: 'restaurant', label: 'Rattaché',        sub: 'Un restaurant' },
-                  ].map(t => (
-                    <button key={t.value} type="button" onClick={() => set('type', t.value)}
-                      className={`py-3 px-3 rounded-xl text-left border transition-all ${
-                        form.type === t.value
-                          ? 'bg-[#c5611a]/15 border-[#c5611a] text-white'
-                          : 'border-white/10 text-white/60 hover:border-white/25'
-                      }`}>
-                      <p className="text-xs font-bold">{t.label}</p>
-                      <p className="text-[0.65rem] opacity-60 mt-0.5">{t.sub}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Restaurant (si type = restaurant) */}
-              {form.type === 'restaurant' && (
-                <div>
-                  <label className="block text-xs font-semibold text-white/60 mb-1.5 tracking-wide uppercase">Restaurant</label>
-                  <select value={form.restaurant_id} onChange={e => set('restaurant_id', e.target.value)}
-                    className={inputCls}>
-                    <option value="">Sélectionner un restaurant…</option>
-                    {restaurants.map(r => (
-                      <option key={r.id} value={r.id}>{r.flag} {r.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               {error && (
                 <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
