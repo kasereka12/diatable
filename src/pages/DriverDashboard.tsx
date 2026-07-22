@@ -224,7 +224,7 @@ export default function DriverDashboard() {
     setHistory((historyRes.data || []) as AssignedOrder[])
     await loadOffers(driverData.id)
     setLoading(false)
-    if ((driverData as any).is_active) startGps()
+    if ((driverData as any).is_active && isDriverProfileComplete(driverData as DriverProfile)) startGps()
   }
 
   async function loadOffers(driverId: string) {
@@ -356,11 +356,15 @@ export default function DriverDashboard() {
     </div>
   )
 
-  // Pas encore validé par l'admin : compléter le profil, ou attendre la validation.
+  // Profil incomplet : toujours proposer de le compléter, actif ou non
+  // (ex : un livreur activé manuellement par l'admin avant d'avoir tout soumis).
+  if (driver && !isDriverProfileComplete(driver)) {
+    return <DriverDocsForm driver={driver} onSubmitted={setDriver} onSignOut={handleSignOut} />
+  }
+
+  // Profil complet mais pas encore validé par l'admin.
   if (driver && !driver.is_active) {
-    return isDriverProfileComplete(driver)
-      ? <DriverPendingApproval firstName={firstName} onSignOut={handleSignOut} />
-      : <DriverDocsForm driver={driver} onSubmitted={setDriver} onSignOut={handleSignOut} />
+    return <DriverPendingApproval firstName={firstName} onSignOut={handleSignOut} />
   }
 
   // ── Sidebar ───────────────────────────────────────────────────────────────────
