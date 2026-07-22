@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Package, History, Bike, MapPin, CheckCircle, Clock,
   ChefHat, Truck, LogOut, Phone, Pencil, X as XIcon, AlertCircle, Mail,
   Navigation, Navigation2, Wifi, WifiOff, TrendingUp, Menu, Eye, Power,
-  Route, Hand,
+  Route, Hand, Camera, FileText,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -31,9 +31,31 @@ interface DriverProfile {
   email: string | null
   vehicle_type: string | null
   type: string
+  is_active: boolean
   is_available: boolean
+  license_number: string | null
+  license_photo_url: string | null
+  vehicle_brand: string | null
+  vehicle_plate: string | null
+  photo_front: string | null
+  photo_back: string | null
+  photo_left: string | null
+  photo_right: string | null
   restaurant?: { name: string; flag: string } | null
 }
+
+const REQUIRED_DOC_FIELDS = [
+  'license_number', 'license_photo_url', 'vehicle_brand', 'vehicle_plate',
+  'photo_front', 'photo_back', 'photo_left', 'photo_right',
+] as const
+
+function isDriverProfileComplete(d: DriverProfile): boolean {
+  return REQUIRED_DOC_FIELDS.every(f => !!d[f])
+}
+
+const inputClsDark = `w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3
+  text-white text-sm placeholder-white/30
+  focus:outline-none focus:border-[#c5611a] focus:bg-white/[0.08] transition-all`
 
 interface AssignedOrder {
   id: string
@@ -202,7 +224,7 @@ export default function DriverDashboard() {
     setHistory((historyRes.data || []) as AssignedOrder[])
     await loadOffers(driverData.id)
     setLoading(false)
-    startGps()
+    if ((driverData as any).is_active) startGps()
   }
 
   async function loadOffers(driverId: string) {
@@ -333,6 +355,13 @@ export default function DriverDashboard() {
         style={{ borderColor: 'rgba(197,97,26,0.25)', borderTopColor: C.terra }} />
     </div>
   )
+
+  // Pas encore validé par l'admin : compléter le profil, ou attendre la validation.
+  if (driver && !driver.is_active) {
+    return isDriverProfileComplete(driver)
+      ? <DriverPendingApproval firstName={firstName} onSignOut={handleSignOut} />
+      : <DriverDocsForm driver={driver} onSubmitted={setDriver} onSignOut={handleSignOut} />
+  }
 
   // ── Sidebar ───────────────────────────────────────────────────────────────────
   const sidebarContent = driver && (
@@ -849,6 +878,225 @@ function HistoryCard({ order }: { order: AssignedOrder }) {
       <div className="text-right shrink-0">
         <p className="text-sm font-bold" style={{ color: C.terra }}>{Number(order.total).toFixed(2)}</p>
         <p className="text-[0.6rem]" style={{ color: C.muted }}>MAD</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Complétion du profil (documents de validation) ───────────────────────────
+
+type DocKey = 'license' | 'front' | 'back' | 'left' | 'right'
+
+function PhotoPicker({ label, preview, onChange, compact }: {
+  label: string; preview?: string | null; onChange: (f: File | null) => void; compact?: boolean
+}) {
+  const inputId = 'driver-doc-' + label.replace(/\s+/g, '-').toLowerCase()
+  return (
+    <div>
+      {!compact && (
+        <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: 'rgba(248,248,248,0.60)' }}>
+          {label}
+        </label>
+      )}
+      <label htmlFor={inputId}
+        className="relative flex flex-col items-center justify-center rounded-xl border border-dashed cursor-pointer overflow-hidden transition-all hover:border-[#c5611a]/50"
+        style={{ borderColor: 'rgba(248,248,248,0.20)', height: compact ? 90 : 120, backgroundColor: 'rgba(248,248,248,0.04)' }}>
+        {preview ? (
+          <img src={preview} alt={label} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <>
+            {compact
+              ? <Camera size={18} style={{ color: 'rgba(248,248,248,0.30)' }} />
+              : <FileText size={22} style={{ color: 'rgba(248,248,248,0.30)' }} />}
+            {compact && <span className="text-[0.65rem] mt-1" style={{ color: 'rgba(248,248,248,0.40)' }}>{label}</span>}
+          </>
+        )}
+        <input id={inputId} type="file" accept="image/*" className="hidden"
+          onChange={e => onChange(e.target.files?.[0] || null)} />
+      </label>
+    </div>
+  )
+}
+
+function DriverDocsForm({ driver, onSubmitted, onSignOut }: {
+  driver: DriverProfile
+  onSubmitted: (updated: DriverProfile) => void
+  onSignOut: () => void
+}) {
+  const [form, setForm] = useState({
+    vehicle_brand:  driver.vehicle_brand || '',
+    vehicle_plate:  driver.vehicle_plate || '',
+    license_number: driver.license_number || '',
+  })
+  const [files, setFiles] = useState<Record<DocKey, File | null>>({
+    license: null, front: null, back: null, left: null, right: null,
+  })
+  const [previews, setPreviews] = useState<Partial<Record<DocKey, string>>>({})
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState('')
+
+  function pick(key: DocKey, file: File | null) {
+    setFiles(prev => ({ ...prev, [key]: file }))
+    if (file) setPreviews(prev => ({ ...prev, [key]: URL.createObjectURL(file) }))
+  }
+
+  async function uploadDoc(key: DocKey, file: File): Promise<string> {
+    const ext = file.name.split('.').pop()
+    const path = `${driver.id}/${key}_${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage.from('driver-documents').upload(path, file, { upsert: true })
+    if (upErr) throw upErr
+    const { data } = supabase.storage.from('driver-documents').getPublicUrl(path)
+    return data?.publicUrl || ''
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+
+    if (!form.vehicle_brand.trim())  return setError('La marque du véhicule est requise.')
+    if (!form.vehicle_plate.trim())  return setError("La plaque d'immatriculation est requise.")
+    if (!form.license_number.trim()) return setError('Le numéro de permis est requis.')
+    if (!driver.license_photo_url && !files.license) return setError('La photo du permis de conduire est requise.')
+    if ((!driver.photo_front && !files.front) || (!driver.photo_back && !files.back) ||
+        (!driver.photo_left && !files.left)   || (!driver.photo_right && !files.right)) {
+      return setError('Les 4 photos du véhicule (avant, arrière, gauche, droite) sont requises.')
+    }
+
+    setSaving(true)
+    try {
+      const updates: Record<string, string> = {}
+      if (files.license) updates.license_photo_url = await uploadDoc('license', files.license)
+      if (files.front)   updates.photo_front        = await uploadDoc('front', files.front)
+      if (files.back)    updates.photo_back         = await uploadDoc('back', files.back)
+      if (files.left)    updates.photo_left         = await uploadDoc('left', files.left)
+      if (files.right)   updates.photo_right        = await uploadDoc('right', files.right)
+
+      const payload = {
+        vehicle_brand:  form.vehicle_brand.trim(),
+        vehicle_plate:  form.vehicle_plate.trim(),
+        license_number: form.license_number.trim(),
+        ...updates,
+      }
+      const { error: dbErr } = await (supabase.from('delivery_drivers') as any).update(payload).eq('id', driver.id)
+      if (dbErr) throw dbErr
+      onSubmitted({ ...driver, ...payload })
+    } catch (err) {
+      setError((err as Error).message || 'Une erreur est survenue.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const photoSlots: { key: 'front' | 'back' | 'left' | 'right'; label: string }[] = [
+    { key: 'front', label: 'Avant' },
+    { key: 'back',  label: 'Arrière' },
+    { key: 'left',  label: 'Gauche' },
+    { key: 'right', label: 'Droite' },
+  ]
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: C.dark }}>
+      <div className="w-full max-w-lg rounded-2xl p-8"
+        style={{ backgroundColor: 'rgba(248,248,248,0.04)', border: '1px solid rgba(248,248,248,0.10)' }}>
+        <div className="flex justify-center mb-5">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'rgba(197,97,26,0.15)' }}>
+            <Bike size={28} style={{ color: C.terra }} />
+          </div>
+        </div>
+        <h1 className="font-serif text-2xl font-bold text-center mb-1" style={{ color: C.creamLight }}>
+          Complétez votre profil livreur
+        </h1>
+        <p className="text-sm text-center mb-8" style={{ color: 'rgba(248,248,248,0.45)' }}>
+          Ces informations sont nécessaires pour que notre équipe valide votre compte.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: 'rgba(248,248,248,0.60)' }}>
+                Marque du véhicule
+              </label>
+              <input value={form.vehicle_brand} onChange={e => setForm(p => ({ ...p, vehicle_brand: e.target.value }))}
+                placeholder="Ex : Honda" className={inputClsDark} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: 'rgba(248,248,248,0.60)' }}>
+                Plaque d'immatriculation
+              </label>
+              <input value={form.vehicle_plate} onChange={e => setForm(p => ({ ...p, vehicle_plate: e.target.value }))}
+                placeholder="Ex : 12345-A-6" className={inputClsDark} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: 'rgba(248,248,248,0.60)' }}>
+              Numéro de permis de conduire
+            </label>
+            <input value={form.license_number} onChange={e => setForm(p => ({ ...p, license_number: e.target.value }))}
+              placeholder="Ex : B123456" className={inputClsDark} />
+          </div>
+
+          <PhotoPicker
+            label="Photo du permis de conduire"
+            preview={previews.license || driver.license_photo_url}
+            onChange={f => pick('license', f)}
+          />
+
+          <div>
+            <label className="block text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'rgba(248,248,248,0.60)' }}>
+              Photos du véhicule (4 angles)
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {photoSlots.map(s => (
+                <PhotoPicker key={s.key} label={s.label} compact
+                  preview={previews[s.key] || driver[`photo_${s.key}` as const]}
+                  onChange={f => pick(s.key, f)} />
+              ))}
+            </div>
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm"
+              style={{ backgroundColor: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.30)', color: '#f87171' }}>
+              <AlertCircle size={14} className="shrink-0" /> {error}
+            </div>
+          )}
+
+          <button type="submit" disabled={saving}
+            className="w-full font-semibold py-3.5 rounded-xl transition-all text-sm disabled:opacity-60 mt-2"
+            style={{ backgroundColor: C.terra, color: C.creamLight }}>
+            {saving ? 'Envoi…' : 'Envoyer pour validation'}
+          </button>
+        </form>
+
+        <button onClick={onSignOut} className="w-full text-center text-sm mt-6 transition-colors"
+          style={{ color: 'rgba(248,248,248,0.40)' }}>
+          Déconnexion
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function DriverPendingApproval({ firstName, onSignOut }: { firstName: string; onSignOut: () => void }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: C.cream }}>
+      <div className="w-full max-w-md rounded-2xl p-8 text-center shadow-sm"
+        style={{ backgroundColor: C.creamLight, border: '1px solid rgba(80,70,64,0.10)' }}>
+        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5"
+          style={{ backgroundColor: 'rgba(197,97,26,0.12)' }}>
+          <Clock size={30} style={{ color: C.terra }} />
+        </div>
+        <h1 className="font-serif text-xl font-bold mb-2" style={{ color: C.dark }}>
+          Profil en cours de validation
+        </h1>
+        <p className="text-sm mb-6 leading-relaxed" style={{ color: C.muted }}>
+          Merci{firstName ? ` ${firstName}` : ''} ! Vos informations et documents ont bien été envoyés.
+          Notre équipe les vérifie et activera votre compte sous peu — vous pourrez alors recevoir des courses.
+        </p>
+        <button onClick={onSignOut} className="text-sm font-semibold" style={{ color: C.terra }}>
+          Déconnexion
+        </button>
       </div>
     </div>
   )

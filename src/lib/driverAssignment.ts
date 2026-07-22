@@ -17,6 +17,7 @@ interface DriverRow {
   restaurant_id: string | null
   is_available: boolean
   is_active: boolean
+  is_suspended: boolean
   current_lat: number | null
   current_lng: number | null
 }
@@ -81,9 +82,10 @@ export async function autoAssignDriver(
   // Tous les livreurs actifs & disponibles, rattachés OU externes
   const { data: rows } = await supabase
     .from('delivery_drivers')
-    .select('id, full_name, type, restaurant_id, is_available, is_active, current_lat, current_lng')
+    .select('id, full_name, type, restaurant_id, is_available, is_active, is_suspended, current_lat, current_lng')
     .eq('is_active', true)
     .eq('is_available', true)
+    .eq('is_suspended', false)
     .or(`restaurant_id.eq.${restaurantId},type.eq.external`)
   const drivers = (rows ?? []) as DriverRow[]
 

@@ -183,7 +183,7 @@ export default function Register() {
                 </div>
 
                 <button
-                  onClick={() => role === 'driver' ? navigate('/devenir-livreur') : setStep(2)}
+                  onClick={() => setStep(2)}
                   className="w-full font-semibold py-3.5 rounded-xl transition-all text-sm"
                   style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}
                   onMouseEnter={e => {
@@ -209,7 +209,7 @@ export default function Register() {
                 <p className="text-sm mb-6" style={{ color: '#80716a' }}>
                   {t('register_page.step2_title')}{' '}
                   <span className="font-semibold" style={{ color: '#c5611a' }}>
-                    {role === 'vendor' ? t('register_page.role_vendor') : t('register_page.role_client')}
+                    {role === 'vendor' ? t('register_page.role_vendor') : role === 'driver' ? 'Livreur' : t('register_page.role_client')}
                   </span>
                 </p>
 

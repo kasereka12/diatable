@@ -52,6 +52,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('*')
       .eq('id', userId)
       .single()
+
+    // Session issued before a suspension/ban (auth-login already blocks new
+    // logins) — kill it client-side too rather than leaving a dead profile.
+    if (data && (data as Profile).status !== 'active') {
+      await supabase.auth.signOut()
+      setUser(null)
+      setProfile(null)
+      return
+    }
+
     setProfile(data)
   }
 

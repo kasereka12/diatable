@@ -7,7 +7,7 @@ import {
   Globe, ShieldCheck, AlertCircle, RefreshCw, Menu, X, ChevronLeft,
   Phone, MessageCircle, Instagram, Clock, MapPin, Utensils, Eye, ChevronRight,
   Package, Star, TrendingUp, Ban, UserCheck, Mail, Calendar, ArrowLeft,
-  BarChart2, ShoppingBag, Heart, Crown, Sparkles, Zap, CreditCard, Monitor, Bike
+  BarChart2, ShoppingBag, Heart, Crown, Sparkles, Zap, CreditCard, Monitor, Bike, FileText
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -553,6 +553,7 @@ function UserDetailPanel({ user: u, onClose }: { user: any; onClose: () => void 
 }
 
 function SectionUsers() {
+  const { user: currentUser } = useAuth()
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -590,6 +591,22 @@ function SectionUsers() {
     }
   }
 
+  const updateStatus = async (userId: string, status: string) => {
+    if (status !== 'active' && !window.confirm(
+      status === 'banned' ? 'Bannir cet utilisateur ? Il ne pourra plus se connecter.' : 'Suspendre cet utilisateur ?'
+    )) return
+    setUpdatingId(userId)
+    try {
+      const { error: err } = await (supabase.from('profiles') as any).update({ status }).eq('id', userId)
+      if (err) throw err
+      await fetchUsers()
+    } catch (err) {
+      alert((err as Error).message || 'Erreur')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
   const deleteUser = async (userId: string) => {
     if (!window.confirm('Supprimer cet utilisateur ? Cette action est irréversible.')) return
     try {
@@ -604,6 +621,12 @@ function SectionUsers() {
   const roleBadgeClass = (role: string): string => {
     const map: Record<string, string> = { admin: 'bg-red-100 text-red-700', vendor: 'bg-orange-100 text-[#c5611a]', client: 'bg-blue-100 text-blue-700' }
     return map[role] || 'bg-gray-100 text-gray-600'
+  }
+
+  const statusBadge = (status: string): { label: string; cls: string } | null => {
+    if (status === 'banned') return { label: 'Banni', cls: 'bg-red-100 text-red-700' }
+    if (status === 'suspended') return { label: 'Suspendu', cls: 'bg-amber-100 text-amber-700' }
+    return null
   }
 
   const roleFilters = [
@@ -679,7 +702,14 @@ function SectionUsers() {
                   </td>
                   <td className="px-4 py-3 text-muted">{u.email || '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${roleBadgeClass(u.role)}`}>{u.role || '—'}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${roleBadgeClass(u.role)}`}>{u.role || '—'}</span>
+                      {statusBadge(u.status) && (
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${statusBadge(u.status)!.cls}`}>
+                          {statusBadge(u.status)!.label}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-muted">{formatDate(u.created_at)}</td>
                   <td className="px-4 py-3">
@@ -717,6 +747,34 @@ function SectionUsers() {
                         >
                           Client
                         </button>
+                      )}
+                      {u.id !== currentUser?.id && (
+                        (u.status ?? 'active') === 'active' ? (
+                          <>
+                            <button
+                              onClick={() => updateStatus(u.id, 'suspended')}
+                              disabled={updatingId === u.id}
+                              className="px-2 py-1 rounded-lg text-xs bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-50 transition-colors font-medium"
+                            >
+                              Suspendre
+                            </button>
+                            <button
+                              onClick={() => updateStatus(u.id, 'banned')}
+                              disabled={updatingId === u.id}
+                              className="px-2 py-1 rounded-lg text-xs bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors font-medium"
+                            >
+                              Bannir
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => updateStatus(u.id, 'active')}
+                            disabled={updatingId === u.id}
+                            className="px-2 py-1 rounded-lg text-xs bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 transition-colors font-medium"
+                          >
+                            Réactiver
+                          </button>
+                        )
                       )}
                       <button
                         onClick={() => deleteUser(u.id)}
@@ -2096,6 +2154,7 @@ function SectionDrivers() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch]   = useState('')
   const [toggling, setToggling] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => {
     supabase
@@ -2169,10 +2228,14 @@ function SectionDrivers() {
             <div key={label}>
               <p className="text-xs font-bold uppercase tracking-widest text-muted mb-3">{label} ({items.length})</p>
               <div className="space-y-2">
-                {items.map(d => (
-                  <div key={d.id} className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${
-                    d.is_active ? 'border-black/[0.06]' : 'border-black/[0.04] opacity-60'
+                {items.map(d => {
+                  const hasDocs = !!d.license_photo_url
+                  const isExpanded = expanded === d.id
+                  return (
+                  <div key={d.id} className={`bg-white rounded-xl border ${
+                    d.is_active ? 'border-black/[0.06]' : 'border-black/[0.04] opacity-90'
                   }`}>
+                    <div className="p-4 flex items-center gap-4">
                     {/* Avatar */}
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
                       d.is_available && d.is_active ? 'bg-green-100 text-green-700' : 'bg-black/[0.06] text-muted'
@@ -2199,11 +2262,30 @@ function SectionDrivers() {
                         }`}>
                           {d.type === 'external' ? 'Externe' : `Restaurant${d.restaurant ? ` — ${d.restaurant.flag} ${d.restaurant.name}` : ''}`}
                         </span>
+                        {!d.is_active && (
+                          <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                            {hasDocs ? 'En attente de validation' : 'Documents non soumis'}
+                          </span>
+                        )}
+                        {d.is_suspended && (
+                          <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700">
+                            Suspendu par le vendeur
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     {/* Toggles */}
                     <div className="flex items-center gap-4 shrink-0">
+                      {hasDocs && (
+                        <button
+                          onClick={() => setExpanded(isExpanded ? null : d.id)}
+                          className="flex items-center gap-1 text-xs font-semibold text-[#c5611a] hover:underline"
+                        >
+                          <Eye size={13} /> {isExpanded ? 'Masquer' : 'Documents'}
+                        </button>
+                      )}
+
                       {/* Disponible */}
                       <div className="text-center">
                         <p className="text-[0.6rem] font-semibold text-muted mb-1">Dispo</p>
@@ -2238,8 +2320,38 @@ function SectionDrivers() {
                         </button>
                       </div>
                     </div>
+                    </div>
+
+                    {/* Documents de validation */}
+                    {isExpanded && hasDocs && (
+                      <div className="px-4 pb-4 pt-1 border-t border-black/[0.05]">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3 text-xs text-muted">
+                          <div><span className="font-semibold text-dark">Marque : </span>{d.vehicle_brand || '—'}</div>
+                          <div><span className="font-semibold text-dark">Plaque : </span>{d.vehicle_plate || '—'}</div>
+                          <div><span className="font-semibold text-dark">Permis n° : </span>{d.license_number || '—'}</div>
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-3">
+                          {[
+                            { url: d.license_photo_url, label: 'Permis' },
+                            { url: d.photo_front, label: 'Avant' },
+                            { url: d.photo_back,  label: 'Arrière' },
+                            { url: d.photo_left,  label: 'Gauche' },
+                            { url: d.photo_right, label: 'Droite' },
+                          ].filter(p => p.url).map(p => (
+                            <a key={p.label} href={p.url} target="_blank" rel="noreferrer"
+                              className="block rounded-lg overflow-hidden border border-black/[0.08] hover:border-[#c5611a]/50 transition-all">
+                              <img src={p.url} alt={p.label} className="w-full h-16 object-cover" />
+                              <p className="text-[0.6rem] text-center py-1 bg-black/[0.02] text-muted flex items-center justify-center gap-1">
+                                <FileText size={9} /> {p.label}
+                              </p>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           ))}
