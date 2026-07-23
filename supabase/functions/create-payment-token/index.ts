@@ -12,7 +12,6 @@ import { checkRateLimit } from '../_shared/ratelimit.ts'
 const RATE_LIMIT_MAX = 10
 const RATE_LIMIT_WINDOW_SEC = 3600
 
-const YOUCANPAY_TOKENIZE_URL = 'https://youcanpay.com/api/tokenize'
 const SITE_ORIGIN = Deno.env.get('SITE_ORIGIN') ?? 'https://diatable.vercel.app'
 
 Deno.serve(async (req: Request) => {
@@ -100,7 +99,14 @@ Deno.serve(async (req: Request) => {
     const amount = Math.round(Number(order.total) * 100)
     const returnUrl = `${SITE_ORIGIN}/paiement/retour?order=${order.id}`
 
-    const ycRes = await fetch(YOUCANPAY_TOKENIZE_URL, {
+    // Sandbox and live keys hit different base URLs — mixing them causes
+    // YouCan Pay to reject the call with "Sandbox key used on live mode".
+    const isSandboxKey = privateKey.startsWith('pri_sandbox_')
+    const tokenizeUrl = isSandboxKey
+      ? 'https://youcanpay.com/sandbox/api/tokenize'
+      : 'https://youcanpay.com/api/tokenize'
+
+    const ycRes = await fetch(tokenizeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
