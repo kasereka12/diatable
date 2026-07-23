@@ -64,6 +64,7 @@ export interface Database {
           is_active: boolean
           is_open: boolean
           is_home_featured: boolean
+          deactivated_by_suspension: boolean
           created_at: string
           latitude: number | null
           longitude: number | null
@@ -92,6 +93,7 @@ export interface Database {
           is_active?: boolean
           is_open?: boolean
           is_home_featured?: boolean
+          deactivated_by_suspension?: boolean
           created_at?: string
           latitude?: number | null
           longitude?: number | null
@@ -214,6 +216,7 @@ export interface Database {
           is_active: boolean
           is_available: boolean
           is_suspended: boolean
+          deactivated_by_suspension: boolean
           current_lat: number | null
           current_lng: number | null
           location_updated_at: string | null
@@ -239,6 +242,7 @@ export interface Database {
           is_active?: boolean
           is_available?: boolean
           is_suspended?: boolean
+          deactivated_by_suspension?: boolean
           current_lat?: number | null
           current_lng?: number | null
           location_updated_at?: string | null

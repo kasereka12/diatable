@@ -126,6 +126,10 @@ create table if not exists restaurants (
   is_active         boolean default true,
   is_open           boolean not null default true,
   is_home_featured  boolean not null default false,
+  -- Set when cascade_profile_suspension force-deactivates this restaurant
+  -- (owner suspended/banned) — distinguishes it from "never verified" or
+  -- "rejected by admin" so reactivating the owner restores only this case.
+  deactivated_by_suspension boolean not null default false,
   latitude          numeric(10,7),
   longitude         numeric(10,7),
   created_at        timestamptz default now()
@@ -431,6 +435,7 @@ create table if not exists delivery_drivers (
   -- Vendor-controlled pause for their own restaurant-attached drivers —
   -- independent from is_active (the admin validation gate).
   is_suspended           boolean not null default false,
+  deactivated_by_suspension boolean not null default false,
   current_lat           numeric(10,7),
   current_lng           numeric(10,7),
   location_updated_at   timestamptz,
@@ -470,7 +475,9 @@ create policy "drivers_update" on delivery_drivers
     auth.uid() = profile_id
     or (
       profile_id is null
-      and email = (select email from auth.users where id = auth.uid())
+      -- auth.jwt() reads the session's own claims — no auth.users table
+      -- access needed (authenticated role has no SELECT grant on it).
+      and email = (auth.jwt() ->> 'email')
     )
     or (
       restaurant_id is not null
@@ -499,12 +506,28 @@ create policy "drivers_delete" on delivery_drivers
 -- Suspension/ban en cascade : dès qu'un vendeur ou livreur est suspendu/banni,
 -- son restaurant (resp. sa fiche livreur) passe immédiatement is_active=false
 -- plutôt que de rester visible/assignable pendant que seule la connexion est bloquée.
+-- À la réactivation, seules les lignes qu'on a nous-mêmes désactivées sont
+-- restaurées (deactivated_by_suspension) — pas celles jamais vérifiées ou
+-- rejetées indépendamment par un admin.
 create or replace function cascade_profile_suspension()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  if new.status in ('suspended', 'banned') and old.status is distinct from new.status then
-    update restaurants set is_active = false where owner_id = new.id and is_active = true;
-    update delivery_drivers set is_active = false where profile_id = new.id and is_active = true;
+  if old.status is distinct from new.status then
+    if new.status in ('suspended', 'banned') then
+      update restaurants
+        set is_active = false, deactivated_by_suspension = true
+        where owner_id = new.id and is_active = true;
+      update delivery_drivers
+        set is_active = false, deactivated_by_suspension = true
+        where profile_id = new.id and is_active = true;
+    elsif new.status = 'active' then
+      update restaurants
+        set is_active = true, deactivated_by_suspension = false
+        where owner_id = new.id and deactivated_by_suspension = true;
+      update delivery_drivers
+        set is_active = true, deactivated_by_suspension = false
+        where profile_id = new.id and deactivated_by_suspension = true;
+    end if;
   end if;
   return new;
 end;
@@ -1122,3 +1145,23 @@ update profiles
 set role = 'driver'
 where id in (select profile_id from delivery_drivers where profile_id is not null)
   and role = 'client';
+
+
+-- ── 25. Storage — bucket 'driver-documents' ───────────
+-- Le bucket lui-même doit être créé à la main dans le dashboard Supabase
+-- (Storage → New bucket → nom exact "driver-documents", Public) — ce projet
+-- ne gère pas la création de buckets par SQL, seulement les policies
+-- ci-dessous qui en régissent l'accès une fois créé.
+create policy "driver_documents_insert"
+  on storage.objects for insert
+  with check (bucket_id = 'driver-documents' and auth.role() = 'authenticated');
+
+create policy "driver_documents_update"
+  on storage.objects for update
+  using (bucket_id = 'driver-documents' and auth.role() = 'authenticated');
+
+-- Lecture publique : l'app affiche ces images via getPublicUrl() + <img src>
+-- (même convention que restaurant-images / menuimages / subscription-receipts).
+create policy "driver_documents_read"
+  on storage.objects for select
+  using (bucket_id = 'driver-documents');
