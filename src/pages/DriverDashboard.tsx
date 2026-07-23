@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import DashboardTopbar from '../components/DashboardTopbar'
+import Logo from '../assets/LogoBlanc.png'
 import {
   LayoutDashboard, Package, History, Bike, MapPin, CheckCircle, Clock,
   ChefHat, Truck, LogOut, Phone, Pencil, X as XIcon, AlertCircle, Mail,
@@ -370,7 +370,8 @@ export default function DriverDashboard() {
   // ── Sidebar ───────────────────────────────────────────────────────────────────
   const sidebarContent = driver && (
     <div className="flex flex-col h-full">
-      <div className="px-6 py-5 flex items-center" style={{ borderBottom: '1px solid rgba(248,248,248,0.10)' }}>
+      <div className="px-6 py-5 flex items-center gap-2.5" style={{ borderBottom: '1px solid rgba(248,248,248,0.10)' }}>
+        <img src={Logo} alt="DiaTable" className="w-9 h-9 object-contain flex-shrink-0" />
         <div>
           <span className="font-serif text-2xl font-bold" style={{ color: C.terra }}>DiaTable</span>
           <p className="text-xs mt-0.5" style={{ color: 'rgba(248,248,248,0.35)' }}>Espace livreur</p>
@@ -385,11 +386,20 @@ export default function DriverDashboard() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium truncate" style={{ color: C.creamLight }}>{driver.full_name}</p>
-          <span className="text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1"
-            style={{ backgroundColor: driver.is_available ? 'rgba(34,197,94,0.20)' : 'rgba(248,248,248,0.10)', color: driver.is_available ? '#4ade80' : 'rgba(248,248,248,0.5)' }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: driver.is_available ? '#22c55e' : '#9ca3af' }} />
-            {driver.is_available ? 'Disponible' : 'Occupé'}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+            <span className="text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+              style={{ backgroundColor: driver.is_available ? 'rgba(34,197,94,0.20)' : 'rgba(248,248,248,0.10)', color: driver.is_available ? '#4ade80' : 'rgba(248,248,248,0.5)' }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: driver.is_available ? '#22c55e' : '#9ca3af' }} />
+              {driver.is_available ? 'Disponible' : 'Occupé'}
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1 font-semibold"
+              style={{
+                backgroundColor: geoStatus === 'active' ? 'rgba(34,197,94,0.20)' : geoStatus === 'denied' ? 'rgba(239,68,68,0.15)' : 'rgba(248,248,248,0.10)',
+                color: geoStatus === 'active' ? '#4ade80' : geoStatus === 'denied' ? '#fca5a5' : 'rgba(248,248,248,0.5)',
+              }}>
+              {geoStatus === 'active' ? <Wifi size={11} /> : geoStatus === 'denied' ? <WifiOff size={11} /> : <Navigation size={11} />} GPS
+            </span>
+          </div>
         </div>
       </div>
 
@@ -567,19 +577,7 @@ export default function DriverDashboard() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ backgroundColor: C.cream }}>
-      <DashboardTopbar variant="vendor">
-        {/* GPS chip in topbar */}
-        <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-full border"
-          style={{
-            backgroundColor: geoStatus === 'active' ? 'rgba(34,197,94,0.12)' : geoStatus === 'denied' ? 'rgba(239,68,68,0.12)' : 'rgba(248,248,248,0.06)',
-            borderColor: geoStatus === 'active' ? 'rgba(34,197,94,0.30)' : geoStatus === 'denied' ? 'rgba(239,68,68,0.30)' : 'rgba(248,248,248,0.12)',
-            color: geoStatus === 'active' ? '#4ade80' : geoStatus === 'denied' ? '#fca5a5' : 'rgba(248,248,248,0.5)',
-          }}>
-          {geoStatus === 'active' ? <><Wifi size={11} /> GPS</> : geoStatus === 'denied' ? <><WifiOff size={11} /> GPS</> : <><Navigation size={11} /> GPS</>}
-        </div>
-      </DashboardTopbar>
-
-      <div className="flex flex-1 overflow-hidden" style={{ marginTop: '56px' }}>
+      <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
         )}

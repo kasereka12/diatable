@@ -10,12 +10,12 @@ export const ALLOWED_ORIGINS = new Set<string>([PROD_ORIGIN, DEV_ORIGIN])
 export const SECURITY_HEADER_VALUES: Record<string, string> = {
   'Content-Security-Policy':
     "default-src 'self'; " +
-    "script-src 'self' https://maps.googleapis.com; " +
+    "script-src 'self' https://maps.googleapis.com https://pay.youcan.shop; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://maps.googleapis.com; " +
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://maps.googleapis.com https://pay.youcan.shop https://youcanpay.com; " +
     "img-src 'self' data: blob: https:; " +
     "font-src 'self' data: https://fonts.gstatic.com; " +
-    "frame-src 'none'; " +
+    "frame-src https://pay.youcan.shop https://youcanpay.com; " +
     "object-src 'none'; " +
     "base-uri 'self'; " +
     "form-action 'self'",

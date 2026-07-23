@@ -25,6 +25,7 @@ const VendorDashboard   = lazy(() => import('./pages/VendorDashboard'))
 const VendorOnboarding  = lazy(() => import('./pages/VendorOnboarding'))
 const AdminDashboard    = lazy(() => import('./pages/AdminDashboard'))
 const Checkout          = lazy(() => import('./pages/Checkout'))
+const PaymentReturn     = lazy(() => import('./pages/PaymentReturn'))
 const OrderTracking     = lazy(() => import('./pages/OrderTracking'))
 const Messages          = lazy(() => import('./pages/Messages'))
 const About             = lazy(() => import('./pages/About'))
@@ -104,6 +105,13 @@ export default function App() {
                 <Route path="/checkout" element={
                   <ProtectedRoute>
                     <SuspenseLayout><Checkout /></SuspenseLayout>
+                  </ProtectedRoute>
+                } />
+
+                {/* Protected: card payment return (post-checkout / 3DS redirect) */}
+                <Route path="/paiement/retour" element={
+                  <ProtectedRoute>
+                    <SuspenseLayout><PaymentReturn /></SuspenseLayout>
                   </ProtectedRoute>
                 } />
 

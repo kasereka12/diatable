@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
+import { supabase, callEdgeFunction } from '../lib/supabase'
 import { checkoutSchema, flattenErrors } from '../lib/schemas'
 import {
   ArrowLeft, ShoppingBag, MapPin, Phone, FileText,
@@ -12,6 +12,7 @@ import {
   Truck, Store, Navigation
 } from 'lucide-react'
 import AddressAutocomplete from '../components/AddressAutocomplete'
+import CardPaymentForm from '../components/CardPaymentForm'
 
 // Haversine distance in km
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -45,7 +46,7 @@ export default function Checkout() {
       label: t('checkout.pay_card'),
       desc: t('checkout.pay_card_desc'),
       icon: CreditCard,
-      available: false,
+      available: true,
     },
     {
       id: 'mobile_payment',
@@ -74,14 +75,15 @@ export default function Checkout() {
   const [error,        setError]        = useState('')
   const [fieldErrors,  setFieldErrors]  = useState<Record<string, string>>({})
   const [orderSuccess, setOrderSuccess] = useState<any | null>(null)
-  const [selectedZone, setSelectedZone] = useState('')
-
   // GPS & estimated time
   const [clientCoords,     setClientCoords]     = useState<{ lat: number; lng: number } | null>(null)
-  const [estimatedTime,    setEstimatedTime]     = useState<{ prep: number; travel: number; total: number; distance: string } | null>(null)
   const [rawQuartier,      setRawQuartier]       = useState<string | null>(null)
-  const [rawAddress,       setRawAddress]        = useState('')
-  const [detectedQuartier, setDetectedQuartier]  = useState<{ matched: boolean; name?: string; zone: { quartier: string; price: number } | null } | null>(null)
+  // Card payment (YouCan Pay) — order is created first, then a payment token
+  // is requested for it; the embedded form appears while we wait for the
+  // youcanpay-webhook Edge Function to confirm payment server-side.
+  const [pendingCardOrder, setPendingCardOrder] = useState<any | null>(null)
+  const [cardToken,        setCardToken]        = useState<string | null>(null)
+  const [preparingPayment, setPreparingPayment] = useState(false)
 
   const isPickup = deliveryMode === 'pickup'
   const queryClient = useQueryClient()
@@ -101,103 +103,119 @@ export default function Checkout() {
 
       return order
     },
-    onSuccess: (order) => {
-      setOrderSuccess(order)
-      clearCart()
+    onSuccess: async (order) => {
       queryClient.invalidateQueries({ queryKey: ['profile', 'orders'] })
+
+      if (order.payment_method !== 'card') {
+        setOrderSuccess(order)
+        clearCart()
+        return
+      }
+
+      // Card payment: hold off on the success screen and clearing the cart
+      // until the webhook confirms payment_status = 'paid'.
+      setPendingCardOrder(order)
+      setPreparingPayment(true)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const res = await callEdgeFunction('create-payment-token', { order_id: order.id }, {
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || t('checkout.err_payment'))
+        setCardToken(data.token_id)
+      } catch (e) {
+        setError((e as Error).message)
+        setPendingCardOrder(null)
+      } finally {
+        setPreparingPayment(false)
+      }
     },
     onError: (err) => {
       setError(err.message === 'items' ? t('checkout.err_items') : t('checkout.err_order'))
     },
   })
 
-  // ── Delivery zones + restaurant coords + prep times ───────────────────────
-  const menuItemIds = cart.items.map(i => i.menuItemId)
-  const { data: checkoutData, isLoading: zonesLoading } = useQuery({
-    queryKey: ['checkout', cart.restaurantId, menuItemIds],
+  // Wait for the youcanpay-webhook Edge Function to mark the order as paid.
+  useEffect(() => {
+    if (!pendingCardOrder) return
+
+    const channel = supabase
+      .channel(`order-payment-${pendingCardOrder.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'orders',
+        filter: `id=eq.${pendingCardOrder.id}`,
+      }, (payload) => {
+        if (payload.new.payment_status === 'paid') {
+          setOrderSuccess(payload.new)
+          clearCart()
+          setPendingCardOrder(null)
+          setCardToken(null)
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCardOrder?.id])
+
+  // ── Restaurant coords + avg prep time + platform delivery pricing ─────────
+  const { data: checkoutData, isLoading: dataLoading } = useQuery({
+    queryKey: ['checkout', cart.restaurantId],
     queryFn: async () => {
-      const [{ data: zonesRaw }, { data: restRaw }, { data: menuRaw }] = await Promise.all([
-        supabase.from('delivery_zones').select('*').eq('restaurant_id', cart.restaurantId ?? '').order('quartier'),
-        supabase.from('restaurants').select('latitude, longitude').eq('id', cart.restaurantId ?? '').maybeSingle(),
-        menuItemIds.length > 0
-          ? supabase.from('menu_items').select('id, prep_time_min').in('id', menuItemIds)
-          : { data: [] },
+      const [{ data: restRaw }, { data: settingsRaw }] = await Promise.all([
+        supabase.from('restaurants').select('latitude, longitude, prep_time_min').eq('id', cart.restaurantId ?? '').maybeSingle(),
+        (supabase.from('platform_settings') as any)
+          .select('delivery_base_fee, delivery_price_per_km, delivery_max_fee').eq('id', 1).maybeSingle(),
       ])
-      type ZoneRow = { quartier: string; price: number }
-      type RestRow = { latitude: number | null; longitude: number | null }
-      type MenuRow = { id: string; prep_time_min: number }
-      const zones = (zonesRaw || []) as ZoneRow[]
+      type RestRow = { latitude: number | null; longitude: number | null; prep_time_min: number | null }
+      type SettingsRow = { delivery_base_fee: number; delivery_price_per_km: number; delivery_max_fee: number }
       const rest = restRaw as RestRow | null
-      const menuArr = (menuRaw || []) as MenuRow[]
+      const settings = settingsRaw as SettingsRow | null
       const restaurantCoords = rest?.latitude && rest?.longitude
         ? { lat: Number(rest.latitude), lng: Number(rest.longitude) }
         : null
-      const maxPrepTime = menuArr.length > 0
-        ? Math.max(...menuArr.map(m => m.prep_time_min || 15))
-        : 15
-      return { zones, restaurantCoords, maxPrepTime }
+      const prepTime = Number(rest?.prep_time_min ?? 15)
+      const pricing = {
+        baseFee:    Number(settings?.delivery_base_fee ?? 8),
+        pricePerKm: Number(settings?.delivery_price_per_km ?? 2.5),
+        maxFee:     Number(settings?.delivery_max_fee ?? 30),
+      }
+      return { restaurantCoords, prepTime, pricing }
     },
     enabled: !!cart.restaurantId,
   })
 
-  const deliveryZones    = checkoutData?.zones          ?? []
   const restaurantCoords = checkoutData?.restaurantCoords ?? null
-  const maxPrepTime      = checkoutData?.maxPrepTime      ?? 15
+  const prepTime         = checkoutData?.prepTime         ?? 15
+  const pricing          = checkoutData?.pricing          ?? { baseFee: 8, pricePerKm: 2.5, maxFee: 30 }
 
-  // Update delivery fee when zone changes
+  // Distance-based delivery fee: computed live from the real distance between
+  // the restaurant and the customer's selected address (base fee + rate/km),
+  // capped so far-away addresses don't produce runaway fees.
+  const deliveryCalc = (!isPickup && clientCoords && restaurantCoords)
+    ? (() => {
+        const distanceKm = haversineKm(restaurantCoords.lat, restaurantCoords.lng, clientCoords.lat, clientCoords.lng)
+        const travelMin  = estimateTravelMin(distanceKm)
+        const rawFee     = pricing.baseFee + pricing.pricePerKm * distanceKm
+        const fee        = Math.round(pricing.maxFee > 0 ? Math.min(rawFee, pricing.maxFee) : rawFee)
+        return { distanceKm, travelMin, fee }
+      })()
+    : null
+
+  const estimatedTime = deliveryCalc
+    ? { prep: prepTime, travel: deliveryCalc.travelMin, total: prepTime + deliveryCalc.travelMin, distance: deliveryCalc.distanceKm.toFixed(1) }
+    : null
+
   useEffect(() => {
-    if (isPickup) {
-      setDeliveryFeeOverride(null)
-      setDetectedQuartier(null)
-      return
-    }
-    if (detectedQuartier?.matched && detectedQuartier.zone) {
-      setDeliveryFeeOverride(Number(detectedQuartier.zone.price))
-      setSelectedZone(detectedQuartier.zone.quartier)
-    } else {
-      setDeliveryFeeOverride(null)
-      setSelectedZone('')
-    }
-  }, [detectedQuartier, isPickup, setDeliveryFeeOverride])
+    setDeliveryFeeOverride(deliveryCalc ? deliveryCalc.fee : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveryCalc?.fee, isPickup, setDeliveryFeeOverride])
 
-  // Compute estimated time when we have both coordinates
-  useEffect(() => {
-    if (!clientCoords || !restaurantCoords) { setEstimatedTime(null); return }
-    const distKm = haversineKm(restaurantCoords.lat, restaurantCoords.lng, clientCoords.lat, clientCoords.lng)
-    const travelMin = estimateTravelMin(distKm)
-    setEstimatedTime({ prep: maxPrepTime, travel: travelMin, total: maxPrepTime + travelMin, distance: distKm.toFixed(1) })
-  }, [clientCoords, restaurantCoords, maxPrepTime])
-
-  // handlePlaceSelect only stores raw data — no matching here
   const handlePlaceSelect = useCallback((place: { lat: number; lng: number; quartier?: string; address?: string }) => {
     setClientCoords({ lat: place.lat, lng: place.lng })
     setRawQuartier(place.quartier || '')
-    setRawAddress(place.address || '')
   }, [])
-
-  // Match quartier against delivery zones — runs whenever zones or quartier changes
-  useEffect(() => {
-    if (rawQuartier === null) return // no address selected yet
-
-    function norm(s: string) {
-      return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, '')
-    }
-
-    if (deliveryZones.length > 0) {
-      const haystack = norm(rawAddress + ' ' + rawQuartier)
-      const match = deliveryZones.find(z => {
-        const needle = norm(z.quartier)
-        return haystack.includes(needle) || norm(rawQuartier).includes(needle)
-      })
-      setDetectedQuartier({
-        name: rawQuartier,
-        matched: !!match,
-        zone: match || null,
-      })
-    } else {
-      setDetectedQuartier({ name: rawQuartier, matched: false, zone: null })
-    }
-  }, [rawQuartier, rawAddress, deliveryZones])
 
   function updateForm(key: string, value: string) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -238,7 +256,7 @@ export default function Checkout() {
         delivery_phone:   form.phone,
         delivery_notes:   form.notes,
         customer_name:    form.name,
-        delivery_zone:    selectedZone || null,
+        delivery_zone:    rawQuartier || null,
         estimated_time:   estimatedTime?.total || null,
       },
       orderItems: cart.items.map(item => ({
@@ -248,6 +266,42 @@ export default function Checkout() {
         quantity:     item.quantity,
       })),
     })
+  }
+
+  // Card payment in progress: order created, waiting on the customer to pay
+  // and on the webhook to confirm it server-side.
+  if (pendingCardOrder && !orderSuccess) {
+    return (
+      <div className="min-h-screen bg-cream pt-24 flex items-center justify-center px-6">
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-black/[0.05] max-w-md w-full">
+          <h1 className="font-serif text-xl font-bold text-dark mb-1 text-center">{t('checkout.card_payment_title')}</h1>
+          <p className="text-muted text-sm mb-6 text-center">
+            {t('checkout.card_payment_sub', { total: total.toFixed(2) })}
+          </p>
+
+          {preparingPayment || !cardToken ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-8 h-8 border-3 border-gold/30 border-t-gold rounded-full animate-spin" />
+            </div>
+          ) : (
+            <CardPaymentForm
+              tokenId={cardToken}
+              publicKey={import.meta.env.VITE_YOUCANPAY_PUBLIC_KEY as string}
+              isSandbox={import.meta.env.VITE_YOUCANPAY_SANDBOX === 'true'}
+            />
+          )}
+
+          {error && <p className="text-red-500 text-xs mt-3 text-center">{error}</p>}
+
+          <button
+            onClick={() => { setPendingCardOrder(null); setCardToken(null); setError('') }}
+            className="text-xs text-muted hover:text-dark mt-5 mx-auto block"
+          >
+            {t('checkout.card_payment_cancel')}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // Success screen
@@ -310,11 +364,6 @@ export default function Checkout() {
       </div>
     )
   }
-
-  const hasZones = deliveryZones.length > 0
-  const zonePrice = hasZones && selectedZone
-    ? deliveryZones.find(z => z.quartier === selectedZone)?.price
-    : null
 
   return (
     <div className="bg-cream min-h-screen pt-24 pb-12">
@@ -382,8 +431,8 @@ export default function Checkout() {
                 </div>
               </div>
 
-              {/* No delivery zones — vendor will contact */}
-              {!isPickup && !hasZones && !zonesLoading && (
+              {/* Restaurant location not configured — vendor will contact */}
+              {!isPickup && !restaurantCoords && !dataLoading && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3">
                   <Phone size={20} className="text-amber-500 mt-0.5 flex-shrink-0" />
                   <div>
@@ -470,35 +519,25 @@ export default function Checkout() {
                         )}
                       </div>
 
-                      {/* Auto-detected zone feedback */}
-                      {detectedQuartier && hasZones && (
+                      {/* Distance-based fee feedback */}
+                      {restaurantCoords && (
                         <div className="md:col-span-2">
-                          {detectedQuartier.matched ? (
+                          {deliveryCalc ? (
                             <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                                <div>
-                                  <p className="text-xs text-green-600 mt-0.5">{t('checkout.zone_available')}</p>
-                                </div>
+                                <p className="text-xs text-green-600">
+                                  {t('checkout.fee_calculated')}
+                                </p>
                               </div>
                               <span className="text-sm font-bold text-green-700">
-                                {Number(detectedQuartier.zone?.price).toFixed(2)} MAD
+                                {deliveryCalc.fee.toFixed(2)} MAD
                               </span>
                             </div>
                           ) : (
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2">
-                              <Phone size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <p className="text-sm font-semibold text-amber-800">
-                                  {detectedQuartier.name
-                                    ? t('checkout.zone_out', { name: `"${detectedQuartier.name}"` })
-                                    : t('checkout.zone_out_anon')
-                                  }
-                                </p>
-                                <p className="text-xs text-amber-700 mt-0.5">
-                                  {t('checkout.zone_out_desc')}
-                                </p>
-                              </div>
+                            <div className="bg-cream border border-black/[0.06] rounded-xl px-4 py-3 flex items-start gap-2">
+                              <MapPin size={16} className="text-muted mt-0.5 flex-shrink-0" />
+                              <p className="text-xs text-muted">{t('checkout.fee_pending_address')}</p>
                             </div>
                           )}
                         </div>
@@ -611,12 +650,7 @@ export default function Checkout() {
                 <div className={`flex items-center gap-2 mb-4 px-3 py-2 rounded-lg text-xs font-bold ${isPickup ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'
                   }`}>
                   {isPickup ? <Store size={14} /> : <Truck size={14} />}
-                  {isPickup
-                    ? t('checkout.mode_pickup')
-                    : detectedQuartier?.matched
-                      ? t('checkout.mode_delivery_zone', { zone: detectedQuartier.zone?.quartier })
-                      : t('checkout.mode_delivery')
-                  }
+                  {isPickup ? t('checkout.mode_pickup') : t('checkout.mode_delivery')}
                 </div>
 
                 <div className="space-y-3 mb-5">
@@ -641,10 +675,10 @@ export default function Checkout() {
                     <span className="text-muted">
                       {isPickup ? t('checkout.pickup_fee') : t('checkout.delivery_fee')}
                     </span>
-                    <span className={`font-semibold ${isPickup ? 'text-green-600' : detectedQuartier?.matched ? 'text-dark' : 'text-amber-600'}`}>
+                    <span className={`font-semibold ${isPickup ? 'text-green-600' : deliveryCalc ? 'text-dark' : 'text-amber-600'}`}>
                       {isPickup
                         ? t('checkout.free')
-                        : detectedQuartier?.matched
+                        : deliveryCalc
                           ? `${deliveryFee.toFixed(2)} MAD`
                           : t('checkout.to_confirm')
                       }

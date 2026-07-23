@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import DashboardTopbar from '../components/DashboardTopbar'
+import Logo from '../assets/LogoBlanc.png'
 import {
   LayoutDashboard, Store, Utensils, Star, BarChart2, Bell,
   Eye, LogOut, TrendingUp, TrendingDown, Minus, Phone,
@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase'
 import VendorOrders from '../components/vendor/VendorOrders'
 import VendorDrivers from '../components/vendor/VendorDrivers'
 import MessagingPanel from '../components/MessagingPanel'
+import AddressAutocomplete from '../components/AddressAutocomplete'
 import { getEffectivelyOpen, getClosedReason, parseSchedule } from '../lib/scheduleParser'
 
 // ─── Palette DiaTable ─────────────────────────────────────────────────────────
@@ -184,14 +185,12 @@ export default function VendorDashboard() {
   const [newDish, setNewDish] = useState({ nom: '', prix: '', description: '', categorie: 'Plats Principaux', populaire: false, prepTime: '15' })
   const [vendorNotifs, setVendorNotifs] = useState<any[]>([])
   const [notifsLoading, setNotifsLoading] = useState(true)
-  const [restaurantForm, setRestaurantForm] = useState({ nom: '', cuisine: '', ville: '', adresse: '', telephone: '', whatsapp: '', instagram: '', description: '', horaires: '' })
+  const [restaurantForm, setRestaurantForm] = useState({ nom: '', cuisine: '', ville: '', adresse: '', telephone: '', whatsapp: '', instagram: '', description: '', horaires: '', prepTime: '15' })
+  const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [bankForm, setBankForm] = useState({ rib: '', bank_name: '', account_name: '' })
   const [savingBank, setSavingBank] = useState(false)
   const [bankMsg, setBankMsg] = useState('')
   const [subscription, setSubscription] = useState<any | null>(null)
-  const [deliveryZones, setDeliveryZones] = useState<any[]>([])
-  const [newZone, setNewZone] = useState({ quartier: '', price: '' })
-  const [savingZone, setSavingZone] = useState(false)
   const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null)
   const [paymentForm, setPaymentForm] = useState({ bank: '', reference: '', sender_name: '' })
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
@@ -255,7 +254,8 @@ export default function VendorDashboard() {
       if (rest) {
         setRestaurant(rest)
         if (rest.image_url) setRestImagePreview(rest.image_url)
-        setRestaurantForm({ nom: rest.name || '', cuisine: rest.cuisine_label || '', ville: rest.location || '', adresse: rest.address || '', telephone: rest.phone || '', whatsapp: rest.whatsapp || '', instagram: rest.instagram || '', description: rest.description || '', horaires: rest.hours || '' })
+        setRestaurantForm({ nom: rest.name || '', cuisine: rest.cuisine_label || '', ville: rest.location || '', adresse: rest.address || '', telephone: rest.phone || '', whatsapp: rest.whatsapp || '', instagram: rest.instagram || '', description: rest.description || '', horaires: rest.hours || '', prepTime: String(rest.prep_time_min || 15) })
+        setRestaurantCoords(rest.latitude && rest.longitude ? { lat: Number(rest.latitude), lng: Number(rest.longitude) } : null)
         setHoursForm(parseHoursForm(rest.hours))
 
         const now           = new Date()
@@ -273,7 +273,6 @@ export default function VendorDashboard() {
           { data: vMonthlyRaw },
           { count: lCount },
           { count: oCount },
-          { data: zones },
           { data: prof },
           { data: sub },
         ] = await Promise.all([
@@ -285,7 +284,6 @@ export default function VendorDashboard() {
           (supabase.from('restaurant_views') as any).select('created_at').eq('restaurant_id', rest.id).gte('created_at', sixMonthsAgo),
           (supabase.from('restaurant_likes') as any).select('*', { count: 'exact', head: true }).eq('restaurant_id', rest.id),
           (supabase.from('orders') as any).select('*', { count: 'exact', head: true }).eq('restaurant_id', rest.id),
-          (supabase.from('delivery_zones') as any).select('*').eq('restaurant_id', rest.id).order('quartier'),
           (supabase.from('profiles') as any).select('rib, bank_name, account_name').eq('id', user!.id).maybeSingle(),
           (supabase.from('subscriptions') as any).select('*').eq('vendor_id', user!.id).maybeSingle(),
         ])
@@ -299,7 +297,6 @@ export default function VendorDashboard() {
         setViewsMonthlyRaw(vMonthlyRaw || [])
         setOrdersCount(oCount || 0)
         setLikesCount(lCount || 0)
-        setDeliveryZones(zones || [])
         if (prof) setBankForm({ rib: prof.rib || '', bank_name: prof.bank_name || '', account_name: prof.account_name || '' })
         if (sub) setSubscription(sub)
       } else {
@@ -383,7 +380,7 @@ export default function VendorDashboard() {
     setCreatingRest(true)
     const { data, error } = await (supabase.from('restaurants') as any).insert({ owner_id: user!.id, name: createForm.nom, cuisine: createForm.cuisine.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ''), cuisine_label: createForm.cuisine, flag: createForm.flag, emoji: createForm.flag, gradient: 'linear-gradient(135deg,#c5611a,#a04d12)', location: createForm.ville, description: createForm.description, is_active: false }).select().single()
     setCreatingRest(false)
-    if (!error && data) { setRestaurant(data); setRestaurantForm({ nom: data.name || '', cuisine: data.cuisine_label || '', ville: data.location || '', adresse: data.address || '', telephone: data.phone || '', whatsapp: data.whatsapp || '', instagram: data.instagram || '', description: data.description || '', horaires: data.hours || '' }); setActiveSection('restaurant') }
+    if (!error && data) { setRestaurant(data); setRestaurantForm({ nom: data.name || '', cuisine: data.cuisine_label || '', ville: data.location || '', adresse: data.address || '', telephone: data.phone || '', whatsapp: data.whatsapp || '', instagram: data.instagram || '', description: data.description || '', horaires: data.hours || '', prepTime: String(data.prep_time_min || 15) }); setActiveSection('restaurant') }
   }
 
   async function uploadRestaurantImage() {
@@ -406,7 +403,13 @@ export default function VendorDashboard() {
     const hoursString = hoursForm.jours === 'Sur commande uniquement'
       ? 'Sur commande uniquement'
       : `${hoursForm.jours} · ${hoursForm.open}–${hoursForm.close}`
-    const { error } = await (supabase.from('restaurants') as any).update({ name: restaurantForm.nom, cuisine_label: restaurantForm.cuisine, location: restaurantForm.ville, address: restaurantForm.adresse, phone: restaurantForm.telephone, whatsapp: restaurantForm.whatsapp, instagram: restaurantForm.instagram, description: restaurantForm.description, hours: hoursString }).eq('id', restaurant.id)
+    const { error } = await (supabase.from('restaurants') as any).update({
+      name: restaurantForm.nom, cuisine_label: restaurantForm.cuisine, location: restaurantForm.ville,
+      address: restaurantForm.adresse, phone: restaurantForm.telephone, whatsapp: restaurantForm.whatsapp,
+      instagram: restaurantForm.instagram, description: restaurantForm.description, hours: hoursString,
+      latitude: restaurantCoords?.lat ?? null, longitude: restaurantCoords?.lng ?? null,
+      prep_time_min: parseInt(restaurantForm.prepTime) || 15,
+    }).eq('id', restaurant.id)
     setSavingRest(false)
     if (!error) setRestaurant((prev: any) => ({ ...prev, hours: hoursString }))
     setSaveMsg(error ? t('vd.save_error') : t('vd.save_success'))
@@ -449,18 +452,6 @@ export default function VendorDashboard() {
     setUpgradingPlan(null)
   }
 
-  async function addDeliveryZone() {
-    if (!restaurant || !newZone.quartier.trim() || !newZone.price) return
-    setSavingZone(true)
-    const { data, error } = await (supabase.from('delivery_zones') as any).insert({ restaurant_id: restaurant.id, quartier: newZone.quartier.trim(), price: parseFloat(newZone.price) }).select().single()
-    setSavingZone(false)
-    if (!error && data) { setDeliveryZones(prev => [...prev, data].sort((a, b) => a.quartier.localeCompare(b.quartier))); setNewZone({ quartier: '', price: '' }) }
-  }
-
-  async function removeDeliveryZone(zoneId: any) {
-    await supabase.from('delivery_zones').delete().eq('id', zoneId)
-    setDeliveryZones(prev => prev.filter(z => z.id !== zoneId))
-  }
 
   function handleDishImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -520,12 +511,15 @@ export default function VendorDashboard() {
       <div className={`${collapsed ? 'px-2 py-5 justify-center' : 'px-6 py-5'} flex items-center`}
         style={{ borderBottom: '1px solid rgba(248,248,248,0.10)' }}>
         {!collapsed ? (
-          <div>
-            <span className="font-serif text-2xl font-bold" style={{ color: C.terra }}>DiaTable</span>
-            <p className="text-xs mt-0.5" style={{ color: 'rgba(248,248,248,0.35)' }}>{t('vd.vendor_space')}</p>
+          <div className="flex items-center gap-2.5">
+            <img src={Logo} alt="DiaTable" className="w-9 h-9 object-contain flex-shrink-0" />
+            <div>
+              <span className="font-serif text-2xl font-bold" style={{ color: C.terra }}>DiaTable</span>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(248,248,248,0.35)' }}>{t('vd.vendor_space')}</p>
+            </div>
           </div>
         ) : (
-          <span className="font-serif text-xl font-bold" style={{ color: C.terra }}>D</span>
+          <img src={Logo} alt="DiaTable" className="w-8 h-8 object-contain" />
         )}
       </div>
 
@@ -961,20 +955,40 @@ export default function VendorDashboard() {
               ) : (
                 <div>
                   <label className="block text-[0.68rem] font-bold uppercase tracking-widest mb-2" style={{ color: C.muted }}>{t('vd.full_address')}</label>
-                  <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: C.terra }}>
-                      <MapPin size={14} />
-                    </div>
-                    <input type="text" value={restaurantForm.adresse}
-                      onChange={e => setRestaurantForm(prev => ({ ...prev, adresse: e.target.value }))}
-                      placeholder={t('vd.address_visible')}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl text-sm border"
-                      style={{ backgroundColor: '#fff', borderColor: 'rgba(80,70,64,0.15)', color: C.dark, outline: 'none' }}
-                      onFocus={e => e.target.style.borderColor = C.terra}
-                      onBlur={e => e.target.style.borderColor = 'rgba(80,70,64,0.15)'} />
-                  </div>
+                  <AddressAutocomplete
+                    value={restaurantForm.adresse}
+                    onChange={val => { setRestaurantForm(prev => ({ ...prev, adresse: val })); setRestaurantCoords(null) }}
+                    onPlaceSelect={place => { setRestaurantForm(prev => ({ ...prev, adresse: place.address })); setRestaurantCoords({ lat: place.lat, lng: place.lng }) }}
+                  />
+                  {restaurantCoords ? (
+                    <p className="text-xs mt-1.5 flex items-center gap-1" style={{ color: '#16a34a' }}>
+                      <CheckCircle size={11} /> {t('vd.address_geo_ok')}
+                    </p>
+                  ) : (
+                    <p className="text-xs mt-1.5 flex items-center gap-1" style={{ color: '#d97706' }}>
+                      <AlertCircle size={11} /> {t('vd.address_geo_missing')}
+                    </p>
+                  )}
                 </div>
               )}
+
+              {/* Temps de préparation moyen */}
+              <div>
+                <label className="block text-[0.68rem] font-bold uppercase tracking-widest mb-2" style={{ color: C.muted }}>{t('vd.avg_prep_time')}</label>
+                <div className="relative max-w-[160px]">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: C.terra }}>
+                    <Clock size={14} />
+                  </div>
+                  <input type="number" min="1" max="180" value={restaurantForm.prepTime}
+                    onChange={e => setRestaurantForm(prev => ({ ...prev, prepTime: e.target.value }))}
+                    placeholder="15"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl text-sm border"
+                    style={{ backgroundColor: '#fff', borderColor: 'rgba(80,70,64,0.15)', color: C.dark, outline: 'none' }}
+                    onFocus={e => e.target.style.borderColor = C.terra}
+                    onBlur={e => e.target.style.borderColor = 'rgba(80,70,64,0.15)'} />
+                </div>
+                <p className="text-xs mt-1.5" style={{ color: C.muted }}>{t('vd.avg_prep_time_hint')}</p>
+              </div>
 
               {/* Description */}
               <div>
@@ -1012,87 +1026,6 @@ export default function VendorDashboard() {
             </div>
           </div>
         )}
-
-        {/* ── Zones de livraison ──────────────────────────────── */}
-        <div className="rounded-2xl overflow-hidden shadow-sm" style={{ border: '1px solid rgba(80,70,64,0.10)' }}>
-          <div className="px-6 py-5" style={{ background: 'linear-gradient(135deg,#1f1f1f 0%,#2a2520 100%)' }}>
-            <h2 className="font-serif text-base font-bold" style={{ color: '#f8f8f8' }}>{t('vd.delivery_zones_title')}</h2>
-            <p className="text-xs mt-1" style={{ color: 'rgba(248,248,248,0.38)' }}>
-              {t('vd.delivery_zones_subtitle')}
-            </p>
-          </div>
-          <div className="p-6 space-y-4" style={{ backgroundColor: C.creamLight }}>
-            {deliveryZones.length > 0 ? (
-              <div className="space-y-2">
-                {deliveryZones.map(zone => (
-                  <div key={zone.id} className="flex items-center justify-between rounded-xl px-4 py-3"
-                    style={{ backgroundColor: '#fff', border: '1px solid rgba(80,70,64,0.08)' }}>
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: 'rgba(197,97,26,0.09)' }}>
-                        <MapPin size={13} style={{ color: C.terra }} />
-                      </div>
-                      <span className="text-sm font-medium" style={{ color: C.dark }}>{zone.quartier}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold" style={{ color: C.terraDark }}>{Number(zone.price).toFixed(0)} MAD</span>
-                      <button onClick={() => removeDeliveryZone(zone.id)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors"
-                        style={{ color: '#ef4444' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.08)'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex items-start gap-3 rounded-xl px-4 py-3"
-                style={{ backgroundColor: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.22)' }}>
-                <AlertCircle size={14} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-amber-700 leading-relaxed">
-                  {t('vd.no_zones')}
-                </p>
-              </div>
-            )}
-
-            <div className="flex gap-3 items-end flex-wrap pt-2" style={{ borderTop: '1px solid rgba(80,70,64,0.08)' }}>
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-[0.68rem] font-bold uppercase tracking-widest mb-2" style={{ color: C.muted }}>{t('vd.quartier_label')}</label>
-                <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: C.terra }}>
-                    <MapPin size={14} />
-                  </div>
-                  <select value={newZone.quartier} onChange={e => setNewZone(p => ({ ...p, quartier: e.target.value }))}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl text-sm border appearance-none"
-                    style={{ backgroundColor: '#fff', borderColor: 'rgba(80,70,64,0.15)', color: C.dark, outline: 'none' }}>
-                    <option value="">{t('vd.choose_quartier')}</option>
-                    {['Maârif','Bourgogne','Gauthier','Racine','Anfa','Aïn Diab','Aïn Sebaâ','Sidi Bernoussi','Hay Hassani','Hay Mohammadi','Sbata','Sidi Moumen',"Ben M'Sick",'Mers Sultan','Derb Sultan','Habous','Oasis','Palmier','Belvédère','C.I.L.','2 Mars',"Triangle d'Or",'Casa Port','Bouskoura','Dar Bouazza','Sidi Belyout','Hay El Qods','Hay Oulfa','Al Fida','Roches Noires','Bernoussi','Maârif Extension','Val Fleuri','Californie','Beauséjour']
-                      .filter(q => !deliveryZones.some(z => z.quartier === q))
-                      .map(q => <option key={q} value={q}>{q}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="w-36">
-                <label className="block text-[0.68rem] font-bold uppercase tracking-widest mb-2" style={{ color: C.muted }}>{t('vd.price_label')}</label>
-                <input type="number" min="0" step="1" value={newZone.price}
-                  onChange={e => setNewZone(p => ({ ...p, price: e.target.value }))} placeholder="15"
-                  className="w-full px-4 py-3 rounded-xl text-sm border text-center font-semibold"
-                  style={{ backgroundColor: '#fff', borderColor: 'rgba(80,70,64,0.15)', color: C.dark, outline: 'none' }}
-                  onFocus={e => e.target.style.borderColor = C.terra}
-                  onBlur={e => e.target.style.borderColor = 'rgba(80,70,64,0.15)'} />
-              </div>
-              <button onClick={addDeliveryZone} disabled={savingZone || !newZone.quartier || !newZone.price}
-                className="flex items-center gap-1.5 px-5 py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
-                style={{ backgroundColor: C.terra, color: '#fff' }}
-                onMouseEnter={e => { if (!savingZone && newZone.quartier && newZone.price) e.currentTarget.style.backgroundColor = C.terraLight }}
-                onMouseLeave={e => { if (!savingZone && newZone.quartier && newZone.price) e.currentTarget.style.backgroundColor = C.terra }}>
-                <Plus size={14} /> {savingZone ? t('vd.adding') : t('vd.add')}
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* ── Informations bancaires ──────────────────────────── */}
         <div className="rounded-2xl overflow-hidden shadow-sm" style={{ border: '1px solid rgba(80,70,64,0.10)' }}>
@@ -2631,8 +2564,7 @@ export default function VendorDashboard() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ backgroundColor: C.cream }}>
-      <DashboardTopbar variant="vendor" />
-      <div className="flex flex-1 overflow-hidden" style={{ marginTop: '56px' }}>
+      <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
         )}

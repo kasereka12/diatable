@@ -72,9 +72,10 @@ function OrderCard({ order, onSelect }: { order: TrackOrder; onSelect: (o: Track
   )
 }
 
-function OrderDetail({ order, onBack }: { order: TrackOrder; onBack: () => void }) {
+function OrderDetail({ order, onBack, onCancel }: { order: TrackOrder; onBack: () => void; onCancel: (id: string) => void }) {
   const status = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending
   const currentStep = status.step
+  const canCancel = order.status === 'pending' || order.status === 'confirmed'
 
   return (
     <div className="space-y-6">
@@ -171,6 +172,17 @@ function OrderDetail({ order, onBack }: { order: TrackOrder; onBack: () => void 
         <Link to="/messages" className="btn btn-gold text-sm flex items-center gap-2">
           <MessageCircle size={16} /> Contacter le vendeur
         </Link>
+        {canCancel && (
+          <button
+            onClick={() => onCancel(order.id)}
+            className="text-sm font-semibold px-4 py-2 rounded-lg border transition-colors flex items-center gap-2"
+            style={{ color: '#dc2626', borderColor: 'rgba(220,38,38,0.3)' }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(220,38,38,0.06)'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <XCircle size={16} /> Annuler la commande
+          </button>
+        )}
       </div>
     </div>
   )
@@ -218,11 +230,21 @@ export default function OrderTracking() {
   const pastOrders     = orders.filter(o => ['delivered', 'cancelled'].includes(o.status))
   const displayedOrders = activeTab === 'active' ? activeOrders : pastOrders
 
+  async function cancelOrder(orderId: string) {
+    if (!window.confirm('Annuler cette commande ? Cette action est irréversible.')) return
+    const { error } = await (supabase.from('orders') as any)
+      .update({ status: 'cancelled' })
+      .eq('id', orderId)
+    if (error) { window.alert("Impossible d'annuler la commande. Le restaurant a peut-être déjà commencé la préparation."); return }
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o))
+    setSelectedOrder(prev => prev && prev.id === orderId ? { ...prev, status: 'cancelled' } : prev)
+  }
+
   if (selectedOrder) {
     return (
       <div className="min-h-screen pt-24 pb-12" style={{ backgroundColor: '#eae5d9' }}>
         <div className="max-w-3xl mx-auto px-6">
-          <OrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} />
+          <OrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} onCancel={cancelOrder} />
         </div>
       </div>
     )

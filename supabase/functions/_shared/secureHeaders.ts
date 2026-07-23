@@ -23,10 +23,10 @@ const SECURITY_HEADERS: Record<string, string> = {
     "default-src 'self'; " +
     "script-src 'self'; " +
     "style-src 'self' 'unsafe-inline'; " +
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://maps.googleapis.com; " +
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://maps.googleapis.com https://pay.youcan.shop https://youcanpay.com; " +
     "img-src 'self' data: blob: https:; " +
     "font-src 'self' data:; " +
-    "frame-src 'none'; " +
+    "frame-src https://pay.youcan.shop https://youcanpay.com; " +
     "object-src 'none'; " +
     "base-uri 'self'; " +
     "form-action 'self'",
