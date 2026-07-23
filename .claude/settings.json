@@ -9,7 +9,14 @@
       "Bash(flutter create:*)",
       "Bash(flutter pub:*)",
       "Bash(flutter analyze:*)",
-      "PowerShell($zipPath = \"c:\\\\Users\\\\ACER\\\\Downloads\\\\Diatable\\\\diatable_mobile.zip\"; $size = \\(Get-Item $zipPath\\).Length; Write-Output \"==========================================\"; Write-Output \"ARCHIVE FLUTTER DIATABLE - PRETE\"; Write-Output \"==========================================\"; Write-Output \"Chemin : $zipPath\"; Write-Output \"Taille : $\\([math]::Round\\($size/1KB, 2\\)\\) KB\"; Write-Output \"\"; Write-Output \"Contenu \\(dossiers principaux\\) :\"; Add-Type -AssemblyName System.IO.Compression.FileSystem; $zip = [System.IO.Compression.ZipFile]::OpenRead\\($zipPath\\); $zip.Entries | Group-Object { \\($_.FullName -split '/'\\)[0..1] -join '/' } | Select-Object Name, Count | Sort-Object Name | Format-Table -AutoSize; $zip.Dispose\\(\\))"
+      "PowerShell($zipPath = \"c:\\\\Users\\\\ACER\\\\Downloads\\\\Diatable\\\\diatable_mobile.zip\"; $size = \\(Get-Item $zipPath\\).Length; Write-Output \"==========================================\"; Write-Output \"ARCHIVE FLUTTER DIATABLE - PRETE\"; Write-Output \"==========================================\"; Write-Output \"Chemin : $zipPath\"; Write-Output \"Taille : $\\([math]::Round\\($size/1KB, 2\\)\\) KB\"; Write-Output \"\"; Write-Output \"Contenu \\(dossiers principaux\\) :\"; Add-Type -AssemblyName System.IO.Compression.FileSystem; $zip = [System.IO.Compression.ZipFile]::OpenRead\\($zipPath\\); $zip.Entries | Group-Object { \\($_.FullName -split '/'\\)[0..1] -join '/' } | Select-Object Name, Count | Sort-Object Name | Format-Table -AutoSize; $zip.Dispose\\(\\))",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "WebSearch",
+      "WebFetch(domain:youcanpay.com)",
+      "WebFetch(domain:developer.youcan.shop)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:pub.dev)"
     ],
     "additionalDirectories": [
       "c:\\Users\\ACER\\Downloads\\Diatable\\diatable_mobile"

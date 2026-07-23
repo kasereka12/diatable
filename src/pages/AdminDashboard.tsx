@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import DashboardTopbar from '../components/DashboardTopbar'
+import Logo from '../assets/Logo.png'
 import {
   LayoutDashboard, Users, Store, ImageIcon, Users2, LogOut,
   Plus, Pencil, Trash2, CheckCircle, XCircle, Search,
-  Globe, ShieldCheck, AlertCircle, RefreshCw, Menu, X, ChevronLeft,
+  ShieldCheck, AlertCircle, RefreshCw, Menu, X, ChevronLeft,
   Phone, MessageCircle, Instagram, Clock, MapPin, Utensils, Eye, ChevronRight,
   Package, Star, TrendingUp, Ban, UserCheck, Mail, Calendar, ArrowLeft,
-  BarChart2, ShoppingBag, Heart, Crown, Sparkles, Zap, CreditCard, Monitor, Bike, FileText
+  BarChart2, ShoppingBag, Heart, Crown, Sparkles, Zap, CreditCard, Monitor, Bike, FileText, Truck, Save
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -2365,6 +2365,110 @@ function SectionDrivers() {
   )
 }
 
+// ─── Section Livraison (tarification dynamique) ───────────────────────────────
+
+function SectionDeliverySettings() {
+  const [baseFee, setBaseFee]       = useState('')
+  const [pricePerKm, setPricePerKm] = useState('')
+  const [maxFee, setMaxFee]         = useState('')
+  const [loading, setLoading]       = useState(true)
+  const [saving, setSaving]         = useState(false)
+  const [saved, setSaved]           = useState(false)
+
+  useEffect(() => {
+    (supabase.from('platform_settings') as any)
+      .select('delivery_base_fee, delivery_price_per_km, delivery_max_fee')
+      .eq('id', 1)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        setBaseFee(String(data?.delivery_base_fee ?? 8))
+        setPricePerKm(String(data?.delivery_price_per_km ?? 2.5))
+        setMaxFee(String(data?.delivery_max_fee ?? 30))
+        setLoading(false)
+      })
+  }, [])
+
+  async function handleSave() {
+    setSaving(true)
+    setSaved(false)
+    await (supabase.from('platform_settings') as any)
+      .update({
+        delivery_base_fee:     parseFloat(baseFee) || 0,
+        delivery_price_per_km: parseFloat(pricePerKm) || 0,
+        delivery_max_fee:      parseFloat(maxFee) || 0,
+      })
+      .eq('id', 1)
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
+  }
+
+  const rawFee = (distance: number) => (parseFloat(baseFee) || 0) + (parseFloat(pricePerKm) || 0) * distance
+  const cappedFee = (distance: number) => {
+    const cap = parseFloat(maxFee) || 0
+    const raw = rawFee(distance)
+    return cap > 0 ? Math.min(raw, cap) : raw
+  }
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="font-serif text-xl font-bold text-dark">Livraison</h2>
+        <p className="text-sm text-muted mt-0.5">
+          Les frais de livraison sont calculés automatiquement pour chaque commande à partir de la distance
+          réelle entre le restaurant et le client : <strong>frais de base + (prix/km × distance)</strong>,
+          plafonnés au frais maximum ci-dessous.
+        </p>
+      </div>
+
+      {loading ? <Spinner /> : (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/[0.05] max-w-lg space-y-5">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Frais de base (MAD)</label>
+            <input
+              type="number" min="0" step="0.5"
+              value={baseFee}
+              onChange={e => setBaseFee(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-[#c5611a]/40"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Prix au kilomètre (MAD/km)</label>
+            <input
+              type="number" min="0" step="0.1"
+              value={pricePerKm}
+              onChange={e => setPricePerKm(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-[#c5611a]/40"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Frais maximum (MAD) — plafond quelle que soit la distance</label>
+            <input
+              type="number" min="0" step="1"
+              value={maxFee}
+              onChange={e => setMaxFee(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-[#c5611a]/40"
+            />
+          </div>
+
+          <div className="bg-cream rounded-xl px-4 py-3 text-xs text-muted space-y-1">
+            <p>Exemple 3 km : <strong className="text-dark">{cappedFee(3).toFixed(2)} MAD</strong></p>
+            <p>Exemple 15 km : <strong className="text-dark">{cappedFee(15).toFixed(2)} MAD</strong>{cappedFee(15) === rawFee(15) ? '' : ' (plafonné)'}</p>
+          </div>
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 bg-[#c5611a] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#d9722a] transition-colors disabled:opacity-50"
+          >
+            <Save size={14} /> {saving ? 'Enregistrement...' : saved ? 'Enregistré ✓' : 'Enregistrer'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const NAV_ITEMS = [
   { key: 'overview',       label: 'Vue globale',   icon: LayoutDashboard },
   { key: 'users',          label: 'Utilisateurs',  icon: Users },
@@ -2376,6 +2480,7 @@ const NAV_ITEMS = [
   { key: 'gallery',        label: 'Galerie',       icon: ImageIcon },
   { key: 'team',           label: 'Équipe',        icon: Users2 },
   { key: 'drivers',        label: 'Livreurs',      icon: Bike },
+  { key: 'delivery',       label: 'Livraison',     icon: Truck },
 ]
 
 function Sidebar({ active, setActive, onSignOut, user, mobileOpen, setMobileOpen, collapsed, setCollapsed }: {
@@ -2396,7 +2501,7 @@ function Sidebar({ active, setActive, onSignOut, user, mobileOpen, setMobileOpen
       {/* Logo */}
       <div className={`${collapsed ? 'px-2 py-5 justify-center' : 'px-6 py-5'} flex items-center justify-between border-b border-black/[0.06]`}>
         <div className="flex items-center gap-2">
-          <Globe className="w-5 h-5 text-[#c5611a] shrink-0" />
+          <img src={Logo} alt="DiaTable" className="w-7 h-7 object-contain shrink-0" />
           {!collapsed && (
             <>
               <span className="text-lg font-serif text-dark">
@@ -2513,44 +2618,42 @@ export default function AdminDashboard() {
       case 'gallery': return <SectionGallery />
       case 'team': return <SectionTeam />
       case 'drivers': return <SectionDrivers />
+      case 'delivery': return <SectionDeliverySettings />
       default: return <SectionOverview />
     }
   }
 
   return (
     <div className="min-h-screen bg-cream font-sans">
-      <DashboardTopbar variant="admin" />
-      <div style={{ paddingTop: '56px' }}>
-        <Sidebar
-          active={activeSection}
-          setActive={setActiveSection}
-          onSignOut={handleSignOut}
-          user={user}
-          mobileOpen={mobileOpen}
-          setMobileOpen={setMobileOpen}
-          collapsed={collapsed}
-          setCollapsed={setCollapsed}
-        />
+      <Sidebar
+        active={activeSection}
+        setActive={setActiveSection}
+        onSignOut={handleSignOut}
+        user={user}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+      />
 
-        {/* Main content */}
-        <div className={`min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'lg:pl-16' : 'lg:pl-64'}`}>
-          {/* Mobile top bar */}
-          <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-black/[0.06] sticky top-0 z-20">
-            <button onClick={() => setMobileOpen(true)} className="text-muted hover:text-dark">
-              <Menu className="w-6 h-6" />
-            </button>
-            <span className="text-base font-serif text-dark">
-              Dia<span className="text-[#c5611a]">Table</span>
-              <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-red-600 text-white rounded font-semibold tracking-wide align-middle">Admin</span>
-            </span>
-            <div className="w-6" />
-          </div>
-
-          {/* Page content */}
-          <main className="flex-1 p-6 lg:p-8">
-            {renderSection()}
-          </main>
+      {/* Main content */}
+      <div className={`min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'lg:pl-16' : 'lg:pl-64'}`}>
+        {/* Mobile top bar */}
+        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-black/[0.06] sticky top-0 z-20">
+          <button onClick={() => setMobileOpen(true)} className="text-muted hover:text-dark">
+            <Menu className="w-6 h-6" />
+          </button>
+          <span className="text-base font-serif text-dark">
+            Dia<span className="text-[#c5611a]">Table</span>
+            <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-red-600 text-white rounded font-semibold tracking-wide align-middle">Admin</span>
+          </span>
+          <div className="w-6" />
         </div>
+
+        {/* Page content */}
+        <main className="flex-1 p-6 lg:p-8">
+          {renderSection()}
+        </main>
       </div>
     </div>
   )

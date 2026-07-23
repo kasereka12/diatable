@@ -567,6 +567,7 @@ create table if not exists orders (
   estimated_prep_min      integer,
   driver_id               uuid references delivery_drivers(id) on delete set null,
   driver_name             text,
+  payment_transaction_id  text, -- YouCan Pay transaction id, set once a card payment token is created
   created_at              timestamptz default now(),
   updated_at              timestamptz default now()
 );
@@ -574,6 +575,8 @@ create table if not exists orders (
 create index if not exists idx_orders_customer_id on orders (customer_id, created_at desc);
 create index if not exists idx_orders_driver       on orders (driver_id) where driver_id is not null;
 create index if not exists idx_orders_status       on orders (status, restaurant_id);
+create index if not exists idx_orders_payment_transaction_id
+  on orders (payment_transaction_id) where payment_transaction_id is not null;
 
 alter table orders enable row level security;
 
@@ -597,6 +600,19 @@ create policy "Vendeur peut modifier les commandes de son restaurant"
     where r.id = restaurant_id and r.owner_id = auth.uid()
   ));
 
+-- Le client peut annuler sa propre commande tant que le restaurant n'a pas
+-- encore commencé la préparation (statut encore 'pending' ou 'confirmed').
+create policy "Client peut annuler sa commande"
+  on orders for update
+  using (
+    auth.uid() = customer_id
+    and status in ('pending', 'confirmed')
+  )
+  with check (
+    auth.uid() = customer_id
+    and status = 'cancelled'
+  );
+
 create policy "Admin peut lire toutes les commandes"
   on orders for select using (is_admin());
 
@@ -615,6 +631,37 @@ $$;
 drop trigger if exists on_order_update on orders;
 create trigger on_order_update
   before update on orders
+  for each row execute procedure update_order_timestamp();
+
+
+-- ── 12b. PLATFORM SETTINGS — tarification livraison dynamique ────
+-- Frais de livraison calculés à partir de la distance réelle
+-- (base + prix/km), réglable par l'admin. Remplace les prix fixes de
+-- delivery_zones (section 10) comme source des frais au checkout (la
+-- table de zones reste disponible mais n'est plus lue pour le tarif).
+create table if not exists platform_settings (
+  id                     smallint primary key default 1,
+  delivery_base_fee      numeric(10,2) not null default 8,
+  delivery_price_per_km  numeric(10,2) not null default 2.5,
+  delivery_max_fee       numeric(10,2) not null default 30,
+  updated_at             timestamptz default now(),
+  constraint platform_settings_singleton check (id = 1)
+);
+
+insert into platform_settings (id) values (1)
+  on conflict (id) do nothing;
+
+alter table platform_settings enable row level security;
+
+create policy "Tout le monde peut lire les réglages"
+  on platform_settings for select using (true);
+
+create policy "Admin peut modifier les réglages"
+  on platform_settings for update using (is_admin());
+
+drop trigger if exists on_platform_settings_update on platform_settings;
+create trigger on_platform_settings_update
+  before update on platform_settings
   for each row execute procedure update_order_timestamp();
 
 
