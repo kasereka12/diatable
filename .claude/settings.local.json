@@ -6,7 +6,8 @@
       "Bash(npx supabase *)",
       "Bash(npx tsc *)",
       "Bash(npm install *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git check-ignore *)"
     ]
   }
 }
