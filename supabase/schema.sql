@@ -132,6 +132,7 @@ create table if not exists restaurants (
   deactivated_by_suspension boolean not null default false,
   latitude          numeric(10,7),
   longitude         numeric(10,7),
+  prep_time_min     integer default 15,
   created_at        timestamptz default now()
 );
 
