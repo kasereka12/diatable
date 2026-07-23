@@ -299,7 +299,9 @@ export default function RestaurantDetail() {
 
   const isOwner = user && restaurant && restaurant.owner_id === user.id
   const canReview = user && !isOwner
-  const effectivelyOpen = getEffectivelyOpen(restaurant)
+  // TEMP TEST OVERRIDE — bypass the "closed" gate to test YouCan Pay checkout.
+  // Revert to `getEffectivelyOpen(restaurant)` once done testing.
+  const effectivelyOpen = true || getEffectivelyOpen(restaurant)
   const closedReason = getClosedReason(restaurant)
 
   if (loading) {
