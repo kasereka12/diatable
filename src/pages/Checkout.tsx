@@ -519,29 +519,6 @@ export default function Checkout() {
                         )}
                       </div>
 
-                      {/* Distance-based fee feedback */}
-                      {restaurantCoords && (
-                        <div className="md:col-span-2">
-                          {deliveryCalc ? (
-                            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                                <p className="text-xs text-green-600">
-                                  {t('checkout.fee_calculated')}
-                                </p>
-                              </div>
-                              <span className="text-sm font-bold text-green-700">
-                                {deliveryCalc.fee.toFixed(2)} MAD
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="bg-cream border border-black/[0.06] rounded-xl px-4 py-3 flex items-start gap-2">
-                              <MapPin size={16} className="text-muted mt-0.5 flex-shrink-0" />
-                              <p className="text-xs text-muted">{t('checkout.fee_pending_address')}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </>
                   )}
 
