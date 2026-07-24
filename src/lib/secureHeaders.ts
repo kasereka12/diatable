@@ -11,10 +11,10 @@ export const SECURITY_HEADER_VALUES: Record<string, string> = {
   'Content-Security-Policy':
     "default-src 'self'; " +
     "script-src 'self' https://maps.googleapis.com https://pay.youcan.shop https://youcanpay.com; " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://ui-assets.ycdn.store; " +
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://maps.googleapis.com https://pay.youcan.shop https://youcanpay.com; " +
     "img-src 'self' data: blob: https:; " +
-    "font-src 'self' data: https://fonts.gstatic.com; " +
+    "font-src 'self' data: https://fonts.gstatic.com https://ui-assets.ycdn.store; " +
     "frame-src https://pay.youcan.shop https://youcanpay.com; " +
     "object-src 'none'; " +
     "base-uri 'self'; " +
