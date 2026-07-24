@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 declare global {
   interface Window { YCPay: any } // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -18,17 +18,20 @@ interface Props {
 // payment token. This never sees or transmits raw card numbers through our
 // own server — ycpay.js posts directly to YouCan Pay.
 //
-// NOTE: the exact option name for attaching the token to the widget, and the
-// success/error callback API, weren't available in YouCan Pay's public docs
-// at the time this was written (see supabase/functions/create-payment-token
-// for the full context). This component only renders the card fields; the
-// actual "did it work" signal comes from the server-confirmed
-// orders.payment_status (set by the youcanpay-webhook function), which
-// Checkout.tsx subscribes to via Supabase Realtime. Verify this wiring
-// against the real widget once sandbox keys are available — check the
-// browser network tab / YouCan Pay's dashboard docs for the confirmed option
-// and callback names, and adjust the `new YCPay(...)` call below.
+// renderCreditCardForm() only renders the input fields — it does not add a
+// submit button. Payment is triggered explicitly via ycPay.pay(tokenId),
+// which returns a promise (.then success / .catch error). The actual order
+// completion still comes from the server-confirmed orders.payment_status
+// (set by the youcanpay-webhook function), which Checkout.tsx subscribes to
+// via Supabase Realtime — the promise result here is only used for
+// immediate UI feedback (loading/error state on the button).
 export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props) {
+  const ycPayRef = useRef<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [ready, setReady] = useState(false)
+  const [paying, setPaying] = useState(false)
+  const [payError, setPayError] = useState('')
+  const [paySubmitted, setPaySubmitted] = useState(false)
+
   useEffect(() => {
     let cancelled = false
 
@@ -39,9 +42,10 @@ export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props
         errorContainer: `#${ERROR_CONTAINER_ID}`,
         locale: 'fr',
         isSandbox,
-        tokenId,
       })
       ycPay.renderCreditCardForm()
+      ycPayRef.current = ycPay
+      setReady(true)
     }
 
     if (window.YCPay) {
@@ -62,12 +66,44 @@ export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props
       cancelled = true
       script?.removeEventListener('load', init)
     }
-  }, [tokenId, publicKey, isSandbox])
+  }, [publicKey, isSandbox])
+
+  function handlePay() {
+    if (!ycPayRef.current) return
+    setPaying(true)
+    setPayError('')
+    ycPayRef.current.pay(tokenId)
+      .then(() => {
+        setPaying(false)
+        setPaySubmitted(true)
+      })
+      .catch((err: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        setPaying(false)
+        setPayError(err?.message || 'Paiement refusé. Vérifiez vos informations de carte.')
+      })
+  }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div id={FORM_CONTAINER_ID} />
       <div id={ERROR_CONTAINER_ID} className="text-xs text-red-500" />
+
+      {payError && <p className="text-xs text-red-500">{payError}</p>}
+
+      {paySubmitted ? (
+        <p className="text-xs text-muted text-center">
+          Paiement transmis — confirmation en cours…
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={handlePay}
+          disabled={!ready || paying}
+          className="btn btn-gold w-full justify-center text-sm disabled:opacity-50"
+        >
+          {paying ? 'Traitement en cours…' : 'Payer'}
+        </button>
+      )}
     </div>
   )
 }
