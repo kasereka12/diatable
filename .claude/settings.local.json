@@ -12,7 +12,8 @@
       "Bash(npx vite *)",
       "Bash(git fetch *)",
       "WebFetch(domain:developer.youcan.shop)",
-      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('vercel.json','utf8'\\)\\); console.log\\('vercel.json OK'\\)\")"
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('vercel.json','utf8'\\)\\); console.log\\('vercel.json OK'\\)\")",
+      "Bash(curl -sI https://diatable.vercel.app/checkout)"
     ]
   }
 }
