@@ -123,11 +123,8 @@ export default function Checkout() {
     },
   })
 
-  // Requests a fresh YouCan Pay token for the given order. Called on first
-  // entering the card-payment screen, and again on retry after a failed
-  // attempt — each retry gets its own brand new token/transaction rather
-  // than reusing the failed one, which also sidesteps a ycpay.js quirk where
-  // re-rendering the widget for the same token loses its input masking.
+  // Requests a YouCan Pay token for the given order, entering the
+  // card-payment screen once it arrives.
   async function requestPaymentToken(orderId: string) {
     setPreparingPayment(true)
     setCardToken(null)
@@ -146,6 +143,16 @@ export default function Checkout() {
     } finally {
       setPreparingPayment(false)
     }
+  }
+
+  // A failed card payment sends the customer back to the checkout form
+  // (rather than trying to reset/retry the embedded widget in place) with
+  // the error shown there — see CardPaymentForm's onError doc comment.
+  function handleCardPaymentError(message: string) {
+    setError(message)
+    setPendingCardOrder(null)
+    setCardToken(null)
+    setPaymentUrl(null)
   }
 
   // Wait for the youcanpay-webhook Edge Function to mark the order as paid.
@@ -295,6 +302,7 @@ export default function Checkout() {
                 tokenId={cardToken}
                 publicKey={import.meta.env.VITE_YOUCANPAY_PUBLIC_KEY as string}
                 isSandbox={import.meta.env.VITE_YOUCANPAY_SANDBOX === 'true'}
+                onError={handleCardPaymentError}
               />
               {paymentUrl && (
                 <>
