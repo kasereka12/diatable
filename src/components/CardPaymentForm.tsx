@@ -31,6 +31,17 @@ function CardWidget({ tokenId, publicKey, isSandbox, onSuccess, onError }: Widge
   useEffect(() => {
     let cancelled = false
 
+    function clearInputs() {
+      const container = document.getElementById(FORM_CONTAINER_ID)
+      container?.querySelectorAll('input').forEach(input => {
+        input.setAttribute('autocomplete', 'off')
+        // Browsers aggressively autofill card-number-shaped fields from
+        // saved payment info regardless of the DOM node being brand new —
+        // force them empty right after the widget renders them.
+        if (input.value) input.value = ''
+      })
+    }
+
     function init() {
       if (cancelled || !window.YCPay) return
       const ycPay = new window.YCPay(publicKey, {
@@ -42,6 +53,11 @@ function CardWidget({ tokenId, publicKey, isSandbox, onSuccess, onError }: Widge
       ycPay.renderCreditCardForm()
       ycPayRef.current = ycPay
       setReady(true)
+      // ycpay.js may populate/mask inputs asynchronously right after
+      // render — clear on the next tick and once more shortly after to
+      // catch both cases.
+      requestAnimationFrame(clearInputs)
+      setTimeout(clearInputs, 300)
     }
 
     if (window.YCPay) {
