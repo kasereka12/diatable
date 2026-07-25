@@ -119,6 +119,7 @@ Deno.serve(async (req: Request) => {
         customer: {
           full_name: order.customer_name || undefined,
           phone: order.delivery_phone || undefined,
+          email: user.email || undefined,
         },
       }),
     })

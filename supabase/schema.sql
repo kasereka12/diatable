@@ -584,8 +584,11 @@ alter table orders enable row level security;
 create policy "Client peut lire ses commandes"
   on orders for select using (auth.uid() = customer_id);
 
-create policy "Client peut créer une commande"
-  on orders for insert with check (auth.uid() = customer_id);
+-- Pas de policy insert pour le client : les commandes sont créées uniquement
+-- via la fonction Edge create-order (clé service role), qui recalcule
+-- subtotal/delivery_fee/total côté serveur à partir des vrais prix des
+-- menu_items — un client ne peut donc plus insérer une commande avec un
+-- total fabriqué à la main.
 
 create policy "Vendeur peut lire les commandes de son restaurant"
   on orders for select
@@ -686,11 +689,8 @@ create policy "Client peut lire ses order_items"
     select 1 from orders o where o.id = order_id and o.customer_id = auth.uid()
   ));
 
-create policy "Client peut créer des order_items"
-  on order_items for insert
-  with check (exists (
-    select 1 from orders o where o.id = order_id and o.customer_id = auth.uid()
-  ));
+-- Pas de policy insert pour le client ici non plus, même raison que pour
+-- orders — order_items est peuplé par create-order (service role).
 
 create policy "Vendeur peut lire les order_items de ses commandes"
   on order_items for select

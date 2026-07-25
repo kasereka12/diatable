@@ -13,7 +13,12 @@
       "Bash(git fetch *)",
       "WebFetch(domain:developer.youcan.shop)",
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('vercel.json','utf8'\\)\\); console.log\\('vercel.json OK'\\)\")",
-      "Bash(curl -sI https://diatable.vercel.app/checkout)"
+      "Bash(curl -sI https://diatable.vercel.app/checkout)",
+      "Bash(mkdir -p \"c:\\\\Users\\\\dmutaka\\\\Downloads\\\\diatable-main\\\\diatable-main\\\\supabase\\\\functions\\\\create-order\")",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('hex'\\)\\)\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\dmutaka\\Downloads\\diatable-main\\diatable-main\\supabase\\functions"
     ]
   }
 }
