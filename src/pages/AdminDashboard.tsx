@@ -1794,11 +1794,13 @@ function SectionTeam() {
 
 // ─── Section 8 : Abonnements ──────────────────────────────────────────────────
 
+// Payments are now confirmed automatically by youcanpay-webhook — this
+// section is read-only history for support/audit purposes, no more manual
+// approve/reject.
 function SectionSubscriptions() {
   const [payments, setPayments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [processing, setProcessing] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1819,55 +1821,6 @@ function SectionSubscriptions() {
 
   useEffect(() => { load() }, [load])
 
-  async function approve(p: any) {
-    setProcessing(p.id)
-    setError(null)
-    try {
-      const now = new Date().toISOString()
-
-      const { error: payErr } = await (supabase.from('subscription_payments') as any)
-        .update({ status: 'approved', reviewed_at: now })
-        .eq('id', p.id)
-      if (payErr) throw new Error('Mise à jour du paiement : ' + payErr.message)
-
-      // Tente d'abord un UPDATE (le row existe si le vendeur est déjà enregistré)
-      const { data: updated, error: upErr } = await (supabase.from('subscriptions') as any)
-        .update({ plan: p.plan, status: 'active', started_at: now })
-        .eq('vendor_id', p.vendor_id)
-        .select()
-      if (upErr) throw new Error('Mise à jour de l\'abonnement : ' + upErr.message)
-
-      // Si aucune ligne mise à jour, on INSERT (cas rare : vendeur sans ligne subscription)
-      if (!updated || updated.length === 0) {
-        const { error: insErr } = await (supabase.from('subscriptions') as any)
-          .insert({ vendor_id: p.vendor_id, plan: p.plan, status: 'active', started_at: now })
-        if (insErr) throw new Error('Création de l\'abonnement : ' + insErr.message)
-      }
-
-      await load()
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setProcessing(null)
-    }
-  }
-
-  async function reject(p: any) {
-    setProcessing(p.id)
-    setError(null)
-    try {
-      const { error: payErr } = await (supabase.from('subscription_payments') as any)
-        .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
-        .eq('id', p.id)
-      if (payErr) throw new Error('Mise à jour du paiement : ' + payErr.message)
-      await load()
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setProcessing(null)
-    }
-  }
-
   const pending  = payments.filter(p => p.status === 'pending')
   const reviewed = payments.filter(p => p.status !== 'pending')
 
@@ -1887,8 +1840,8 @@ function SectionSubscriptions() {
   }
 
   function statusBadge(status: string) {
-    if (status === 'pending')  return <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">En attente</span>
-    if (status === 'approved') return <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-200">Approuvé</span>
+    if (status === 'pending')  return <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">En attente de paiement</span>
+    if (status === 'paid' || status === 'approved') return <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-200">Payé</span>
     if (status === 'rejected') return <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200">Rejeté</span>
     return null
   }
@@ -1900,7 +1853,7 @@ function SectionSubscriptions() {
           <h1 className="text-2xl font-bold text-dark flex items-center gap-2">
             <Crown size={22} className="text-[#c5611a]" /> Abonnements
           </h1>
-          <p className="text-sm text-muted mt-1">Validation manuelle des demandes de changement de plan</p>
+          <p className="text-sm text-muted mt-1">Historique des paiements — confirmés automatiquement par YouCan Pay, aucune validation manuelle requise</p>
         </div>
         <button onClick={load}
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg border text-sm hover:bg-gray-50 transition-colors"
@@ -1923,84 +1876,47 @@ function SectionSubscriptions() {
             </div>
           ))}
         </div>
+      ) : payments.length === 0 ? (
+        <div className="rounded-xl p-10 text-center bg-white border border-black/[0.06]">
+          <Crown size={36} className="mx-auto mb-2 text-gray-200" />
+          <p className="text-sm text-muted">Aucun paiement pour le moment</p>
+        </div>
       ) : (
         <>
-          {/* ── Demandes en attente ─────────────────────── */}
-          <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold text-dark">En attente de validation</h2>
-              {pending.length > 0 && (
+          {pending.length > 0 && (
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold text-dark">En attente de paiement</h2>
                 <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">
                   {pending.length}
                 </span>
-              )}
-            </div>
-            {pending.length === 0 ? (
-              <div className="rounded-xl p-10 text-center bg-white border border-black/[0.06]">
-                <CheckCircle size={36} className="mx-auto mb-2 text-green-300" />
-                <p className="text-sm text-muted">Aucune demande en attente</p>
               </div>
-            ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {pending.map(p => {
                   const vendorName = p.profiles?.full_name || p.profiles?.email || '—'
                   const restName   = p.profiles?.restaurants?.[0]?.name || '—'
-                  const isProc     = processing === p.id
                   return (
-                    <div key={p.id} className="rounded-xl bg-white border-l-4 border-amber-400 shadow-sm overflow-hidden"
-                      style={{ border: '1px solid rgba(0,0,0,0.07)', borderLeftWidth: 4, borderLeftColor: '#fbbf24' }}>
-                      <div className="p-5">
-                        <div className="flex items-start gap-4 flex-wrap">
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                            style={{ backgroundColor: 'rgba(197,97,26,0.10)', color: '#c5611a' }}>
-                            {vendorName.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <p className="text-sm font-semibold text-dark">{vendorName}</p>
-                              <span className="text-muted text-xs">→</span>
-                              {planBadge(p.plan)}
-                              {statusBadge(p.status)}
-                            </div>
-                            <p className="text-xs text-muted mb-1">
-                              {restName} · <span className="font-medium">{p.bank}</span> · Réf : <span className="font-mono">{p.reference}</span> · Expéditeur : {p.sender_name}
-                            </p>
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <span className="text-xs text-muted">{formatDate(p.created_at)}</span>
-                              {p.receipt_url && (
-                                <a href={p.receipt_url} target="_blank" rel="noopener noreferrer"
-                                  className="text-xs font-medium text-[#c5611a] hover:underline flex items-center gap-1">
-                                  <Eye size={12} /> Voir le reçu
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <button onClick={() => approve(p)} disabled={isProc}
-                              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
-                              style={{ backgroundColor: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}
-                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#dcfce7'}
-                              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
-                              <CheckCircle size={14} />
-                              {isProc ? 'Traitement…' : 'Approuver'}
-                            </button>
-                            <button onClick={() => reject(p)} disabled={isProc}
-                              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
-                              style={{ backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
-                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fee2e2'}
-                              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fef2f2'}>
-                              <XCircle size={14} />
-                              Rejeter
-                            </button>
-                          </div>
+                    <div key={p.id} className="rounded-xl p-4 bg-white flex items-start gap-4 flex-wrap"
+                      style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        style={{ backgroundColor: 'rgba(197,97,26,0.10)', color: '#c5611a' }}>
+                        {vendorName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                          <p className="text-sm font-medium text-dark">{vendorName}</p>
+                          <span className="text-muted text-xs">→</span>
+                          {planBadge(p.plan)}
+                          {statusBadge(p.status)}
                         </div>
+                        <p className="text-xs text-muted">{restName} · {p.amount ? `${p.amount} MAD` : ''} · {formatDate(p.created_at)}</p>
                       </div>
                     </div>
                   )
                 })}
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
           {/* ── Historique ──────────────────────────────── */}
           {reviewed.length > 0 && (
@@ -2024,15 +1940,7 @@ function SectionSubscriptions() {
                           {planBadge(p.plan)}
                           {statusBadge(p.status)}
                         </div>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <p className="text-xs text-muted">{restName} · {p.bank} · {formatDate(p.created_at)}</p>
-                          {p.receipt_url && (
-                            <a href={p.receipt_url} target="_blank" rel="noopener noreferrer"
-                              className="text-xs font-medium text-[#c5611a] hover:underline flex items-center gap-1">
-                              <Eye size={12} /> Reçu
-                            </a>
-                          )}
-                        </div>
+                        <p className="text-xs text-muted">{restName} · {p.amount ? `${p.amount} MAD` : ''} · {formatDate(p.created_at)}</p>
                       </div>
                       {p.reviewed_at && (
                         <span className="text-xs text-muted flex-shrink-0">{formatDate(p.reviewed_at)}</span>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '../assets/LogoBlanc.png'
@@ -10,7 +10,7 @@ import {
   Heart, Package, MessageCircle, Crown, Sparkles, Zap, MapPin, Power, Clock, Bike
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
+import { supabase, callEdgeFunction } from '../lib/supabase'
 import VendorOrders from '../components/vendor/VendorOrders'
 import VendorDrivers from '../components/vendor/VendorDrivers'
 import MessagingPanel from '../components/MessagingPanel'
@@ -192,11 +192,10 @@ export default function VendorDashboard() {
   const [bankMsg, setBankMsg] = useState('')
   const [subscription, setSubscription] = useState<any | null>(null)
   const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null)
-  const [paymentForm, setPaymentForm] = useState({ bank: '', reference: '', sender_name: '' })
-  const [receiptFile, setReceiptFile] = useState<File | null>(null)
-  const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
-  const [submittingPayment, setSubmittingPayment] = useState(false)
+  const [preparingSubPayment, setPreparingSubPayment] = useState(false)
+  const [subPaymentUrl, setSubPaymentUrl] = useState<string | null>(null)
   const [paymentMsg, setPaymentMsg] = useState('')
+  const subPaymentPopupRef = useRef<Window | null>(null)
 
   const [restaurant, setRestaurant] = useState<any | null>(null)
   const [menuItems, setMenuItems] = useState<any[]>([])
@@ -431,26 +430,67 @@ export default function VendorDashboard() {
       ;(supabase.from('subscriptions') as any).update({ plan: 'free' }).eq('vendor_id', user.id).then(() => setSubscription((prev: any) => prev ? { ...prev, plan: 'free' } : null))
       return
     }
-    setUpgradingPlan(plan); setPaymentForm({ bank: '', reference: '', sender_name: '' }); setReceiptFile(null); setReceiptPreview(null); setPaymentMsg('')
+    setUpgradingPlan(plan)
+    setPaymentMsg('')
+    requestSubscriptionPayment(plan)
   }
 
-  async function submitPayment() {
-    if (!user || !upgradingPlan) return
-    if (!paymentForm.bank || !paymentForm.reference.trim() || !paymentForm.sender_name.trim()) { setPaymentMsg(t('vd.payment_err')); return }
-    setSubmittingPayment(true); setPaymentMsg('')
-    let receiptUrl = null
-    if (receiptFile) {
-      const ext = receiptFile.name.split('.').pop()
-      const path = `${user.id}/receipt_${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage.from('subscription-receipts').upload(path, receiptFile, { upsert: true })
-      if (!upErr) { const { data } = supabase.storage.from('subscription-receipts').getPublicUrl(path); receiptUrl = data?.publicUrl || null }
+  // Fetches a YouCan Pay payment link for the chosen plan. Payment is
+  // confirmed automatically by the youcanpay-webhook function (no admin
+  // review) — see the Realtime subscription below that picks up the
+  // resulting subscriptions row update.
+  async function requestSubscriptionPayment(plan: string) {
+    setPreparingSubPayment(true)
+    setSubPaymentUrl(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await callEdgeFunction('create-subscription-payment-token', { plan }, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || t('vd.payment_err'))
+      setSubPaymentUrl(data.payment_url)
+    } catch (e) {
+      setPaymentMsg((e as Error).message)
+      setUpgradingPlan(null)
+    } finally {
+      setPreparingSubPayment(false)
     }
-    const { error } = await (supabase.from('subscription_payments') as any).insert({ vendor_id: user.id, plan: upgradingPlan, bank: paymentForm.bank, reference: paymentForm.reference.trim(), sender_name: paymentForm.sender_name.trim(), receipt_url: receiptUrl, status: 'pending' })
-    setSubmittingPayment(false)
-    if (error) { setPaymentMsg('Erreur : ' + error.message); return }
-    setPaymentMsg(t('vd.payment_sent'))
-    setUpgradingPlan(null)
   }
+
+  function openSubPaymentPopup() {
+    if (!subPaymentUrl) return
+    const width = 480
+    const height = 720
+    const left = window.screenX + (window.outerWidth - width) / 2
+    const top = window.screenY + (window.outerHeight - height) / 2
+    subPaymentPopupRef.current = window.open(
+      subPaymentUrl, 'youcanpay_subscription',
+      `width=${width},height=${height},left=${left},top=${top}`,
+    )
+  }
+
+  // Realtime: once youcanpay-webhook activates the new plan, reflect it and
+  // close the popup + payment panel automatically.
+  useEffect(() => {
+    if (!user || !upgradingPlan) return
+    const channel = supabase
+      .channel(`subscription-payment-${user.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'subscriptions', filter: `vendor_id=eq.${user.id}`,
+      }, (payload: any) => {
+        if (payload.new.plan === upgradingPlan) {
+          setSubscription(payload.new)
+          setUpgradingPlan(null)
+          setSubPaymentUrl(null)
+          if (subPaymentPopupRef.current && !subPaymentPopupRef.current.closed) {
+            subPaymentPopupRef.current.close()
+          }
+        }
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [user, upgradingPlan])
 
 
   function handleDishImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -2198,85 +2238,34 @@ export default function VendorDashboard() {
             <h3 className="font-serif font-bold text-lg mb-1" style={{ color: C.dark }}>
               {t('vd.upgrade_form_title', { name: upgradingPlan.charAt(0).toUpperCase() + upgradingPlan.slice(1) })}
             </h3>
-            <p className="text-sm mb-6" style={{ color: C.muted }}>{t('vd.upgrade_form_sub')}</p>
-            <div className="rounded-xl p-4 mb-6" style={{ backgroundColor: C.cream }}>
-              <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: C.dark }}>{t('vd.bank_accounts')}</p>
-              <div className="space-y-2 text-sm">
-                {[
-                  { bank: 'CIH Bank', rib: '230 780 0123456789012345 67' },
-                  { bank: 'Attijariwafa Bank', rib: '007 780 0123456789012345 89' },
-                  { bank: 'Bank of Africa', rib: '011 780 0123456789012345 23' },
-                  { bank: 'Wafacash', rib: 'Point de vente — référence DiaTable' },
-                ].map(b => (
-                  <div key={b.bank} className="flex justify-between items-center rounded-lg px-3 py-2"
-                    style={{ backgroundColor: C.creamLight }}>
-                    <span className="font-semibold" style={{ color: C.dark }}>{b.bank}</span>
-                    <span className="font-mono text-xs" style={{ color: C.muted }}>{b.rib}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-              <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: C.muted }}>{t('vd.bank_used')} <span className="text-red-400">*</span></label>
-                <select value={paymentForm.bank} onChange={e => setPaymentForm(p => ({ ...p, bank: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c5611a]/40 bg-white" style={{ color: C.dark }}>
-                  <option value="">— {t('vd.choose_bank')} —</option>
-                  {['CIH Bank','Attijariwafa Bank','Bank of Africa','Wafacash'].map(b => <option key={b}>{b}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: C.muted }}>{t('vd.sender_name')} <span className="text-red-400">*</span></label>
-                <input type="text" value={paymentForm.sender_name} onChange={e => setPaymentForm(p => ({ ...p, sender_name: e.target.value }))} placeholder={t('vd.sender_name_placeholder')}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c5611a]/40" style={{ color: C.dark }} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: C.muted }}>{t('vd.transfer_ref')} <span className="text-red-400">*</span></label>
-                <input type="text" value={paymentForm.reference} onChange={e => setPaymentForm(p => ({ ...p, reference: e.target.value }))} placeholder={t('vd.transfer_ref_placeholder')}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c5611a]/40" style={{ color: C.dark }} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: C.muted }}>{t('vd.receipt_label')}</label>
-                {receiptPreview ? (
-                  <div className="relative">
-                    <img src={receiptPreview} alt="Reçu" className="w-full h-24 object-cover rounded-lg border border-gray-200" />
-                    <button onClick={() => { setReceiptFile(null); setReceiptPreview(null) }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"><XIcon size={10} /></button>
-                  </div>
-                ) : (
-                  <label className="flex items-center justify-center h-[42px] border-2 border-dashed rounded-lg cursor-pointer transition-colors"
-                    style={{ borderColor: 'rgba(197,97,26,0.25)' }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = C.terra}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(197,97,26,0.25)'}>
-                    <span className="text-xs" style={{ color: C.muted }}>{t('vd.upload_receipt')}</span>
-                    <input type="file" accept="image/*,.pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { setReceiptFile(f); setReceiptPreview(URL.createObjectURL(f)) } }} />
-                  </label>
-                )}
-              </div>
-            </div>
-            {paymentMsg && <p className="text-sm text-red-500 mb-3">{paymentMsg}</p>}
+            <p className="text-sm mb-6" style={{ color: C.muted }}>
+              {plans.find(p => p.id === upgradingPlan)?.price} {plans.find(p => p.id === upgradingPlan)?.period}
+            </p>
+
+            {paymentMsg && <p className="text-sm text-red-500 mb-4">{paymentMsg}</p>}
+
             <div className="flex gap-3">
-              <button onClick={submitPayment} disabled={submittingPayment}
-                className="font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
-                style={{ backgroundColor: C.terra, color: C.creamLight }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = C.terraLight}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = C.terra}>
-                <CheckCircle size={14} />
-                {submittingPayment ? t('vd.sending') : t('vd.send_request')}
-              </button>
-              <button onClick={() => { setUpgradingPlan(null); setPaymentMsg('') }}
+              {preparingSubPayment || !subPaymentUrl ? (
+                <button disabled
+                  className="font-semibold px-6 py-2.5 rounded-lg text-sm flex items-center gap-2 opacity-60"
+                  style={{ backgroundColor: C.terra, color: C.creamLight }}>
+                  <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  {t('vd.sending')}
+                </button>
+              ) : (
+                <button onClick={openSubPaymentPopup}
+                  className="font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2"
+                  style={{ backgroundColor: C.terra, color: C.creamLight }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = C.terraLight}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = C.terra}>
+                  <CheckCircle size={14} />
+                  Payer
+                </button>
+              )}
+              <button onClick={() => { setUpgradingPlan(null); setSubPaymentUrl(null); setPaymentMsg('') }}
                 className="border border-gray-200 px-5 py-2.5 rounded-lg text-sm hover:bg-gray-50 transition-colors" style={{ color: C.muted }}>
                 {t('vd.cancel')}
               </button>
-            </div>
-          </div>
-        )}
-
-        {!upgradingPlan && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-            <AlertCircle size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-amber-800">
-              <p className="font-semibold mb-1">{t('vd.how_to_upgrade')}</p>
-              <p>{t('vd.how_to_upgrade_desc')}</p>
             </div>
           </div>
         )}

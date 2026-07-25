@@ -44,11 +44,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const transaction = event?.payload?.transaction ?? {}
-    const orderId       = transaction.order_id
+    const rawOrderId    = transaction.order_id
     const transactionId = transaction.id ?? event?.id
     const paidAmount    = transaction.amount
 
-    if (!orderId) {
+    if (!rawOrderId) {
       return new Response(JSON.stringify({ error: 'Missing order_id in payload' }), { status: 400 })
     }
 
@@ -57,51 +57,114 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    const { data: order, error: orderErr } = await supabase
-      .from('orders')
-      .select('id, status, total, payment_status, payment_transaction_id')
-      .eq('id', orderId)
-      .single()
-
-    if (orderErr || !order) {
-      console.error('Webhook: order not found for id', orderId)
-      return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 })
+    // create-subscription-payment-token prefixes its order_id with "sub:" so
+    // this webhook can tell a plan upgrade apart from a regular order.
+    if (typeof rawOrderId === 'string' && rawOrderId.startsWith('sub:')) {
+      return await handleSubscriptionPayment(supabase, rawOrderId.slice(4), transactionId, paidAmount)
     }
-
-    // Already processed — acknowledge without reapplying (webhooks can be
-    // redelivered).
-    if (order.payment_status === 'paid') {
-      return new Response(JSON.stringify({ ok: true, already_paid: true }), { status: 200 })
-    }
-
-    // Cross-check the amount when the payload provides one, to catch a
-    // mismatched/tampered notification.
-    if (typeof paidAmount === 'number') {
-      const expectedAmount = Math.round(Number(order.total) * 100)
-      if (paidAmount !== expectedAmount) {
-        console.error(`Webhook amount mismatch for order ${orderId}: expected ${expectedAmount}, got ${paidAmount}`)
-        return new Response(JSON.stringify({ error: 'Amount mismatch' }), { status: 400 })
-      }
-    }
-
-    const { error: updateErr } = await supabase
-      .from('orders')
-      .update({
-        payment_status: 'paid',
-        payment_transaction_id: transactionId ?? order.payment_transaction_id,
-        // Card payment confirmed: move the order out of the customer's
-        // control window (see the "Client peut annuler sa commande" RLS
-        // policy, which only allows cancelling pending/confirmed orders —
-        // this still applies, it just also reflects that payment cleared).
-        status: order.status === 'pending' ? 'confirmed' : order.status,
-      })
-      .eq('id', orderId)
-
-    if (updateErr) throw updateErr
-
-    return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    return await handleOrderPayment(supabase, rawOrderId, transactionId, paidAmount)
   } catch (err) {
     console.error(err)
     return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 })
   }
 })
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleOrderPayment(supabase: any, orderId: string, transactionId: string | undefined, paidAmount: unknown) {
+  const { data: order, error: orderErr } = await supabase
+    .from('orders')
+    .select('id, status, total, payment_status, payment_transaction_id')
+    .eq('id', orderId)
+    .single()
+
+  if (orderErr || !order) {
+    console.error('Webhook: order not found for id', orderId)
+    return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 })
+  }
+
+  // Already processed — acknowledge without reapplying (webhooks can be
+  // redelivered).
+  if (order.payment_status === 'paid') {
+    return new Response(JSON.stringify({ ok: true, already_paid: true }), { status: 200 })
+  }
+
+  // Cross-check the amount when the payload provides one, to catch a
+  // mismatched/tampered notification.
+  if (typeof paidAmount === 'number') {
+    const expectedAmount = Math.round(Number(order.total) * 100)
+    if (paidAmount !== expectedAmount) {
+      console.error(`Webhook amount mismatch for order ${orderId}: expected ${expectedAmount}, got ${paidAmount}`)
+      return new Response(JSON.stringify({ error: 'Amount mismatch' }), { status: 400 })
+    }
+  }
+
+  const { error: updateErr } = await supabase
+    .from('orders')
+    .update({
+      payment_status: 'paid',
+      payment_transaction_id: transactionId ?? order.payment_transaction_id,
+      // Card payment confirmed: move the order out of the customer's
+      // control window (see the "Client peut annuler sa commande" RLS
+      // policy, which only allows cancelling pending/confirmed orders —
+      // this still applies, it just also reflects that payment cleared).
+      status: order.status === 'pending' ? 'confirmed' : order.status,
+    })
+    .eq('id', orderId)
+
+  if (updateErr) throw updateErr
+
+  return new Response(JSON.stringify({ ok: true }), { status: 200 })
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleSubscriptionPayment(supabase: any, paymentId: string, transactionId: string | undefined, paidAmount: unknown) {
+  const { data: payment, error: payErr } = await supabase
+    .from('subscription_payments')
+    .select('id, vendor_id, plan, amount, status')
+    .eq('id', paymentId)
+    .single()
+
+  if (payErr || !payment) {
+    console.error('Webhook: subscription_payment not found for id', paymentId)
+    return new Response(JSON.stringify({ error: 'Payment not found' }), { status: 404 })
+  }
+
+  if (payment.status === 'paid') {
+    return new Response(JSON.stringify({ ok: true, already_paid: true }), { status: 200 })
+  }
+
+  if (typeof paidAmount === 'number') {
+    const expectedAmount = Math.round(Number(payment.amount) * 100)
+    if (paidAmount !== expectedAmount) {
+      console.error(`Webhook amount mismatch for subscription_payment ${paymentId}: expected ${expectedAmount}, got ${paidAmount}`)
+      return new Response(JSON.stringify({ error: 'Amount mismatch' }), { status: 400 })
+    }
+  }
+
+  const now = new Date().toISOString()
+
+  const { error: payUpdateErr } = await supabase
+    .from('subscription_payments')
+    .update({ status: 'paid', payment_transaction_id: transactionId ?? null, reviewed_at: now })
+    .eq('id', paymentId)
+  if (payUpdateErr) throw payUpdateErr
+
+  // Upsert-by-hand: subscriptions.vendor_id is unique, so try UPDATE first
+  // (existing row from the "free" default created on vendor signup) and
+  // INSERT only if that affected no rows.
+  const { data: updated, error: subUpdateErr } = await supabase
+    .from('subscriptions')
+    .update({ plan: payment.plan, status: 'active', started_at: now })
+    .eq('vendor_id', payment.vendor_id)
+    .select()
+  if (subUpdateErr) throw subUpdateErr
+
+  if (!updated || updated.length === 0) {
+    const { error: subInsertErr } = await supabase
+      .from('subscriptions')
+      .insert({ vendor_id: payment.vendor_id, plan: payment.plan, status: 'active', started_at: now })
+    if (subInsertErr) throw subInsertErr
+  }
+
+  return new Response(JSON.stringify({ ok: true }), { status: 200 })
+}
