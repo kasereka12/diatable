@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 import CardPaymentForm from '../components/CardPaymentForm'
-import PaymentModal from '../components/PaymentModal'
 
 // Haversine distance in km
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -92,7 +91,7 @@ export default function Checkout() {
   // offering it and go straight to the Standalone redirect instead, which
   // is a real page navigation to YouCan Pay and unaffected by this.
   const [embeddedWidgetFailed, setEmbeddedWidgetFailed] = useState(false)
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const paymentPopupRef = useRef<Window | null>(null)
 
   const isPickup = deliveryMode === 'pickup'
   const queryClient = useQueryClient()
@@ -163,6 +162,31 @@ export default function Checkout() {
     setPaymentUrl(null)
     setEmbeddedWidgetFailed(true)
   }
+
+  // Standalone integration opened as a popup rather than a full-page
+  // redirect, so the customer never technically leaves the checkout tab
+  // (an iframe was tried first but YouCan Pay's payment page refuses to be
+  // framed — a popup is a separate top-level window, not a frame, so it
+  // isn't affected by that restriction).
+  function openPaymentPopup() {
+    if (!paymentUrl) return
+    const width = 480
+    const height = 720
+    const left = window.screenX + (window.outerWidth - width) / 2
+    const top = window.screenY + (window.outerHeight - height) / 2
+    paymentPopupRef.current = window.open(
+      paymentUrl, 'youcanpay_payment',
+      `width=${width},height=${height},left=${left},top=${top}`,
+    )
+  }
+
+  // Once the webhook confirms payment (orderSuccess set), close the popup
+  // if the customer left it open.
+  useEffect(() => {
+    if (orderSuccess && paymentPopupRef.current && !paymentPopupRef.current.closed) {
+      paymentPopupRef.current.close()
+    }
+  }, [orderSuccess])
 
   // Wait for the youcanpay-webhook Edge Function to mark the order as paid.
   useEffect(() => {
@@ -312,7 +336,7 @@ export default function Checkout() {
               {paymentUrl && (
                 <button
                   type="button"
-                  onClick={() => setShowPaymentModal(true)}
+                  onClick={openPaymentPopup}
                   className="btn btn-gold w-full justify-center text-sm"
                 >
                   Payer
@@ -337,7 +361,7 @@ export default function Checkout() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setShowPaymentModal(true)}
+                    onClick={openPaymentPopup}
                     className="text-sm font-semibold text-center block w-full py-3 rounded-xl border border-gold text-gold-dark hover:bg-gold/5 transition-colors"
                   >
                     Payer via la fenêtre sécurisée YouCan Pay
@@ -345,10 +369,6 @@ export default function Checkout() {
                 </>
               )}
             </>
-          )}
-
-          {showPaymentModal && paymentUrl && (
-            <PaymentModal paymentUrl={paymentUrl} onClose={() => setShowPaymentModal(false)} />
           )}
 
           {error && <p className="text-red-500 text-xs mt-3 text-center">{error}</p>}
