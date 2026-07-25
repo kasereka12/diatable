@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 import CardPaymentForm from '../components/CardPaymentForm'
+import PaymentModal from '../components/PaymentModal'
 
 // Haversine distance in km
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -85,6 +86,13 @@ export default function Checkout() {
   const [cardToken,        setCardToken]        = useState<string | null>(null)
   const [paymentUrl,       setPaymentUrl]       = useState<string | null>(null)
   const [preparingPayment, setPreparingPayment] = useState(false)
+  // ycpay.js's embedded card form can't be cleanly re-initialized within the
+  // same browser tab once it has failed once (its own script-level state,
+  // not something a React remount can fix). After a first failure, stop
+  // offering it and go straight to the Standalone redirect instead, which
+  // is a real page navigation to YouCan Pay and unaffected by this.
+  const [embeddedWidgetFailed, setEmbeddedWidgetFailed] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
 
   const isPickup = deliveryMode === 'pickup'
   const queryClient = useQueryClient()
@@ -153,6 +161,7 @@ export default function Checkout() {
     setPendingCardOrder(null)
     setCardToken(null)
     setPaymentUrl(null)
+    setEmbeddedWidgetFailed(true)
   }
 
   // Wait for the youcanpay-webhook Edge Function to mark the order as paid.
@@ -295,6 +304,21 @@ export default function Checkout() {
             <div className="flex items-center justify-center py-8">
               <div className="w-8 h-8 border-3 border-gold/30 border-t-gold rounded-full animate-spin" />
             </div>
+          ) : embeddedWidgetFailed ? (
+            // A previous attempt on the embedded widget failed this session
+            // — go straight to the reliable option instead of offering a
+            // widget that can no longer initialize cleanly in this tab.
+            <>
+              {paymentUrl && (
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentModal(true)}
+                  className="btn btn-gold w-full justify-center text-sm"
+                >
+                  Payer
+                </button>
+              )}
+            </>
           ) : (
             <>
               <CardPaymentForm
@@ -311,15 +335,20 @@ export default function Checkout() {
                     <span className="text-xs text-muted">ou</span>
                     <div className="flex-1 h-px bg-black/[0.08]" />
                   </div>
-                  <a
-                    href={paymentUrl}
+                  <button
+                    type="button"
+                    onClick={() => setShowPaymentModal(true)}
                     className="text-sm font-semibold text-center block w-full py-3 rounded-xl border border-gold text-gold-dark hover:bg-gold/5 transition-colors"
                   >
-                    Payer via la page YouCan Pay (test standalone)
-                  </a>
+                    Payer via la fenêtre sécurisée YouCan Pay
+                  </button>
                 </>
               )}
             </>
+          )}
+
+          {showPaymentModal && paymentUrl && (
+            <PaymentModal paymentUrl={paymentUrl} onClose={() => setShowPaymentModal(false)} />
           )}
 
           {error && <p className="text-red-500 text-xs mt-3 text-center">{error}</p>}
