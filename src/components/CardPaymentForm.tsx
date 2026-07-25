@@ -8,49 +8,31 @@ const SCRIPT_SRC = 'https://pay.youcan.shop/js/ycpay.js'
 const FORM_CONTAINER_ID = 'yc-pay-form-container'
 const ERROR_CONTAINER_ID = 'yc-pay-form-error'
 
-interface Props {
+interface WidgetProps {
   tokenId: string
   publicKey: string
   isSandbox: boolean
+  onSuccess: () => void
+  onError: (message: string) => void
 }
 
-// Mounts YouCan Pay's embedded card form ("Default" integration) for a given
-// payment token. This never sees or transmits raw card numbers through our
-// own server — ycpay.js posts directly to YouCan Pay.
-//
-// renderCreditCardForm() only renders the input fields — it does not add a
-// submit button. Payment is triggered explicitly via ycPay.pay(tokenId),
-// which returns a promise (.then success / .catch error). The actual order
-// completion still comes from the server-confirmed orders.payment_status
-// (set by the youcanpay-webhook function), which Checkout.tsx subscribes to
-// via Supabase Realtime — the promise result here is only used for
-// immediate UI feedback (loading/error state on the button).
-export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props) {
+// Owns the actual ycpay.js instance and its DOM. Rendered with a `key` from
+// the parent so a retry fully unmounts/remounts this component — ycpay.js
+// leaves its own input-masking listeners (card number spacing, expiry
+// auto-format) in a broken state if you just call renderCreditCardForm()
+// again on the same containers after a failed attempt (it appears to append
+// rather than replace), so we let React tear down and recreate the real DOM
+// nodes instead of trying to reset the widget in place.
+function CardWidget({ tokenId, publicKey, isSandbox, onSuccess, onError }: WidgetProps) {
   const ycPayRef = useRef<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
   const [ready, setReady] = useState(false)
   const [paying, setPaying] = useState(false)
-  const [payError, setPayError] = useState('')
-  const [paySubmitted, setPaySubmitted] = useState(false)
-  // Bumped after a failed payment attempt to force a full widget rebuild —
-  // see the comment in the effect below for why.
-  const [resetKey, setResetKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
-    setReady(false)
 
     function init() {
       if (cancelled || !window.YCPay) return
-      // Rebuild from a clean DOM every time. ycpay.js's own input-masking
-      // listeners (card number spacing, expiry auto-format) are left in a
-      // broken state after a failed pay() attempt if we just call
-      // renderCreditCardForm() again on the same instance — recreating the
-      // instance against emptied containers avoids that.
-      const formEl = document.getElementById(FORM_CONTAINER_ID)
-      const errEl = document.getElementById(ERROR_CONTAINER_ID)
-      if (formEl) formEl.innerHTML = ''
-      if (errEl) errEl.innerHTML = ''
-
       const ycPay = new window.YCPay(publicKey, {
         formContainer: `#${FORM_CONTAINER_ID}`,
         errorContainer: `#${ERROR_CONTAINER_ID}`,
@@ -80,44 +62,78 @@ export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props
       cancelled = true
       script?.removeEventListener('load', init)
     }
-  }, [publicKey, isSandbox, resetKey])
+  }, [publicKey, isSandbox])
 
   function handlePay() {
     if (!ycPayRef.current) return
     setPaying(true)
-    setPayError('')
     ycPayRef.current.pay(tokenId)
       .then(() => {
         setPaying(false)
-        setPaySubmitted(true)
+        onSuccess()
       })
       .catch((err: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
         setPaying(false)
-        setPayError(err?.message || 'Paiement refusé. Vérifiez vos informations de carte.')
-        setResetKey(k => k + 1)
+        onError(err?.message || 'Paiement refusé. Vérifiez vos informations de carte.')
       })
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div id={FORM_CONTAINER_ID} />
       <div id={ERROR_CONTAINER_ID} className="text-xs text-red-500" />
+      <button
+        type="button"
+        onClick={handlePay}
+        disabled={!ready || paying}
+        className="btn btn-gold w-full justify-center text-sm disabled:opacity-50"
+      >
+        {paying ? 'Traitement en cours…' : 'Payer'}
+      </button>
+    </div>
+  )
+}
 
-      {payError && <p className="text-xs text-red-500">{payError}</p>}
+interface Props {
+  tokenId: string
+  publicKey: string
+  isSandbox: boolean
+}
 
-      {paySubmitted ? (
-        <p className="text-xs text-muted text-center">
-          Paiement transmis — confirmation en cours…
-        </p>
-      ) : (
-        <button
-          type="button"
-          onClick={handlePay}
-          disabled={!ready || paying}
-          className="btn btn-gold w-full justify-center text-sm disabled:opacity-50"
-        >
-          {paying ? 'Traitement en cours…' : 'Payer'}
-        </button>
+export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props) {
+  const [payError, setPayError] = useState('')
+  const [paySubmitted, setPaySubmitted] = useState(false)
+  const [widgetKey, setWidgetKey] = useState(0)
+
+  if (paySubmitted) {
+    return (
+      <p className="text-xs text-muted text-center">
+        Paiement transmis — confirmation en cours…
+      </p>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <CardWidget
+        key={widgetKey}
+        tokenId={tokenId}
+        publicKey={publicKey}
+        isSandbox={isSandbox}
+        onSuccess={() => setPaySubmitted(true)}
+        onError={setPayError}
+      />
+      {payError && (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-red-500">{payError}</p>
+          <button
+            type="button"
+            onClick={() => { setPayError(''); setWidgetKey(k => k + 1) }}
+            className="text-xs font-semibold text-gold underline flex-shrink-0"
+          >
+            Réessayer
+          </button>
+        </div>
       )}
     </div>
   )
