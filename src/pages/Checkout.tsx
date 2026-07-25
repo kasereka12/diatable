@@ -83,6 +83,7 @@ export default function Checkout() {
   // youcanpay-webhook Edge Function to confirm payment server-side.
   const [pendingCardOrder, setPendingCardOrder] = useState<any | null>(null)
   const [cardToken,        setCardToken]        = useState<string | null>(null)
+  const [paymentUrl,       setPaymentUrl]       = useState<string | null>(null)
   const [preparingPayment, setPreparingPayment] = useState(false)
 
   const isPickup = deliveryMode === 'pickup'
@@ -138,6 +139,7 @@ export default function Checkout() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || t('checkout.err_payment'))
       setCardToken(data.token_id)
+      setPaymentUrl(data.payment_url || null)
     } catch (e) {
       setError((e as Error).message)
       setPendingCardOrder(null)
@@ -287,13 +289,30 @@ export default function Checkout() {
               <div className="w-8 h-8 border-3 border-gold/30 border-t-gold rounded-full animate-spin" />
             </div>
           ) : (
-            <CardPaymentForm
-              key={cardToken}
-              tokenId={cardToken}
-              publicKey={import.meta.env.VITE_YOUCANPAY_PUBLIC_KEY as string}
-              isSandbox={import.meta.env.VITE_YOUCANPAY_SANDBOX === 'true'}
-              onRetry={() => requestPaymentToken(pendingCardOrder.id)}
-            />
+            <>
+              <CardPaymentForm
+                key={cardToken}
+                tokenId={cardToken}
+                publicKey={import.meta.env.VITE_YOUCANPAY_PUBLIC_KEY as string}
+                isSandbox={import.meta.env.VITE_YOUCANPAY_SANDBOX === 'true'}
+                onRetry={() => requestPaymentToken(pendingCardOrder.id)}
+              />
+              {paymentUrl && (
+                <>
+                  <div className="flex items-center gap-3 my-4">
+                    <div className="flex-1 h-px bg-black/[0.08]" />
+                    <span className="text-xs text-muted">ou</span>
+                    <div className="flex-1 h-px bg-black/[0.08]" />
+                  </div>
+                  <a
+                    href={paymentUrl}
+                    className="text-sm font-semibold text-center block w-full py-3 rounded-xl border border-gold text-gold-dark hover:bg-gold/5 transition-colors"
+                  >
+                    Payer via la page YouCan Pay (test standalone)
+                  </a>
+                </>
+              )}
+            </>
           )}
 
           {error && <p className="text-red-500 text-xs mt-3 text-center">{error}</p>}
