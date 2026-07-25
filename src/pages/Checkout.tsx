@@ -12,7 +12,6 @@ import {
   Truck, Store, Navigation
 } from 'lucide-react'
 import AddressAutocomplete from '../components/AddressAutocomplete'
-import CardPaymentForm from '../components/CardPaymentForm'
 
 // Haversine distance in km
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -85,12 +84,6 @@ export default function Checkout() {
   const [cardToken,        setCardToken]        = useState<string | null>(null)
   const [paymentUrl,       setPaymentUrl]       = useState<string | null>(null)
   const [preparingPayment, setPreparingPayment] = useState(false)
-  // ycpay.js's embedded card form can't be cleanly re-initialized within the
-  // same browser tab once it has failed once (its own script-level state,
-  // not something a React remount can fix). After a first failure, stop
-  // offering it and go straight to the Standalone redirect instead, which
-  // is a real page navigation to YouCan Pay and unaffected by this.
-  const [embeddedWidgetFailed, setEmbeddedWidgetFailed] = useState(false)
   const paymentPopupRef = useRef<Window | null>(null)
 
   const isPickup = deliveryMode === 'pickup'
@@ -150,17 +143,6 @@ export default function Checkout() {
     } finally {
       setPreparingPayment(false)
     }
-  }
-
-  // A failed card payment sends the customer back to the checkout form
-  // (rather than trying to reset/retry the embedded widget in place) with
-  // the error shown there — see CardPaymentForm's onError doc comment.
-  function handleCardPaymentError(message: string) {
-    setError(message)
-    setPendingCardOrder(null)
-    setCardToken(null)
-    setPaymentUrl(null)
-    setEmbeddedWidgetFailed(true)
   }
 
   // Standalone integration opened as a popup rather than a full-page
@@ -324,51 +306,18 @@ export default function Checkout() {
             {t('checkout.card_payment_sub', { total: total.toFixed(2) })}
           </p>
 
-          {preparingPayment || !cardToken ? (
+          {preparingPayment || !cardToken || !paymentUrl ? (
             <div className="flex items-center justify-center py-8">
               <div className="w-8 h-8 border-3 border-gold/30 border-t-gold rounded-full animate-spin" />
             </div>
-          ) : embeddedWidgetFailed ? (
-            // A previous attempt on the embedded widget failed this session
-            // — go straight to the reliable option instead of offering a
-            // widget that can no longer initialize cleanly in this tab.
-            <>
-              {paymentUrl && (
-                <button
-                  type="button"
-                  onClick={openPaymentPopup}
-                  className="btn btn-gold w-full justify-center text-sm"
-                >
-                  Payer
-                </button>
-              )}
-            </>
           ) : (
-            <>
-              <CardPaymentForm
-                key={cardToken}
-                tokenId={cardToken}
-                publicKey={import.meta.env.VITE_YOUCANPAY_PUBLIC_KEY as string}
-                isSandbox={import.meta.env.VITE_YOUCANPAY_SANDBOX === 'true'}
-                onError={handleCardPaymentError}
-              />
-              {paymentUrl && (
-                <>
-                  <div className="flex items-center gap-3 my-4">
-                    <div className="flex-1 h-px bg-black/[0.08]" />
-                    <span className="text-xs text-muted">ou</span>
-                    <div className="flex-1 h-px bg-black/[0.08]" />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={openPaymentPopup}
-                    className="text-sm font-semibold text-center block w-full py-3 rounded-xl border border-gold text-gold-dark hover:bg-gold/5 transition-colors"
-                  >
-                    Payer via la fenêtre sécurisée YouCan Pay
-                  </button>
-                </>
-              )}
-            </>
+            <button
+              type="button"
+              onClick={openPaymentPopup}
+              className="btn btn-gold w-full justify-center text-sm"
+            >
+              Payer
+            </button>
           )}
 
           {error && <p className="text-red-500 text-xs mt-3 text-center">{error}</p>}
