@@ -74,6 +74,8 @@ export default function Checkout() {
   const [error,        setError]        = useState('')
   const [fieldErrors,  setFieldErrors]  = useState<Record<string, string>>({})
   const [orderSuccess, setOrderSuccess] = useState<any | null>(null)
+  const orderSuccessRef = useRef<any | null>(null)
+  useEffect(() => { orderSuccessRef.current = orderSuccess }, [orderSuccess])
   // GPS & estimated time
   const [clientCoords,     setClientCoords]     = useState<{ lat: number; lng: number } | null>(null)
   const [rawQuartier,      setRawQuartier]       = useState<string | null>(null)
@@ -160,6 +162,19 @@ export default function Checkout() {
       paymentUrl, 'youcanpay_payment',
       `width=${width},height=${height},left=${left},top=${top}`,
     )
+    setError('')
+
+    // YouCan Pay never sends a webhook for a declined/abandoned attempt, so
+    // the only way this tab finds out the popup is done is by polling
+    // .closed — Realtime (below) is what confirms an actual success.
+    const poll = setInterval(() => {
+      if (paymentPopupRef.current?.closed) {
+        clearInterval(poll)
+        if (!orderSuccessRef.current) {
+          setError('La fenêtre de paiement a été fermée. Si le paiement a échoué, vous pouvez réessayer.')
+        }
+      }
+    }, 800)
   }
 
   // Once the webhook confirms payment (orderSuccess set), close the popup

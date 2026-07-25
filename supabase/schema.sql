@@ -920,11 +920,17 @@ alter table subscriptions enable row level security;
 create policy "Vendeur peut lire son abonnement"
   on subscriptions for select using (auth.uid() = vendor_id);
 
-create policy "Vendeur peut modifier son abonnement"
-  on subscriptions for update using (auth.uid() = vendor_id);
+-- Le client ne peut se rétrograder qu'en gratuit (aucun paiement requis) —
+-- un passage à pro/premium n'est écrit que par youcanpay-webhook (service
+-- role, contourne RLS) une fois le paiement réellement confirmé.
+create policy "Vendeur peut se rétrograder en gratuit"
+  on subscriptions for update
+  using (auth.uid() = vendor_id)
+  with check (auth.uid() = vendor_id and plan = 'free');
 
-create policy "Vendeur peut créer son abonnement"
-  on subscriptions for insert with check (auth.uid() = vendor_id);
+create policy "Vendeur peut créer son abonnement en gratuit"
+  on subscriptions for insert
+  with check (auth.uid() = vendor_id and plan = 'free');
 
 create policy "Admin peut lire tous les abonnements"
   on subscriptions for select using (is_admin());
@@ -954,25 +960,36 @@ create trigger on_vendor_role_change
   for each row execute procedure handle_vendor_subscription();
 
 
--- ── 19. SUBSCRIPTION PAYMENTS (virements manuels) ────
+-- ── 19. SUBSCRIPTION PAYMENTS ─────────────────────────
+-- Historically manual bank transfers (bank/reference/sender_name/
+-- receipt_url, admin-reviewed) — now paid via YouCan Pay and confirmed
+-- automatically by youcanpay-webhook, no admin review. The bank-transfer
+-- columns are kept (nullable) for old rows / potential fallback, but new
+-- rows are created by create-subscription-payment-token with just plan +
+-- amount, and updated to 'paid' by the webhook.
 create table if not exists subscription_payments (
   id              uuid primary key default uuid_generate_v4(),
   vendor_id       uuid references profiles(id) on delete cascade,
   plan            text not null check (plan in ('pro','premium')),
-  bank            text not null,
-  reference       text not null,
-  sender_name     text not null,
+  bank            text,
+  reference       text,
+  sender_name     text,
   receipt_url     text,
+  payment_transaction_id text,
+  amount          numeric(10,2),
   status          text not null default 'pending'
-                  check (status in ('pending','approved','rejected')),
+                  check (status in ('pending','approved','rejected','paid')),
   reviewed_at     timestamptz,
   created_at      timestamptz default now()
 );
 
 alter table subscription_payments enable row level security;
 
-create policy "Vendor can manage own payments"
-  on subscription_payments for all using (auth.uid() = vendor_id);
+-- Rows are written only by create-subscription-payment-token and
+-- youcanpay-webhook (service role) — the client can read its own history
+-- but not insert/update it directly.
+create policy "Vendor can read own payments"
+  on subscription_payments for select using (auth.uid() = vendor_id);
 
 create policy "Admin can manage all payments"
   on subscription_payments for all using (is_admin());
