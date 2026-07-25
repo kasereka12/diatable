@@ -115,26 +115,36 @@ export default function Checkout() {
       // Card payment: hold off on the success screen and clearing the cart
       // until the webhook confirms payment_status = 'paid'.
       setPendingCardOrder(order)
-      setPreparingPayment(true)
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const res = await callEdgeFunction('create-payment-token', { order_id: order.id }, {
-          headers: { Authorization: `Bearer ${session?.access_token}` },
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || t('checkout.err_payment'))
-        setCardToken(data.token_id)
-      } catch (e) {
-        setError((e as Error).message)
-        setPendingCardOrder(null)
-      } finally {
-        setPreparingPayment(false)
-      }
+      await requestPaymentToken(order.id)
     },
     onError: (err) => {
       setError(err.message === 'items' ? t('checkout.err_items') : t('checkout.err_order'))
     },
   })
+
+  // Requests a fresh YouCan Pay token for the given order. Called on first
+  // entering the card-payment screen, and again on retry after a failed
+  // attempt — each retry gets its own brand new token/transaction rather
+  // than reusing the failed one, which also sidesteps a ycpay.js quirk where
+  // re-rendering the widget for the same token loses its input masking.
+  async function requestPaymentToken(orderId: string) {
+    setPreparingPayment(true)
+    setCardToken(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await callEdgeFunction('create-payment-token', { order_id: orderId }, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || t('checkout.err_payment'))
+      setCardToken(data.token_id)
+    } catch (e) {
+      setError((e as Error).message)
+      setPendingCardOrder(null)
+    } finally {
+      setPreparingPayment(false)
+    }
+  }
 
   // Wait for the youcanpay-webhook Edge Function to mark the order as paid.
   useEffect(() => {
@@ -278,9 +288,11 @@ export default function Checkout() {
             </div>
           ) : (
             <CardPaymentForm
+              key={cardToken}
               tokenId={cardToken}
               publicKey={import.meta.env.VITE_YOUCANPAY_PUBLIC_KEY as string}
               isSandbox={import.meta.env.VITE_YOUCANPAY_SANDBOX === 'true'}
+              onRetry={() => requestPaymentToken(pendingCardOrder.id)}
             />
           )}
 
