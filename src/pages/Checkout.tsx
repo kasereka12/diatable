@@ -89,19 +89,19 @@ export default function Checkout() {
   const queryClient = useQueryClient()
 
   // ── Place order mutation ──────────────────────────────────────────────────
+  // Delegates to the create-order Edge Function, which recomputes
+  // subtotal/delivery_fee/total server-side from real menu_items prices and
+  // the delivery-fee formula — the client only sends menu_item_id/quantity,
+  // never a price, so it can't fabricate a lower total to under-pay by card.
   const placeOrderMutation = useMutation({
-    mutationFn: async ({ orderData, orderItems }: { orderData: Record<string, unknown>; orderItems: Record<string, unknown>[] }) => {
-      const { data: order, error: orderErr } = await (supabase.from('orders') as any)
-        .insert(orderData)
-        .select()
-        .single()
-      if (orderErr) throw new Error('order')
-
-      const { error: itemsErr } = await (supabase.from('order_items') as any)
-        .insert(orderItems.map(item => ({ ...item, order_id: order.id })))
-      if (itemsErr) throw new Error('items')
-
-      return order
+    mutationFn: async (orderPayload: Record<string, unknown>) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await callEdgeFunction('create-order', orderPayload, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error === 'items' ? 'items' : 'order')
+      return data
     },
     onSuccess: async (order) => {
       queryClient.invalidateQueries({ queryKey: ['profile', 'orders'] })
@@ -244,27 +244,20 @@ export default function Checkout() {
     }
 
     placeOrderMutation.mutate({
-      orderData: {
-        customer_id:      user.id,
-        restaurant_id:    cart.restaurantId,
-        payment_method:   paymentMethod,
-        delivery_mode:    deliveryMode,
-        subtotal,
-        delivery_fee:     deliveryFee,
-        total,
-        delivery_address: isPickup ? 'Retrait sur place' : `${form.address} — ${form.addressComplement}`,
-        delivery_phone:   form.phone,
-        delivery_notes:   form.notes,
-        customer_name:    form.name,
-        delivery_zone:    rawQuartier || null,
-        estimated_time:   estimatedTime?.total || null,
-      },
-      orderItems: cart.items.map(item => ({
+      restaurant_id:    cart.restaurantId,
+      items: cart.items.map(item => ({
         menu_item_id: item.menuItemId,
-        name:         item.name,
-        price:        item.price,
         quantity:     item.quantity,
       })),
+      payment_method:   paymentMethod,
+      delivery_mode:    deliveryMode,
+      delivery_address: isPickup ? 'Retrait sur place' : `${form.address} — ${form.addressComplement}`,
+      delivery_phone:   form.phone,
+      delivery_notes:   form.notes,
+      customer_name:    form.name,
+      delivery_zone:    rawQuartier || null,
+      delivery_lat:     !isPickup ? clientCoords?.lat ?? null : null,
+      delivery_lng:     !isPickup ? clientCoords?.lng ?? null : null,
     })
   }
 

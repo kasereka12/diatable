@@ -31,12 +31,26 @@ export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState('')
   const [paySubmitted, setPaySubmitted] = useState(false)
+  // Bumped after a failed payment attempt to force a full widget rebuild —
+  // see the comment in the effect below for why.
+  const [resetKey, setResetKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
+    setReady(false)
 
     function init() {
       if (cancelled || !window.YCPay) return
+      // Rebuild from a clean DOM every time. ycpay.js's own input-masking
+      // listeners (card number spacing, expiry auto-format) are left in a
+      // broken state after a failed pay() attempt if we just call
+      // renderCreditCardForm() again on the same instance — recreating the
+      // instance against emptied containers avoids that.
+      const formEl = document.getElementById(FORM_CONTAINER_ID)
+      const errEl = document.getElementById(ERROR_CONTAINER_ID)
+      if (formEl) formEl.innerHTML = ''
+      if (errEl) errEl.innerHTML = ''
+
       const ycPay = new window.YCPay(publicKey, {
         formContainer: `#${FORM_CONTAINER_ID}`,
         errorContainer: `#${ERROR_CONTAINER_ID}`,
@@ -66,7 +80,7 @@ export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props
       cancelled = true
       script?.removeEventListener('load', init)
     }
-  }, [publicKey, isSandbox])
+  }, [publicKey, isSandbox, resetKey])
 
   function handlePay() {
     if (!ycPayRef.current) return
@@ -80,6 +94,7 @@ export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props
       .catch((err: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
         setPaying(false)
         setPayError(err?.message || 'Paiement refusé. Vérifiez vos informations de carte.')
+        setResetKey(k => k + 1)
       })
   }
 
