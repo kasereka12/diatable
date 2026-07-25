@@ -12,15 +12,6 @@ interface Props {
   tokenId: string
   publicKey: string
   isSandbox: boolean
-  // Called when the customer wants to retry after a failed attempt. The
-  // parent requests a brand new token/transaction and re-mounts this
-  // component (via a `key` change) rather than us trying to reset the
-  // widget in place — ycpay.js appears to only fully (re)initialize its
-  // input masking/validation once per page load, so reusing the same
-  // widget/token for a retry leaves the fields unmasked (no length limit,
-  // no auto-formatting) even though payment still works if you type
-  // correct values by hand. A fresh token in a fresh mount avoids that.
-  onRetry: () => void
 }
 
 // Mounts YouCan Pay's embedded card form ("Default" integration) for a given
@@ -34,7 +25,7 @@ interface Props {
 // (set by the youcanpay-webhook function), which Checkout.tsx subscribes to
 // via Supabase Realtime — the promise result here is only used for
 // immediate UI feedback (loading/error state on the button).
-export default function CardPaymentForm({ tokenId, publicKey, isSandbox, onRetry }: Props) {
+export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props) {
   const ycPayRef = useRef<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
   const [ready, setReady] = useState(false)
   const [paying, setPaying] = useState(false)
@@ -106,27 +97,16 @@ export default function CardPaymentForm({ tokenId, publicKey, isSandbox, onRetry
       <div id={FORM_CONTAINER_ID} />
       <div id={ERROR_CONTAINER_ID} className="text-xs text-red-500" />
 
-      {payError ? (
-        <div className="space-y-2">
-          <p className="text-xs text-red-500">{payError}</p>
-          <button
-            type="button"
-            onClick={onRetry}
-            className="btn btn-gold w-full justify-center text-sm"
-          >
-            Réessayer avec une nouvelle transaction
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={handlePay}
-          disabled={!ready || paying}
-          className="btn btn-gold w-full justify-center text-sm disabled:opacity-50"
-        >
-          {paying ? 'Traitement en cours…' : 'Payer'}
-        </button>
-      )}
+      {payError && <p className="text-xs text-red-500">{payError}</p>}
+
+      <button
+        type="button"
+        onClick={handlePay}
+        disabled={!ready || paying}
+        className="btn btn-gold w-full justify-center text-sm disabled:opacity-50"
+      >
+        {paying ? 'Traitement en cours…' : 'Payer'}
+      </button>
     </div>
   )
 }

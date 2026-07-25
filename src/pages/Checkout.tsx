@@ -295,7 +295,6 @@ export default function Checkout() {
                 tokenId={cardToken}
                 publicKey={import.meta.env.VITE_YOUCANPAY_PUBLIC_KEY as string}
                 isSandbox={import.meta.env.VITE_YOUCANPAY_SANDBOX === 'true'}
-                onRetry={() => requestPaymentToken(pendingCardOrder.id)}
               />
               {paymentUrl && (
                 <>
