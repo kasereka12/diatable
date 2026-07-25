@@ -20,7 +20,8 @@
       "Bash(curl -s \"https://api.github.com/search/code?q=getPaymentURL+repo:youcan-shop/youcan-payment-php-sdk\")",
       "Bash(curl -s \"https://api.github.com/repos/youcan-shop/youcan-payment-php-sdk/git/trees/master?recursive=1\")",
       "Bash(curl -s \"https://raw.githubusercontent.com/youcan-shop/youcan-payment-php-sdk/master/src/Models/Token.php\")",
-      "Bash(curl -s \"https://raw.githubusercontent.com/youcan-shop/youcan-payment-php-sdk/master/src/API/HTTPAdapter/HTTPAdapter.php\")"
+      "Bash(curl -s \"https://raw.githubusercontent.com/youcan-shop/youcan-payment-php-sdk/master/src/API/HTTPAdapter/HTTPAdapter.php\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('c:/Users/dmutaka/Downloads/diatable-main/diatable-main/vercel.json','utf8'\\)\\); console.log\\('vercel.json OK'\\)\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\dmutaka\\Downloads\\diatable-main\\diatable-main\\supabase\\functions"

@@ -4,17 +4,28 @@ import { CheckCircle, Clock, XCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 // Landing page YouCan Pay redirects back to after the card payment attempt
-// (including after a 3D Secure challenge). The gateway's own redirect isn't
-// trusted as proof of payment — this page waits for orders.payment_status to
-// actually flip to 'paid' via the youcanpay-webhook Edge Function, same as
-// the in-page flow in Checkout.tsx.
+// (including after a 3D Secure challenge) — usually inside the payment
+// popup opened from Checkout.tsx, so this page's own window may close
+// itself once the outcome is clear (the opener tab is what the customer
+// actually keeps looking at).
+//
+// Success is never taken from the redirect's own query params (is_success/
+// success) — those come straight from the browser/gateway and aren't proof
+// of anything server-side. This page waits for orders.payment_status to
+// actually flip to 'paid' via the youcanpay-webhook Edge Function. Failure,
+// on the other hand, IS shown directly from those params — YouCan Pay never
+// sends a webhook for a declined transaction, so there is nothing to wait
+// for, and leaving the customer on an infinite spinner is worse than
+// trusting "this specific attempt didn't go through".
 export default function PaymentReturn() {
   const [searchParams] = useSearchParams()
   const orderId = searchParams.get('order')
-  const [status, setStatus] = useState<'checking' | 'paid' | 'pending'>('checking')
+  const failed = searchParams.get('is_success') === '0' || searchParams.get('success') === '0'
+  const failureMessage = searchParams.get('message')
+  const [status, setStatus] = useState<'checking' | 'paid' | 'pending' | 'failed'>(failed ? 'failed' : 'checking')
 
   useEffect(() => {
-    if (!orderId) return
+    if (!orderId || failed) return
 
     let cancelled = false
 
@@ -38,7 +49,9 @@ export default function PaymentReturn() {
       .subscribe()
 
     return () => { cancelled = true; supabase.removeChannel(channel) }
-  }, [orderId])
+  }, [orderId, failed])
+
+  const inPopup = typeof window !== 'undefined' && !!window.opener
 
   return (
     <div className="min-h-screen bg-cream pt-24 flex items-center justify-center px-6">
@@ -70,7 +83,18 @@ export default function PaymentReturn() {
             <p className="text-muted text-sm mb-6">Votre commande a bien été prise en compte.</p>
           </>
         )}
-        {!orderId && (
+        {status === 'failed' && (
+          <>
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <XCircle size={32} className="text-red-500" />
+            </div>
+            <h1 className="font-serif text-xl font-bold text-dark mb-2">Paiement refusé</h1>
+            <p className="text-muted text-sm mb-6">
+              {failureMessage || 'Le paiement n\'a pas pu être traité. Vérifiez vos informations de carte et réessayez.'}
+            </p>
+          </>
+        )}
+        {!orderId && !failed && (
           <>
             <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
               <XCircle size={32} className="text-red-500" />
@@ -78,9 +102,20 @@ export default function PaymentReturn() {
             <p className="text-dark font-semibold">Commande introuvable</p>
           </>
         )}
-        <Link to="/mes-commandes" className="btn btn-gold text-sm w-full justify-center">
-          Voir mes commandes
-        </Link>
+
+        {inPopup ? (
+          <button
+            type="button"
+            onClick={() => window.close()}
+            className="btn btn-gold text-sm w-full justify-center"
+          >
+            Fermer cette fenêtre
+          </button>
+        ) : (
+          <Link to="/mes-commandes" className="btn btn-gold text-sm w-full justify-center">
+            Voir mes commandes
+          </Link>
+        )}
       </div>
     </div>
   )
