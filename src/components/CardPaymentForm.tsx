@@ -8,39 +8,41 @@ const SCRIPT_SRC = 'https://pay.youcan.shop/js/ycpay.js'
 const FORM_CONTAINER_ID = 'yc-pay-form-container'
 const ERROR_CONTAINER_ID = 'yc-pay-form-error'
 
-interface WidgetProps {
+interface Props {
   tokenId: string
   publicKey: string
   isSandbox: boolean
-  onSuccess: () => void
-  onError: (message: string) => void
+  // Called when the customer wants to retry after a failed attempt. The
+  // parent requests a brand new token/transaction and re-mounts this
+  // component (via a `key` change) rather than us trying to reset the
+  // widget in place — ycpay.js appears to only fully (re)initialize its
+  // input masking/validation once per page load, so reusing the same
+  // widget/token for a retry leaves the fields unmasked (no length limit,
+  // no auto-formatting) even though payment still works if you type
+  // correct values by hand. A fresh token in a fresh mount avoids that.
+  onRetry: () => void
 }
 
-// Owns the actual ycpay.js instance and its DOM. Rendered with a `key` from
-// the parent so a retry fully unmounts/remounts this component — ycpay.js
-// leaves its own input-masking listeners (card number spacing, expiry
-// auto-format) in a broken state if you just call renderCreditCardForm()
-// again on the same containers after a failed attempt (it appears to append
-// rather than replace), so we let React tear down and recreate the real DOM
-// nodes instead of trying to reset the widget in place.
-function CardWidget({ tokenId, publicKey, isSandbox, onSuccess, onError }: WidgetProps) {
+// Mounts YouCan Pay's embedded card form ("Default" integration) for a given
+// payment token. This never sees or transmits raw card numbers through our
+// own server — ycpay.js posts directly to YouCan Pay.
+//
+// renderCreditCardForm() only renders the input fields — it does not add a
+// submit button. Payment is triggered explicitly via ycPay.pay(tokenId),
+// which returns a promise (.then success / .catch error). The actual order
+// completion still comes from the server-confirmed orders.payment_status
+// (set by the youcanpay-webhook function), which Checkout.tsx subscribes to
+// via Supabase Realtime — the promise result here is only used for
+// immediate UI feedback (loading/error state on the button).
+export default function CardPaymentForm({ tokenId, publicKey, isSandbox, onRetry }: Props) {
   const ycPayRef = useRef<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
   const [ready, setReady] = useState(false)
   const [paying, setPaying] = useState(false)
+  const [payError, setPayError] = useState('')
+  const [paySubmitted, setPaySubmitted] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-
-    function clearInputs() {
-      const container = document.getElementById(FORM_CONTAINER_ID)
-      container?.querySelectorAll('input').forEach(input => {
-        input.setAttribute('autocomplete', 'off')
-        // Browsers aggressively autofill card-number-shaped fields from
-        // saved payment info regardless of the DOM node being brand new —
-        // force them empty right after the widget renders them.
-        if (input.value) input.value = ''
-      })
-    }
 
     function init() {
       if (cancelled || !window.YCPay) return
@@ -53,11 +55,6 @@ function CardWidget({ tokenId, publicKey, isSandbox, onSuccess, onError }: Widge
       ycPay.renderCreditCardForm()
       ycPayRef.current = ycPay
       setReady(true)
-      // ycpay.js may populate/mask inputs asynchronously right after
-      // render — clear on the next tick and once more shortly after to
-      // catch both cases.
-      requestAnimationFrame(clearInputs)
-      setTimeout(clearInputs, 300)
     }
 
     if (window.YCPay) {
@@ -78,48 +75,22 @@ function CardWidget({ tokenId, publicKey, isSandbox, onSuccess, onError }: Widge
       cancelled = true
       script?.removeEventListener('load', init)
     }
-  }, [publicKey, isSandbox])
+  }, [tokenId, publicKey, isSandbox])
 
   function handlePay() {
     if (!ycPayRef.current) return
     setPaying(true)
+    setPayError('')
     ycPayRef.current.pay(tokenId)
       .then(() => {
         setPaying(false)
-        onSuccess()
+        setPaySubmitted(true)
       })
       .catch((err: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
         setPaying(false)
-        onError(err?.message || 'Paiement refusé. Vérifiez vos informations de carte.')
+        setPayError(err?.message || 'Paiement refusé. Vérifiez vos informations de carte.')
       })
   }
-
-  return (
-    <div className="space-y-2">
-      <div id={FORM_CONTAINER_ID} />
-      <div id={ERROR_CONTAINER_ID} className="text-xs text-red-500" />
-      <button
-        type="button"
-        onClick={handlePay}
-        disabled={!ready || paying}
-        className="btn btn-gold w-full justify-center text-sm disabled:opacity-50"
-      >
-        {paying ? 'Traitement en cours…' : 'Payer'}
-      </button>
-    </div>
-  )
-}
-
-interface Props {
-  tokenId: string
-  publicKey: string
-  isSandbox: boolean
-}
-
-export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props) {
-  const [payError, setPayError] = useState('')
-  const [paySubmitted, setPaySubmitted] = useState(false)
-  const [widgetKey, setWidgetKey] = useState(0)
 
   if (paySubmitted) {
     return (
@@ -131,25 +102,29 @@ export default function CardPaymentForm({ tokenId, publicKey, isSandbox }: Props
 
   return (
     <div className="space-y-3">
-      <CardWidget
-        key={widgetKey}
-        tokenId={tokenId}
-        publicKey={publicKey}
-        isSandbox={isSandbox}
-        onSuccess={() => setPaySubmitted(true)}
-        onError={setPayError}
-      />
-      {payError && (
-        <div className="flex items-center justify-between gap-3">
+      <div id={FORM_CONTAINER_ID} />
+      <div id={ERROR_CONTAINER_ID} className="text-xs text-red-500" />
+
+      {payError ? (
+        <div className="space-y-2">
           <p className="text-xs text-red-500">{payError}</p>
           <button
             type="button"
-            onClick={() => { setPayError(''); setWidgetKey(k => k + 1) }}
-            className="text-xs font-semibold text-gold underline flex-shrink-0"
+            onClick={onRetry}
+            className="btn btn-gold w-full justify-center text-sm"
           >
-            Réessayer
+            Réessayer avec une nouvelle transaction
           </button>
         </div>
+      ) : (
+        <button
+          type="button"
+          onClick={handlePay}
+          disabled={!ready || paying}
+          className="btn btn-gold w-full justify-center text-sm disabled:opacity-50"
+        >
+          {paying ? 'Traitement en cours…' : 'Payer'}
+        </button>
       )}
     </div>
   )
