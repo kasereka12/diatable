@@ -138,8 +138,12 @@ Deno.serve(async (req: Request) => {
       .update({ payment_transaction_id: ycData.transaction_id ?? null })
       .eq('id', order.id)
 
+    // Standalone integration URL — exact formula from YouCan Pay's official
+    // PHP SDK (Token::getPaymentURL): https://youcanpay.com/[sandbox/]payment-form/{token_id}?lang=fr
+    const paymentUrl = `https://youcanpay.com/${isSandboxKey ? 'sandbox/' : ''}payment-form/${ycData.token.id}?lang=fr`
+
     return new Response(
-      JSON.stringify({ token_id: ycData.token.id, transaction_id: ycData.transaction_id }),
+      JSON.stringify({ token_id: ycData.token.id, transaction_id: ycData.transaction_id, payment_url: paymentUrl }),
       {
         status: 200,
         headers: buildResponseHeaders(req, { 'Content-Type': 'application/json' }),

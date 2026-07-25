@@ -15,7 +15,12 @@
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('vercel.json','utf8'\\)\\); console.log\\('vercel.json OK'\\)\")",
       "Bash(curl -sI https://diatable.vercel.app/checkout)",
       "Bash(mkdir -p \"c:\\\\Users\\\\dmutaka\\\\Downloads\\\\diatable-main\\\\diatable-main\\\\supabase\\\\functions\\\\create-order\")",
-      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('hex'\\)\\)\")"
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('hex'\\)\\)\")",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s \"https://api.github.com/search/code?q=getPaymentURL+repo:youcan-shop/youcan-payment-php-sdk\")",
+      "Bash(curl -s \"https://api.github.com/repos/youcan-shop/youcan-payment-php-sdk/git/trees/master?recursive=1\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/youcan-shop/youcan-payment-php-sdk/master/src/Models/Token.php\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/youcan-shop/youcan-payment-php-sdk/master/src/API/HTTPAdapter/HTTPAdapter.php\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\dmutaka\\Downloads\\diatable-main\\diatable-main\\supabase\\functions"
