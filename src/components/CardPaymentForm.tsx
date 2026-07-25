@@ -57,19 +57,20 @@ export default function CardPaymentForm({ tokenId, publicKey, isSandbox, onRetry
       setReady(true)
     }
 
-    if (window.YCPay) {
-      init()
-      return
-    }
+    // Force ycpay.js to re-execute from scratch on every mount (including
+    // retries) instead of reusing an already-loaded window.YCPay — its
+    // input masking/length limits only seem to bind correctly the first
+    // time the script itself runs on the page, not on subsequent
+    // new YCPay(...) calls against a script that's already executed.
+    document.querySelectorAll<HTMLScriptElement>(`script[src="${SCRIPT_SRC}"]`)
+      .forEach(el => el.remove())
+    delete (window as any).YCPay // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    let script = document.querySelector<HTMLScriptElement>(`script[src="${SCRIPT_SRC}"]`)
-    if (!script) {
-      script = document.createElement('script')
-      script.src = SCRIPT_SRC
-      script.async = true
-      document.body.appendChild(script)
-    }
+    const script = document.createElement('script')
+    script.src = SCRIPT_SRC
+    script.async = true
     script.addEventListener('load', init)
+    document.body.appendChild(script)
 
     return () => {
       cancelled = true
