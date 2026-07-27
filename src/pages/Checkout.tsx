@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase, callEdgeFunction } from '../lib/supabase'
 import { checkoutSchema, flattenErrors } from '../lib/schemas'
+import { openPaymentWindow } from '../lib/paymentWindow'
 import {
   ArrowLeft, ShoppingBag, MapPin, Phone, FileText,
   CreditCard, Smartphone, Banknote, CheckCircle, Clock, Lock,
@@ -147,22 +148,17 @@ export default function Checkout() {
     }
   }
 
-  // Standalone integration opened as a popup rather than a full-page
-  // redirect, so the customer never technically leaves the checkout tab
-  // (an iframe was tried first but YouCan Pay's payment page refuses to be
-  // framed — a popup is a separate top-level window, not a frame, so it
-  // isn't affected by that restriction).
+  // Standalone integration opened as a popup on desktop (an iframe was
+  // tried first but YouCan Pay's payment page refuses to be framed — a
+  // popup is a separate top-level window, not a frame, so it isn't
+  // affected by that restriction). On mobile, openPaymentWindow does a
+  // full-page redirect instead, since mobile browsers turn window.open into
+  // a second tab anyway.
   function openPaymentPopup() {
     if (!paymentUrl) return
-    const width = 480
-    const height = 720
-    const left = window.screenX + (window.outerWidth - width) / 2
-    const top = window.screenY + (window.outerHeight - height) / 2
-    paymentPopupRef.current = window.open(
-      paymentUrl, 'youcanpay_payment',
-      `width=${width},height=${height},left=${left},top=${top}`,
-    )
     setError('')
+    paymentPopupRef.current = openPaymentWindow(paymentUrl, 'youcanpay_payment')
+    if (!paymentPopupRef.current) return // mobile: page is navigating away
 
     // YouCan Pay never sends a webhook for a declined/abandoned attempt, so
     // the only way this tab finds out the popup is done is by polling

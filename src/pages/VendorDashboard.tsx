@@ -16,6 +16,7 @@ import VendorDrivers from '../components/vendor/VendorDrivers'
 import MessagingPanel from '../components/MessagingPanel'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 import { getEffectivelyOpen, getClosedReason, parseSchedule } from '../lib/scheduleParser'
+import { openPaymentWindow } from '../lib/paymentWindow'
 
 // ─── Palette DiaTable ─────────────────────────────────────────────────────────
 const C = {
@@ -460,14 +461,7 @@ export default function VendorDashboard() {
 
   function openSubPaymentPopup() {
     if (!subPaymentUrl) return
-    const width = 480
-    const height = 720
-    const left = window.screenX + (window.outerWidth - width) / 2
-    const top = window.screenY + (window.outerHeight - height) / 2
-    subPaymentPopupRef.current = window.open(
-      subPaymentUrl, 'youcanpay_subscription',
-      `width=${width},height=${height},left=${left},top=${top}`,
-    )
+    subPaymentPopupRef.current = openPaymentWindow(subPaymentUrl, 'youcanpay_subscription')
   }
 
   // Realtime: once youcanpay-webhook activates the new plan, reflect it and
