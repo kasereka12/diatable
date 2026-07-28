@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
 
     if (insertErr || !payment) {
       console.error('create-subscription-payment-token: insert failed', insertErr)
-      return new Response(JSON.stringify({ error: 'order' }), {
+      return new Response(JSON.stringify({ error: 'Impossible de préparer le paiement. Réessayez.' }), {
         status: 500,
         headers: buildResponseHeaders(req, { 'Content-Type': 'application/json' }),
       })
