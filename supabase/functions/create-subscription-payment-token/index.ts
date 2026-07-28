@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const amount = Math.round(price * 100) // centimes
-    const returnUrl = `${SITE_ORIGIN}/tableau-de-bord?section=abonnement`
+    const returnUrl = `${SITE_ORIGIN}/paiement/retour?payment=${payment.id}&type=subscription`
 
     const isSandboxKey = privateKey.startsWith('pri_sandbox_')
     const tokenizeUrl = isSandboxKey
