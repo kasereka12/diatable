@@ -2034,6 +2034,11 @@ export default function VendorDashboard() {
 
   function renderSubscription() {
     const currentPlan = subscription?.plan || 'free'
+    const TIER_ORDER = ['free', 'pro', 'premium']
+    const nextPlanId = TIER_ORDER[TIER_ORDER.indexOf(currentPlan) + 1] // undefined once on premium
+    const daysRemaining = subscription?.expires_at
+      ? Math.max(0, Math.ceil((new Date(subscription.expires_at).getTime() - Date.now()) / 86400000))
+      : null
 
     const plans = [
       {
@@ -2193,11 +2198,20 @@ export default function VendorDashboard() {
 
                   {/* CTA */}
                   {isCurrent ? (
-                    <div className="w-full text-center py-2.5 rounded-xl text-sm font-semibold"
-                      style={{ backgroundColor: `${plan.accentColor}15`, color: plan.accentColor, border: `1px solid ${plan.accentColor}30` }}>
-                      {t('vd.current_plan_badge')}
-                    </div>
-                  ) : (
+                    plan.id === 'free' ? (
+                      <div className="w-full text-center py-2.5 rounded-xl text-sm font-semibold"
+                        style={{ backgroundColor: `${plan.accentColor}15`, color: plan.accentColor, border: `1px solid ${plan.accentColor}30` }}>
+                        {t('vd.current_plan_badge')}
+                      </div>
+                    ) : (
+                      <div className="w-full text-center py-2.5 rounded-xl text-sm font-semibold"
+                        style={{ backgroundColor: `${plan.accentColor}15`, color: plan.accentColor, border: `1px solid ${plan.accentColor}30` }}>
+                        {daysRemaining !== null
+                          ? t('vd.days_remaining', { count: daysRemaining })
+                          : t('vd.current_plan_badge')}
+                      </div>
+                    )
+                  ) : plan.id === nextPlanId ? (
                     <button onClick={() => startUpgrade(plan.id)}
                       className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all border"
                       style={plan.popular
@@ -2211,9 +2225,9 @@ export default function VendorDashboard() {
                         if (plan.popular) e.currentTarget.style.opacity = '1'
                         else { e.currentTarget.style.borderColor = 'rgba(80,70,64,0.20)'; e.currentTarget.style.color = C.dark }
                       }}>
-                      {plan.id === 'free' ? t('vd.downgrade') : t('vd.upgrade_to', { name: plan.name })}
+                      {t('vd.upgrade_to', { name: plan.name })}
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )

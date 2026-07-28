@@ -141,11 +141,17 @@ async function handleSubscriptionPayment(supabase: any, paymentId: string, trans
     }
   }
 
-  const now = new Date().toISOString()
+  const now = new Date()
+  const nowIso = now.toISOString()
+  // Monthly plans — one month from confirmation, used to show the vendor
+  // their remaining time and (eventually) drive renewal/expiry.
+  const expiresAt = new Date(now)
+  expiresAt.setMonth(expiresAt.getMonth() + 1)
+  const expiresAtIso = expiresAt.toISOString()
 
   const { error: payUpdateErr } = await supabase
     .from('subscription_payments')
-    .update({ status: 'paid', payment_transaction_id: transactionId ?? null, reviewed_at: now })
+    .update({ status: 'paid', payment_transaction_id: transactionId ?? null, reviewed_at: nowIso })
     .eq('id', paymentId)
   if (payUpdateErr) throw payUpdateErr
 
@@ -154,7 +160,7 @@ async function handleSubscriptionPayment(supabase: any, paymentId: string, trans
   // INSERT only if that affected no rows.
   const { data: updated, error: subUpdateErr } = await supabase
     .from('subscriptions')
-    .update({ plan: payment.plan, status: 'active', started_at: now })
+    .update({ plan: payment.plan, status: 'active', started_at: nowIso, expires_at: expiresAtIso })
     .eq('vendor_id', payment.vendor_id)
     .select()
   if (subUpdateErr) throw subUpdateErr
@@ -162,7 +168,7 @@ async function handleSubscriptionPayment(supabase: any, paymentId: string, trans
   if (!updated || updated.length === 0) {
     const { error: subInsertErr } = await supabase
       .from('subscriptions')
-      .insert({ vendor_id: payment.vendor_id, plan: payment.plan, status: 'active', started_at: now })
+      .insert({ vendor_id: payment.vendor_id, plan: payment.plan, status: 'active', started_at: nowIso, expires_at: expiresAtIso })
     if (subInsertErr) throw subInsertErr
   }
 
