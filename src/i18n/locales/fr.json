@@ -635,6 +635,7 @@
     "expired": "Expiré",
     "most_popular": "⭐ Le plus populaire",
     "current_plan_badge": "✓ Plan actuel",
+    "days_remaining": "{{count}} jours restants",
     "downgrade": "Rétrograder",
     "upgrade_to": "Passer au {{name}} →",
     "upgrade_form_title": "Passer au plan {{name}}",
