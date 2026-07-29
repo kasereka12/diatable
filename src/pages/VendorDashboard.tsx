@@ -7,7 +7,8 @@ import {
   Eye, LogOut, TrendingUp, TrendingDown, Minus, Phone,
   Instagram, Menu, ChevronRight, ChevronLeft, Edit2, Trash2, Plus,
   CheckCircle, AlertCircle, MessageSquare, Lock, ImageIcon, X as XIcon,
-  Heart, Package, MessageCircle, Crown, Sparkles, Zap, MapPin, Power, Clock, Bike
+  Heart, Package, MessageCircle, Crown, Sparkles, Zap, MapPin, Power, Clock, Bike,
+  Wallet, Banknote, ArrowDownLeft, ArrowUpRight, RefreshCw
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase, callEdgeFunction } from '../lib/supabase'
@@ -17,6 +18,9 @@ import MessagingPanel from '../components/MessagingPanel'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 import { getEffectivelyOpen, getClosedReason, parseSchedule } from '../lib/scheduleParser'
 import { openPaymentWindow } from '../lib/paymentWindow'
+import PaginationControls from '../components/ui/PaginationControls'
+
+const REVIEWS_PAGE_SIZE = 10
 
 // ─── Palette DiaTable ─────────────────────────────────────────────────────────
 const C = {
@@ -186,6 +190,8 @@ export default function VendorDashboard() {
   const [newDish, setNewDish] = useState({ nom: '', prix: '', description: '', categorie: 'Plats Principaux', populaire: false, prepTime: '15' })
   const [vendorNotifs, setVendorNotifs] = useState<any[]>([])
   const [notifsLoading, setNotifsLoading] = useState(true)
+  const [notifsLoadingMore, setNotifsLoadingMore] = useState(false)
+  const [notifsHasMore, setNotifsHasMore] = useState(true)
   const [restaurantForm, setRestaurantForm] = useState({ nom: '', cuisine: '', ville: '', adresse: '', telephone: '', whatsapp: '', instagram: '', description: '', horaires: '', prepTime: '15' })
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [bankForm, setBankForm] = useState({ rib: '', bank_name: '', account_name: '' })
@@ -200,7 +206,14 @@ export default function VendorDashboard() {
 
   const [restaurant, setRestaurant] = useState<any | null>(null)
   const [menuItems, setMenuItems] = useState<any[]>([])
+  // reviewStats holds every review's rating/date (two light columns) for
+  // accurate averages/distribution; `reviews` is just the current page of
+  // full review details (profile + text) shown in the list.
+  const [reviewStats, setReviewStats] = useState<{ rating: number; created_at: string; text: string | null }[]>([])
   const [reviews, setReviews] = useState<any[]>([])
+  const [reviewsTotal, setReviewsTotal] = useState(0)
+  const [reviewsPage, setReviewsPage] = useState(0)
+  const [reviewsLoading, setReviewsLoading] = useState(false)
   const [dbLoading, setDbLoading] = useState(true)
   const [savingRest, setSavingRest] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
@@ -221,25 +234,34 @@ export default function VendorDashboard() {
   const [ordersCount, setOrdersCount] = useState(0)
   const [likesCount, setLikesCount] = useState(0)
 
+  // ── Wallet (solde + retraits) ──
+  const [wallet, setWallet] = useState<any | null>(null)
+  const [walletTx, setWalletTx] = useState<any[]>([])
+  const [withdrawals, setWithdrawals] = useState<any[]>([])
+  const [walletLoading, setWalletLoading] = useState(true)
+  const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [withdrawMsg, setWithdrawMsg] = useState('')
+  const [requestingWithdraw, setRequestingWithdraw] = useState(false)
+
   const avgRating = useMemo(() =>
-    reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null
-  , [reviews])
+    reviewStats.length > 0 ? (reviewStats.reduce((s, r) => s + r.rating, 0) / reviewStats.length).toFixed(1) : null
+  , [reviewStats])
 
   const starDist = useMemo(() =>
     [5, 4, 3, 2, 1].map(n => ({
       stars: n,
-      count: reviews.filter(r => r.rating === n).length,
-      pct: reviews.length > 0 ? Math.round(reviews.filter(r => r.rating === n).length / reviews.length * 100) : 0,
+      count: reviewStats.filter(r => r.rating === n).length,
+      pct: reviewStats.length > 0 ? Math.round(reviewStats.filter(r => r.rating === n).length / reviewStats.length * 100) : 0,
     }))
-  , [reviews])
+  , [reviewStats])
 
   const reviewsByDay = useMemo(() => {
     const counts = Array(7).fill(0)
     const cutoff = Date.now() - 30 * 86400000
-    reviews.filter(r => new Date(r.created_at).getTime() > cutoff)
+    reviewStats.filter(r => new Date(r.created_at).getTime() > cutoff)
       .forEach(r => { counts[(new Date(r.created_at).getDay() + 6) % 7]++ })
     return counts
-  }, [reviews])
+  }, [reviewStats])
 
   const unreadCount = vendorNotifs.filter(n => !n.is_read).length
 
@@ -277,7 +299,7 @@ export default function VendorDashboard() {
           { data: sub },
         ] = await Promise.all([
           (supabase.from('menu_items') as any).select('*').eq('restaurant_id', rest.id).order('category'),
-          (supabase.from('reviews') as any).select('*, profiles(full_name)').eq('restaurant_id', rest.id).order('created_at', { ascending: false }).limit(100),
+          (supabase.from('reviews') as any).select('rating, created_at, text').eq('restaurant_id', rest.id).order('created_at', { ascending: false }),
           (supabase.from('restaurant_views') as any).select('*', { count: 'exact', head: true }).eq('restaurant_id', rest.id).gte('created_at', monthStart),
           (supabase.from('restaurant_views') as any).select('*', { count: 'exact', head: true }).eq('restaurant_id', rest.id).gte('created_at', lastMonthStart).lt('created_at', monthStart),
           (supabase.from('restaurant_views') as any).select('*', { count: 'exact', head: true }).eq('restaurant_id', rest.id),
@@ -290,7 +312,7 @@ export default function VendorDashboard() {
 
         setMenuItems(menu || [])
         if (menu && menu.length > 0) { setMenuCategory(menu[0].category || 'Plats Principaux'); setNewDish(prev => ({ ...prev, categorie: menu[0].category || 'Plats Principaux' })) }
-        setReviews((revs as any[] || []).map((r: any) => ({ ...r, initials: (r.profiles?.full_name || 'U').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2), name: r.profiles?.full_name || 'Utilisateur', stars: r.rating, date: new Date(r.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }), comment: r.text || '' })))
+        setReviewStats((revs as any[]) || [])
         setViewsThisMonth(vCount || 0)
         setViewsLastMonth(vLastMonth || 0)
         setViewsAllTime(vAllTime || 0)
@@ -314,7 +336,60 @@ export default function VendorDashboard() {
     load()
   }, [user])
 
+  // Paginated review details (name/comment) shown in the "Avis" list —
+  // separate from reviewStats above, which holds every review for accurate
+  // averages/distribution.
+  useEffect(() => {
+    if (!restaurant?.id) return
+    let cancelled = false
+    async function loadReviewsPage() {
+      setReviewsLoading(true)
+      const from = reviewsPage * REVIEWS_PAGE_SIZE
+      const to = from + REVIEWS_PAGE_SIZE - 1
+      const { data } = await (supabase.from('reviews') as any)
+        .select('*, profiles(full_name)')
+        .eq('restaurant_id', restaurant.id)
+        .order('created_at', { ascending: false })
+        .range(from, to)
+      if (cancelled) return
+      setReviews((data as any[] || []).map((r: any) => ({
+        ...r,
+        initials: (r.profiles?.full_name || 'U').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
+        name: r.profiles?.full_name || 'Utilisateur',
+        stars: r.rating,
+        date: new Date(r.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+        comment: r.text || '',
+      })))
+      setReviewsLoading(false)
+    }
+    loadReviewsPage()
+    return () => { cancelled = true }
+  }, [restaurant?.id, reviewsPage])
+
+  // Wallet : solde, mouvements (crédits) et historique des retraits.
+  useEffect(() => {
+    if (!restaurant?.id) { setWalletLoading(false); return }
+    let cancelled = false
+    async function loadWallet() {
+      setWalletLoading(true)
+      const [{ data: w }, { data: tx }, { data: wd }] = await Promise.all([
+        (supabase.from('restaurant_wallets') as any).select('*').eq('restaurant_id', restaurant.id).maybeSingle(),
+        (supabase.from('wallet_transactions') as any).select('*').eq('restaurant_id', restaurant.id).order('created_at', { ascending: false }).limit(50),
+        (supabase.from('withdrawals') as any).select('*').eq('restaurant_id', restaurant.id).order('created_at', { ascending: false }).limit(50),
+      ])
+      if (cancelled) return
+      setWallet(w || null)
+      setWalletTx((tx as any[]) || [])
+      setWithdrawals((wd as any[]) || [])
+      setWalletLoading(false)
+    }
+    loadWallet()
+    return () => { cancelled = true }
+  }, [restaurant?.id])
+
   // Fetch notifications from Supabase
+  const NOTIFS_PAGE_SIZE = 50
+
   useEffect(() => {
     if (!user) { setNotifsLoading(false); return }
     async function loadNotifs() {
@@ -323,8 +398,9 @@ export default function VendorDashboard() {
         .select('*')
         .eq('user_id', user!.id)
         .order('created_at', { ascending: false })
-        .limit(50)
+        .range(0, NOTIFS_PAGE_SIZE - 1)
       setVendorNotifs(data || [])
+      setNotifsHasMore((data || []).length === NOTIFS_PAGE_SIZE)
       setNotifsLoading(false)
     }
     loadNotifs()
@@ -339,6 +415,19 @@ export default function VendorDashboard() {
 
     return () => { supabase.removeChannel(channel) }
   }, [user])
+
+  async function loadMoreNotifs() {
+    if (!user) return
+    setNotifsLoadingMore(true)
+    const { data } = await (supabase.from('notifications') as any)
+      .select('*')
+      .eq('user_id', user!.id)
+      .order('created_at', { ascending: false })
+      .range(vendorNotifs.length, vendorNotifs.length + NOTIFS_PAGE_SIZE - 1)
+    setVendorNotifs(prev => [...prev, ...(data || [])])
+    setNotifsHasMore((data || []).length === NOTIFS_PAGE_SIZE)
+    setNotifsLoadingMore(false)
+  }
 
   const menuByCategory = menuItems.reduce((acc, item) => {
     const cat = item.category || 'Plats Principaux'
@@ -423,6 +512,31 @@ export default function VendorDashboard() {
     setSavingBank(false)
     setBankMsg(error ? t('vd.save_error') : t('vd.bank_save_success'))
     setTimeout(() => setBankMsg(''), 3000)
+  }
+
+  async function requestWithdrawal() {
+    if (!user || !restaurant) return
+    const amount = parseFloat(withdrawAmount)
+    const available = Number(wallet?.available_balance || 0)
+    if (!amount || amount <= 0) { setWithdrawMsg(t('vd.wallet.err_amount')); return }
+    if (!bankForm.rib?.trim()) { setWithdrawMsg(t('vd.wallet.err_no_bank')); return }
+    if (amount > available) { setWithdrawMsg(t('vd.wallet.err_exceeds')); return }
+    setRequestingWithdraw(true); setWithdrawMsg('')
+    const { data, error } = await (supabase.from('withdrawals') as any).insert({
+      restaurant_id: restaurant.id, vendor_id: user.id, amount,
+      rib: bankForm.rib, bank_name: bankForm.bank_name, account_name: bankForm.account_name,
+    }).select().single()
+    setRequestingWithdraw(false)
+    if (error) { setWithdrawMsg(error.message || t('vd.wallet.err_generic')); return }
+    setWithdrawals(prev => [data, ...prev])
+    setWallet((prev: any) => prev ? {
+      ...prev,
+      available_balance: Number(prev.available_balance) - amount,
+      pending_withdrawals: Number(prev.pending_withdrawals) + amount,
+    } : prev)
+    setWithdrawAmount('')
+    setWithdrawMsg(t('vd.wallet.request_sent'))
+    setTimeout(() => setWithdrawMsg(''), 4000)
   }
 
   function startUpgrade(plan: any) {
@@ -580,6 +694,7 @@ export default function VendorDashboard() {
         <NavItem icon={Star}            label={t('vd.reviews')}         active={activeSection === 'avis'}        onClick={() => navigate_to('avis')}        collapsed={collapsed} />
         <NavItem icon={BarChart2}       label={t('vd.stats')}           active={activeSection === 'stats'}       onClick={() => navigate_to('stats')}       collapsed={collapsed} />
         <NavItem icon={Crown}           label={t('vd.subscription')}    active={activeSection === 'abonnement'}  onClick={() => navigate_to('abonnement')}  collapsed={collapsed} />
+        <NavItem icon={Wallet}          label={t('vd.wallet.nav')}      active={activeSection === 'wallet'}      onClick={() => navigate_to('wallet')}      collapsed={collapsed} />
         <NavItem icon={Bell}            label={t('vd.notifications')}   active={activeSection === 'notifs'}      onClick={() => navigate_to('notifs')}      badge={unreadCount > 0 ? unreadCount : undefined} collapsed={collapsed} />
         <NavItem icon={Bike}            label="Livreurs"                active={activeSection === 'livreurs'}    onClick={() => navigate_to('livreurs')}    collapsed={collapsed} />
       </nav>
@@ -680,14 +795,14 @@ export default function VendorDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={Eye}          value={viewsThisMonth} label={t('vd.views_this_month')}   trend={viewsThisMonth > 0 ? 'profil consulté' : 'aucune vue'} up={viewsThisMonth > 0 ? true : null} />
           <StatCard icon={Star}         value={avgRating ?? '—'} label={t('vd.avg_rating')} trend={avgRating ? 'réel' : 'aucun avis'} up={null} />
-          <StatCard icon={MessageSquare} value={reviews.length} label={t('vd.reviews_published')}  trend={reviews.length > 0 ? `+${reviews.filter(r => Date.now() - new Date(r.created_at).getTime() < 30 * 86400000).length} ce mois` : 'aucun'} up={reviews.length > 0 ? true : null} />
+          <StatCard icon={MessageSquare} value={reviewStats.length} label={t('vd.reviews_published')}  trend={reviewStats.length > 0 ? `+${reviewStats.filter(r => Date.now() - new Date(r.created_at).getTime() < 30 * 86400000).length} ce mois` : 'aucun'} up={reviewStats.length > 0 ? true : null} />
           <StatCard icon={Heart}        value={likesCount}     label={t('vd.likes')}         trend={likesCount > 0 ? 'favoris' : 'aucun like'} up={likesCount > 0 ? true : null} />
         </div>
 
         <div className="rounded-xl p-5 shadow-sm" style={{ backgroundColor: C.creamLight, border: `1px solid rgba(80,70,64,0.10)` }}>
           <h3 className="text-sm font-semibold mb-1" style={{ color: C.dark }}>{t('vd.reviews_by_day')}</h3>
           <p className="text-xs mb-4" style={{ color: C.muted }}>{t('vd.last_30_days')}</p>
-          {reviews.length === 0 ? (
+          {reviewStats.length === 0 ? (
             <div className="h-32 flex items-center justify-center text-sm" style={{ color: 'rgba(80,70,64,0.30)' }}>{t('vd.no_reviews_yet')}</div>
           ) : (
             <div className="flex items-end gap-2 h-32">
@@ -705,7 +820,7 @@ export default function VendorDashboard() {
 
         <div className="rounded-xl p-5 shadow-sm" style={{ backgroundColor: C.creamLight, border: `1px solid rgba(80,70,64,0.10)` }}>
           <h3 className="text-sm font-semibold mb-4" style={{ color: C.dark }}>{t('vd.recent_activity')}</h3>
-          {reviews.length === 0 ? (
+          {reviewStats.length === 0 ? (
             <p className="text-sm text-center py-4" style={{ color: C.muted }}>{t('vd.no_activity')}</p>
           ) : (
             <div className="space-y-3">
@@ -1329,7 +1444,7 @@ export default function VendorDashboard() {
           <div className="text-center">
             <p className="text-6xl font-serif font-bold" style={{ color: C.dark }}>{avgRating ?? '—'}</p>
             <Stars count={5} size={20} />
-            <p className="text-sm mt-1" style={{ color: C.muted }}>{t('vd.reviews_count', { count: reviews.length })}</p>
+            <p className="text-sm mt-1" style={{ color: C.muted }}>{t('vd.reviews_count', { count: reviewStats.length })}</p>
           </div>
           <div className="flex-1 space-y-2 w-full">
             {starDist.map(({ stars, pct }) => (
@@ -1344,7 +1459,7 @@ export default function VendorDashboard() {
             ))}
           </div>
         </div>
-        {reviews.length === 0 ? (
+        {reviewStats.length === 0 ? (
           <div className="text-center py-12 rounded-xl shadow-sm" style={{ backgroundColor: C.creamLight, border: `1px solid rgba(80,70,64,0.10)` }}>
             <Star size={36} className="mx-auto mb-3" style={{ color: 'rgba(80,70,64,0.20)' }} />
             <p className="text-sm font-semibold mb-1" style={{ color: C.dark }}>{t('vd.no_reviews_title')}</p>
@@ -1376,6 +1491,14 @@ export default function VendorDashboard() {
             ))}
           </div>
         )}
+
+        {reviewStats.length > 0 && !reviewsLoading && (
+          <PaginationControls
+            page={reviewsPage}
+            totalPages={Math.max(1, Math.ceil(reviewStats.length / REVIEWS_PAGE_SIZE))}
+            onPageChange={setReviewsPage}
+          />
+        )}
       </div>
     )
   }
@@ -1401,16 +1524,16 @@ export default function VendorDashboard() {
     const nowD            = new Date()
     const thisMonthStart  = new Date(nowD.getFullYear(), nowD.getMonth(), 1).getTime()
     const lastMonthStartT = new Date(nowD.getFullYear(), nowD.getMonth() - 1, 1).getTime()
-    const reviewsThisMonthCount = reviews.filter(r => new Date(r.created_at).getTime() >= thisMonthStart).length
-    const reviewsLastMonthCount = reviews.filter(r => { const t = new Date(r.created_at).getTime(); return t >= lastMonthStartT && t < thisMonthStart }).length
-    const recentAvg      = reviews.length >= 5 ? (reviews.slice(0, 5).reduce((s, r) => s + r.rating, 0) / 5).toFixed(1) : null
+    const reviewsThisMonthCount = reviewStats.filter(r => new Date(r.created_at).getTime() >= thisMonthStart).length
+    const reviewsLastMonthCount = reviewStats.filter(r => { const t = new Date(r.created_at).getTime(); return t >= lastMonthStartT && t < thisMonthStart }).length
+    const recentAvg      = reviewStats.length >= 5 ? (reviewStats.slice(0, 5).reduce((s, r) => s + r.rating, 0) / 5).toFixed(1) : null
     const recentVsGlobal = recentAvg && avgRating ? Number((Number(recentAvg) - Number(avgRating)).toFixed(1)) : null
-    const pctPositive    = reviews.length > 0 ? Math.round(reviews.filter(r => r.rating >= 4).length / reviews.length * 100) : 0
-    const pctNeutral     = reviews.length > 0 ? Math.round(reviews.filter(r => r.rating === 3).length / reviews.length * 100) : 0
-    const pctNegative    = reviews.length > 0 ? Math.round(reviews.filter(r => r.rating <= 2).length / reviews.length * 100) : 0
-    const reviewsWithCommentCount = reviews.filter(r => r.comment && r.comment.trim().length > 0).length
+    const pctPositive    = reviewStats.length > 0 ? Math.round(reviewStats.filter(r => r.rating >= 4).length / reviewStats.length * 100) : 0
+    const pctNeutral     = reviewStats.length > 0 ? Math.round(reviewStats.filter(r => r.rating === 3).length / reviewStats.length * 100) : 0
+    const pctNegative    = reviewStats.length > 0 ? Math.round(reviewStats.filter(r => r.rating <= 2).length / reviewStats.length * 100) : 0
+    const reviewsWithCommentCount = reviewStats.filter(r => r.text && r.text.trim().length > 0).length
 
-    const satisfactionRate = reviews.length > 0 ? Math.round(reviews.filter(r => r.rating >= 4).length / reviews.length * 100) : null
+    const satisfactionRate = reviewStats.length > 0 ? Math.round(reviewStats.filter(r => r.rating >= 4).length / reviewStats.length * 100) : null
     const engagementRate   = viewsThisMonth > 0 ? ((likesCount / viewsThisMonth) * 100).toFixed(1) : null
     const topDayIdx        = reviewsByDay.indexOf(Math.max(...reviewsByDay))
     const viewsMoMPct      = viewsLastMonth > 0 ? Math.round((viewsThisMonth - viewsLastMonth) / viewsLastMonth * 100) : null
@@ -1437,8 +1560,8 @@ export default function VendorDashboard() {
     )
     const maxMonthViews   = Math.max(...viewsByMonth, 1)
 
-    const revenueEstimate = avgMenuPrice && (ordersCount > 0 || reviews.length > 0)
-      ? (avgMenuPrice * (ordersCount || reviews.length)).toLocaleString('fr-FR')
+    const revenueEstimate = avgMenuPrice && (ordersCount > 0 || reviewStats.length > 0)
+      ? (avgMenuPrice * (ordersCount || reviewStats.length)).toLocaleString('fr-FR')
       : null
 
     const DAY_LABELS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche']
@@ -1529,7 +1652,7 @@ export default function VendorDashboard() {
 
         {/* KPIs principaux — ligne 1 */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {kpiCard(t('vd.avg_rating_stat'),    avgRating ?? '—',       `sur ${reviews.length} avis`)}
+          {kpiCard(t('vd.avg_rating_stat'),    avgRating ?? '—',       `sur ${reviewStats.length} avis`)}
           {kpiCard(t('vd.reviews_this_month'),    reviewsThisMonthCount,  reviewsLastMonthCount > 0 ? `${reviewsLastMonthCount} le mois dernier` : 'premier mois')}
           {kpiCard(t('vd.dishes_count'),   menuItems.length,       `${menuCategories.length} catégorie${menuCategories.length !== 1 ? 's' : ''}`)}
           {kpiCard(t('vd.popular_dishes'), popularDishes.length,  'marqués ⭐')}
@@ -1545,7 +1668,7 @@ export default function VendorDashboard() {
         <div className="rounded-xl p-5 shadow-sm" style={{ backgroundColor: C.creamLight, border: `1px solid rgba(80,70,64,0.10)` }}>
           <h3 className="text-sm font-semibold mb-1" style={{ color: C.dark }}>{t('vd.reviews_by_day_stat')}</h3>
           <p className="text-xs mb-4" style={{ color: C.muted }}>{t('vd.last_30_days')}</p>
-          {reviews.length === 0 ? (
+          {reviewStats.length === 0 ? (
             <div className="h-28 flex items-center justify-center text-sm" style={{ color: 'rgba(80,70,64,0.30)' }}>{t('vd.no_reviews_received')}</div>
           ) : (
             <>
@@ -1574,7 +1697,7 @@ export default function VendorDashboard() {
 
         <div className="rounded-xl p-5 shadow-sm" style={{ backgroundColor: C.creamLight, border: `1px solid rgba(80,70,64,0.10)` }}>
           <h3 className="text-sm font-semibold mb-4" style={{ color: C.dark }}>{t('vd.notes_distribution')}</h3>
-          {reviews.length === 0 ? (
+          {reviewStats.length === 0 ? (
             <p className="text-sm text-center py-4" style={{ color: C.muted }}>{t('vd.no_reviews_yet')}</p>
           ) : (
             <div className="space-y-2">
@@ -1592,7 +1715,7 @@ export default function VendorDashboard() {
         </div>
 
         {/* Sentiment breakdown */}
-        {reviews.length > 0 && (
+        {reviewStats.length > 0 && (
           <div className="rounded-xl p-5 shadow-sm" style={{ backgroundColor: C.creamLight, border: `1px solid rgba(80,70,64,0.10)` }}>
             <h3 className="text-sm font-semibold mb-4" style={{ color: C.dark }}>{t('vd.sentiment')}</h3>
             <div className="flex gap-2 mb-3">
@@ -1613,7 +1736,7 @@ export default function VendorDashboard() {
               {pctNegative > 0 && <div style={{ width: `${pctNegative}%`, backgroundColor: '#dc2626' }} />}
             </div>
             <p className="text-xs mt-2 text-right" style={{ color: C.muted }}>
-              {t('vd.with_comment', { count: `${reviewsWithCommentCount}/${reviews.length}` })}
+              {t('vd.with_comment', { count: `${reviewsWithCommentCount}/${reviewStats.length}` })}
             </p>
           </div>
         )}
@@ -1689,7 +1812,7 @@ export default function VendorDashboard() {
                   {[
                     { label: "Taux d'engagement (ce mois)", value: engagementRate ? `${engagementRate}%` : '—', sub: 'favoris ÷ vues × 100' },
                     { label: 'Taux de fidélisation (all-time)', value: loyaltyRate ? `${loyaltyRate}%` : '—', sub: 'favoris ÷ vues totales × 100' },
-                    { label: 'Avis avec commentaire', value: `${reviewsWithCommentCount}/${reviews.length}`, sub: reviews.length > 0 ? `${Math.round(reviewsWithCommentCount / reviews.length * 100)}% de retour écrit` : '' },
+                    { label: 'Avis avec commentaire', value: `${reviewsWithCommentCount}/${reviewStats.length}`, sub: reviewStats.length > 0 ? `${Math.round(reviewsWithCommentCount / reviewStats.length * 100)}% de retour écrit` : '' },
                   ].map(({ label, value, sub }) => (
                     <div key={label} className="flex justify-between items-start">
                       <div>
@@ -1706,7 +1829,7 @@ export default function VendorDashboard() {
                 <h3 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: C.dark }}>
                   <Star size={14} style={{ color: C.terra }} /> {t('vd.satisfaction')}
                 </h3>
-                {reviews.length === 0 ? (
+                {reviewStats.length === 0 ? (
                   <p className="text-sm" style={{ color: C.muted }}>{t('vd.no_reviews_yet_short')}</p>
                 ) : (
                   <div className="space-y-4">
@@ -1806,7 +1929,7 @@ export default function VendorDashboard() {
                       { label: 'Commandes enregistrées', value: ordersCount },
                       { label: 'Prix moyen du menu',     value: avgMenuPrice ? `${avgMenuPrice} MAD` : '—' },
                       { label: 'Prix min / max',          value: priceMin != null ? `${priceMin} – ${priceMax} MAD` : '—' },
-                      { label: 'Avis reçus (proxy)',      value: reviews.length },
+                      { label: 'Avis reçus (proxy)',      value: reviewStats.length },
                     ].map(({ label, value }) => (
                       <div key={label} className="flex justify-between text-sm">
                         <span style={{ color: C.muted }}>{label}</span>
@@ -1897,7 +2020,7 @@ export default function VendorDashboard() {
                     { label: 'Vues',    value: viewsAllTime,    pct: 100,                                                                           color: C.terra },
                     { label: 'Ce mois', value: viewsThisMonth,  pct: viewsAllTime > 0 ? Math.round(viewsThisMonth / viewsAllTime * 100) : 0,        color: C.bronze },
                     { label: 'Favoris', value: likesCount,      pct: viewsAllTime > 0 ? Math.round(likesCount / viewsAllTime * 100) : 0,            color: '#7c3aed' },
-                    { label: 'Avis',    value: reviews.length,  pct: viewsAllTime > 0 ? Math.round(reviews.length / viewsAllTime * 100) : 0,        color: C.muted },
+                    { label: 'Avis',    value: reviewStats.length,  pct: viewsAllTime > 0 ? Math.round(reviewStats.length / viewsAllTime * 100) : 0,        color: C.muted },
                   ].map(({ label, value, pct, color }, i) => (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
                       <p className="text-xs font-medium text-center" style={{ color: C.muted }}>{label}</p>
@@ -1989,6 +2112,16 @@ export default function VendorDashboard() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {!notifsLoading && notifsHasMore && (
+          <div className="text-center">
+            <button onClick={loadMoreNotifs} disabled={notifsLoadingMore}
+              className="text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50 transition-colors"
+              style={{ color: C.terra, border: `1px solid rgba(197,97,26,0.30)` }}>
+              {notifsLoadingMore ? t('common.loading') : t('vd.load_more_notifs')}
+            </button>
           </div>
         )}
       </div>
@@ -2504,6 +2637,185 @@ export default function VendorDashboard() {
     return <VendorDrivers restaurantId={restaurant.id} />
   }
 
+  async function reloadWallet() {
+    if (!restaurant?.id) return
+    setWalletLoading(true)
+    const [{ data: w }, { data: tx }, { data: wd }] = await Promise.all([
+      (supabase.from('restaurant_wallets') as any).select('*').eq('restaurant_id', restaurant.id).maybeSingle(),
+      (supabase.from('wallet_transactions') as any).select('*').eq('restaurant_id', restaurant.id).order('created_at', { ascending: false }).limit(50),
+      (supabase.from('withdrawals') as any).select('*').eq('restaurant_id', restaurant.id).order('created_at', { ascending: false }).limit(50),
+    ])
+    setWallet(w || null)
+    setWalletTx((tx as any[]) || [])
+    setWithdrawals((wd as any[]) || [])
+    setWalletLoading(false)
+  }
+
+  function renderWallet() {
+    const money = (n: any) => `${Number(n || 0).toFixed(2)} MAD`
+    const available = Number(wallet?.available_balance || 0)
+    const hasBank = !!bankForm.rib?.trim()
+    const statusConf: Record<string, { label: string; cls: string }> = {
+      pending:  { label: t('vd.wallet.status_pending'),  cls: 'bg-amber-50 text-amber-600 border-amber-200' },
+      approved: { label: t('vd.wallet.status_approved'), cls: 'bg-blue-50 text-blue-600 border-blue-200' },
+      paid:     { label: t('vd.wallet.status_paid'),     cls: 'bg-green-50 text-green-600 border-green-200' },
+      rejected: { label: t('vd.wallet.status_rejected'), cls: 'bg-red-50 text-red-600 border-red-200' },
+    }
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-serif font-bold" style={{ color: C.dark }}>{t('vd.wallet.title')}</h1>
+            <p className="text-sm mt-0.5" style={{ color: C.muted }}>{t('vd.wallet.subtitle')}</p>
+          </div>
+          <button onClick={reloadWallet}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg border text-sm transition-colors"
+            style={{ color: C.muted, borderColor: 'rgba(80,70,64,0.20)' }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(80,70,64,0.05)'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+            <RefreshCw size={14} /> {t('vd.wallet.refresh')}
+          </button>
+        </div>
+
+        {/* ── Solde ─────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="rounded-2xl p-5 shadow-sm" style={{ background: 'linear-gradient(135deg,#c5611a 0%,#a04d12 100%)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Wallet size={18} className="text-white/90" />
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{t('vd.wallet.available')}</p>
+            </div>
+            <p className="text-3xl font-bold font-serif text-white">{walletLoading ? '—' : money(available)}</p>
+          </div>
+          <StatCard icon={ArrowDownLeft} value={walletLoading ? '—' : money(wallet?.total_credited)} label={t('vd.wallet.total_credited')} up={null} />
+          <StatCard icon={ArrowUpRight} value={walletLoading ? '—' : money(wallet?.total_withdrawn)} label={t('vd.wallet.total_withdrawn')} up={null} />
+          <StatCard icon={Clock} value={walletLoading ? '—' : money(wallet?.pending_withdrawals)} label={t('vd.wallet.pending')} up={null} />
+        </div>
+
+        {/* ── Demander un retrait ───────────────────────────── */}
+        <div className="rounded-2xl overflow-hidden shadow-sm" style={{ border: '1px solid rgba(80,70,64,0.10)' }}>
+          <div className="px-6 py-5" style={{ background: 'linear-gradient(135deg,#1f1f1f 0%,#2a2520 100%)' }}>
+            <h2 className="font-serif text-base font-bold flex items-center gap-2" style={{ color: '#f8f8f8' }}>
+              <Banknote size={16} style={{ color: C.terra }} /> {t('vd.wallet.request_title')}
+            </h2>
+            <p className="text-xs mt-1" style={{ color: 'rgba(248,248,248,0.38)' }}>{t('vd.wallet.request_subtitle')}</p>
+          </div>
+          <div className="p-6 space-y-4" style={{ backgroundColor: C.creamLight }}>
+            {!hasBank ? (
+              <div className="rounded-lg px-4 py-3 flex items-start gap-3"
+                style={{ backgroundColor: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.20)' }}>
+                <AlertCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm" style={{ color: '#b91c1c' }}>
+                  {t('vd.wallet.no_bank_warning')}{' '}
+                  <button onClick={() => setActiveSection('restaurant')} className="underline font-semibold">
+                    {t('vd.wallet.go_to_bank')}
+                  </button>
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-end gap-3 flex-wrap">
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-[0.68rem] font-bold uppercase tracking-widest mb-2" style={{ color: C.muted }}>
+                    {t('vd.wallet.amount_label')}
+                  </label>
+                  <div className="relative">
+                    <input type="number" min="0" step="0.01" value={withdrawAmount}
+                      onChange={e => setWithdrawAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full pl-4 pr-16 py-3 rounded-xl text-sm border"
+                      style={{ backgroundColor: '#fff', borderColor: 'rgba(80,70,64,0.15)', color: C.dark, outline: 'none' }}
+                      onFocus={e => e.target.style.borderColor = C.terra}
+                      onBlur={e => e.target.style.borderColor = 'rgba(80,70,64,0.15)'} />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: C.muted }}>MAD</span>
+                  </div>
+                </div>
+                <button onClick={() => setWithdrawAmount(String(available))}
+                  className="px-4 py-3 rounded-xl text-sm font-medium border transition-all"
+                  style={{ color: C.terra, borderColor: 'rgba(197,97,26,0.30)' }}>
+                  {t('vd.wallet.max')}
+                </button>
+                <button onClick={requestWithdrawal} disabled={requestingWithdraw || available <= 0}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                  style={{ backgroundColor: C.terra, color: '#fff' }}
+                  onMouseEnter={e => { if (!requestingWithdraw) e.currentTarget.style.backgroundColor = C.terraLight }}
+                  onMouseLeave={e => { if (!requestingWithdraw) e.currentTarget.style.backgroundColor = C.terra }}>
+                  <ArrowUpRight size={14} />
+                  {requestingWithdraw ? t('vd.wallet.requesting') : t('vd.wallet.request_btn')}
+                </button>
+              </div>
+            )}
+            {withdrawMsg && (
+              <p className={`text-sm font-medium ${/attente|envoyée|sent|request/i.test(withdrawMsg) ? 'text-green-600' : 'text-red-500'}`}>{withdrawMsg}</p>
+            )}
+            <p className="text-xs" style={{ color: C.muted }}>{t('vd.wallet.request_hint')}</p>
+          </div>
+        </div>
+
+        {/* ── Historique des retraits ───────────────────────── */}
+        <div>
+          <h3 className="text-sm font-semibold mb-3" style={{ color: C.dark }}>{t('vd.wallet.withdrawals_title')}</h3>
+          {withdrawals.length === 0 ? (
+            <div className="rounded-xl p-8 text-center" style={{ backgroundColor: C.creamLight, border: '1px solid rgba(80,70,64,0.10)' }}>
+              <Banknote size={32} className="mx-auto mb-2" style={{ color: 'rgba(80,70,64,0.25)' }} />
+              <p className="text-sm" style={{ color: C.muted }}>{t('vd.wallet.no_withdrawals')}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {withdrawals.map(w => {
+                const conf = statusConf[w.status] || statusConf.pending
+                return (
+                  <div key={w.id} className="rounded-xl p-4 flex items-center gap-4 flex-wrap"
+                    style={{ backgroundColor: C.creamLight, border: '1px solid rgba(80,70,64,0.10)' }}>
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: 'rgba(197,97,26,0.10)' }}>
+                      <ArrowUpRight size={16} style={{ color: C.terra }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold" style={{ color: C.dark }}>{money(w.amount)}</p>
+                      <p className="text-xs" style={{ color: C.muted }}>{new Date(w.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                      {w.admin_note && <p className="text-xs mt-0.5 italic" style={{ color: C.muted }}>"{w.admin_note}"</p>}
+                    </div>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${conf.cls}`}>{conf.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Mouvements (crédits) ──────────────────────────── */}
+        <div>
+          <h3 className="text-sm font-semibold mb-3" style={{ color: C.dark }}>{t('vd.wallet.movements_title')}</h3>
+          {walletTx.length === 0 ? (
+            <div className="rounded-xl p-8 text-center" style={{ backgroundColor: C.creamLight, border: '1px solid rgba(80,70,64,0.10)' }}>
+              <Wallet size={32} className="mx-auto mb-2" style={{ color: 'rgba(80,70,64,0.25)' }} />
+              <p className="text-sm" style={{ color: C.muted }}>{t('vd.wallet.no_movements')}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {walletTx.map(tx => (
+                <div key={tx.id} className="rounded-xl p-4 flex items-center gap-4 flex-wrap"
+                  style={{ backgroundColor: C.creamLight, border: '1px solid rgba(80,70,64,0.10)' }}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: 'rgba(34,197,94,0.10)' }}>
+                    <ArrowDownLeft size={16} style={{ color: '#16a34a' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm" style={{ color: C.dark }}>{tx.description || t('vd.wallet.credit_default')}</p>
+                    <p className="text-xs" style={{ color: C.muted }}>
+                      {new Date(tx.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {tx.commission_amount != null && ` · ${t('vd.wallet.commission')} ${money(tx.commission_amount)} (${Number(tx.commission_pct || 0)}%)`}
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold flex-shrink-0" style={{ color: '#16a34a' }}>+{money(tx.amount)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   function renderSection() {
     if (dbLoading) return renderSkeletonForSection()
 
@@ -2553,6 +2865,7 @@ export default function VendorDashboard() {
       case 'avis':        return renderAvis()
       case 'stats':       return renderStats()
       case 'abonnement':  return renderSubscription()
+      case 'wallet':      return renderWallet()
       case 'notifs':      return renderNotifs()
       case 'livreurs':    return renderDrivers()
       default:            return renderApercu()

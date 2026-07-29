@@ -570,9 +570,10 @@ export interface ReviewWithAuthor extends Review {
   profiles?: { full_name: string | null } | null
 }
 
-/** Restaurant with embedded reviews and menu items (from useVendeurDetail) */
-export interface RestaurantDetail extends Omit<Restaurant, 'reviews'> {
-  reviews: ReviewWithAuthor[]
+/** Restaurant with embedded menu items (from useVendeurDetail). `reviews` is
+ * the trigger-maintained total count column — paginated review details are
+ * fetched separately via useAvis. */
+export interface RestaurantDetail extends Restaurant {
   menu_items: MenuItem[]
 }
 

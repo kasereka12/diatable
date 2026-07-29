@@ -1,20 +1,19 @@
 import { useVendeurDetail } from './useVendeurDetail'
-import type { RestaurantDetail, MenuByCategory, ReviewWithAuthor } from '../types/supabase'
+import type { RestaurantDetail, MenuByCategory } from '../types/supabase'
 
-// Single embedded query: restaurant + reviews + menu_items in one round-trip
+// Single embedded query: restaurant + menu_items in one round-trip.
+// Review details are fetched separately (paginated) via useAvis.
 export function useRestaurantDetail(id: string | null | undefined): {
   restaurant:     RestaurantDetail | null
   menuByCategory: MenuByCategory
-  reviews:        ReviewWithAuthor[]
   loading:        boolean
   error:          string | null
 } {
   const { data, menuByCategory, isLoading: loading, error } = useVendeurDetail(id)
   return {
-    restaurant:     data          ?? null,
+    restaurant:     data ?? null,
     menuByCategory,
-    reviews:        data?.reviews ?? [],
     loading,
-    error:          error?.message ?? null,
+    error: error?.message ?? null,
   }
 }

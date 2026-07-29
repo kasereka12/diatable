@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { useRestaurantDetail } from '../hooks/useRestaurantDetail'
+import { useAvis, AVIS_PAGE_SIZE } from '../hooks/useAvis'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
 import { getGradient } from '../lib/gradients'
 import StarRating from '../components/ui/StarRating'
+import PaginationControls from '../components/ui/PaginationControls'
 import { getCuisineIcon } from '../lib/cuisineIcons'
 import type { MenuItem as MenuItemType, ReviewWithAuthor } from '../types/supabase'
 import {
@@ -154,11 +156,16 @@ export default function RestaurantDetail() {
   const { user } = useAuth()
   const { addItem } = useCart()
   const navigate = useNavigate()
-  const { restaurant, menuByCategory, reviews, loading } = useRestaurantDetail(id)
+  const { restaurant, menuByCategory, loading } = useRestaurantDetail(id)
   const queryClient = useQueryClient()
   const ref = useScrollReveal()
   const [activeCategory, setActiveCategory] = useState(0)
   const [lightbox, setLightbox] = useState<LightboxData | null>(null)
+  const [reviewsPage, setReviewsPage] = useState(0)
+  const { data: avisResult } = useAvis(id, reviewsPage)
+  const reviews = avisResult?.data ?? []
+  const reviewsTotal = avisResult?.count ?? 0
+  const reviewsTotalPages = Math.max(1, Math.ceil(reviewsTotal / AVIS_PAGE_SIZE))
 
   const [reviewForm, setReviewForm] = useState({ rating: 0, text: '' })
   const [reviewHover, setReviewHover] = useState(0)
@@ -271,6 +278,7 @@ export default function RestaurantDetail() {
     onSuccess: (_, { isEditing }: { isEditing: boolean }) => {
       setEditingReview(false)
       setSubmitMsg(isEditing ? t('rd.review_updated') : t('rd.review_published'))
+      setReviewsPage(0)
       invalidateAvis()
     },
     onError: (err) => setSubmitMsg(t('rd.error_prefix') + err.message),
@@ -285,6 +293,7 @@ export default function RestaurantDetail() {
       setReviewForm({ rating: 0, text: '' })
       setEditingReview(false)
       setSubmitMsg('')
+      setReviewsPage(0)
       invalidateAvis()
     },
   })
@@ -372,11 +381,11 @@ export default function RestaurantDetail() {
                   <span className="text-sm flex items-center gap-1" style={{ color: 'rgba(248,248,248,0.80)' }}>
                     <MapPin size={14} /> {restaurant.location}
                   </span>
-                  {restaurant.reviews.length > 0 ? (
+                  {reviewsTotal > 0 ? (
                     <span className="flex items-center gap-1.5 text-sm">
                       <StarRating rating={restaurant.rating ?? 0} />
                       <span className="font-semibold" style={{ color: '#f8f8f8' }}>{restaurant.rating}</span>
-                      <span style={{ color: 'rgba(248,248,248,0.60)' }}>({t('rd.reviews_count', { count: restaurant.reviews.length })})</span>
+                      <span style={{ color: 'rgba(248,248,248,0.60)' }}>({t('rd.reviews_count', { count: reviewsTotal })})</span>
                     </span>
                   ) : (
                     <span className="text-sm italic" style={{ color: 'rgba(248,248,248,0.50)' }}>{t('rd.no_reviews_yet')}</span>
@@ -509,7 +518,7 @@ export default function RestaurantDetail() {
             <div className="mt-10">
               <div className="flex items-center justify-between mb-6" data-reveal>
                 <h2 className="font-serif text-2xl font-bold" style={{ color: '#1f1f1f' }}>{t('rd.customer_reviews')}</h2>
-                {restaurant.reviews.length > 0 && (
+                {reviewsTotal > 0 && (
                   <div className="flex items-center gap-2 rounded-xl px-4 py-2 shadow-sm"
                     style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.06)' }}>
                     <Star size={18} style={{ color: '#c5611a', fill: '#c5611a' }} />
@@ -526,6 +535,7 @@ export default function RestaurantDetail() {
                       <ReviewCard review={r} />
                     </div>
                   ))}
+                  <PaginationControls page={reviewsPage} totalPages={reviewsTotalPages} onPageChange={setReviewsPage} className="mt-2" />
                 </div>
               ) : (
                 <div className="rounded-2xl p-8 text-center shadow-sm"

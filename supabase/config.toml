@@ -1,0 +1,8 @@
+# Per-function settings that must survive `supabase functions deploy`.
+# Without this, JWT verification resets to enabled on every redeploy,
+# which breaks youcanpay-webhook — it's called server-to-server by YouCan
+# Pay, which can never supply a Supabase JWT (auth is instead a shared
+# secret in the URL, see supabase/functions/youcanpay-webhook/index.ts).
+
+[functions.youcanpay-webhook]
+verify_jwt = false

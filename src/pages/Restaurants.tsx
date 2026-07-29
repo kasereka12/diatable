@@ -1,14 +1,15 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import FeaturedCarousel from '../components/FeaturedCarousel'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useScrollReveal } from '../hooks/useScrollReveal'
-import { useRestaurants } from '../hooks/useRestaurants'
+import { useRestaurantListings, PAGE_SIZE } from '../hooks/useRestaurantListings'
 import { fetchVendeurDetail } from '../hooks/useVendeurDetail'
 import { TABS } from '../data/restaurants'
 import StarRating from '../components/ui/StarRating'
 import { getCuisineIcon } from '../lib/cuisineIcons'
+import PaginationControls from '../components/ui/PaginationControls'
 import { Search, MapPin, ShieldCheck, ArrowRight, Utensils, Crown, Sparkles } from 'lucide-react'
 import { getGradient } from '../lib/gradients'
 import { getEffectivelyOpen } from '../lib/scheduleParser'
@@ -16,11 +17,12 @@ import { getEffectivelyOpen } from '../lib/scheduleParser'
 export default function Restaurants() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const { restaurants, loading } = useRestaurants()
   const [cuisine, setCuisine]   = useState('all')
   const [ville,   setVille]     = useState('')
   const [note,    setNote]      = useState(0)
   const [search,  setSearch]    = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [page, setPage] = useState(0)
   const ref = useScrollReveal()
 
   const VILLES = [
@@ -36,14 +38,28 @@ export default function Restaurants() {
     { label: '4.8+', val: 4.8 },
   ]
 
-  const filtered = useMemo(() => restaurants.filter(r => {
-    if (cuisine !== 'all' && r.cuisine !== cuisine) return false
-    if (ville !== '' && r.location !== ville) return false
-    if (note > 0 && (r.reviews === 0 || r.rating === null || r.rating < note)) return false
-    if (search && !r.name.toLowerCase().includes(search.toLowerCase()) &&
-        !r.cuisine_label.toLowerCase().includes(search.toLowerCase())) return false
-    return true
-  }), [restaurants, cuisine, ville, note, search])
+  // Debounce the free-text search so we don't fire a query on every
+  // keystroke — filtering now happens server-side (paginated), unlike the
+  // old in-memory filter which could react instantly.
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(id)
+  }, [search])
+
+  // Any filter change restarts pagination from page 1.
+  useEffect(() => { setPage(0) }, [cuisine, ville, note, debouncedSearch])
+
+  const { data, isLoading: loading, isPlaceholderData } = useRestaurantListings(
+    { cuisine, city: ville, minRating: note, search: debouncedSearch },
+    page,
+  )
+  const filtered = data?.data ?? []
+  const total = data?.count ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  function resetFilters() {
+    setCuisine('all'); setVille(''); setNote(0); setSearch('')
+  }
 
   return (
     <div className="bg-cream min-h-screen pt-24" ref={ref}>
@@ -106,7 +122,7 @@ export default function Restaurants() {
               </select>
             </div>
             {/* Reset */}
-            <button onClick={() => { setCuisine('all'); setVille(''); setNote(0); setSearch('') }}
+            <button onClick={resetFilters}
               className="self-end px-4 py-2.5 rounded-xl border border-black/10 text-muted text-sm hover:text-gold hover:border-gold transition-all">
               {t('hero.reset')}
             </button>
@@ -115,11 +131,11 @@ export default function Restaurants() {
 
         {/* Results count */}
         <p className="text-muted text-sm mb-6" data-reveal>
-          <span className="text-dark font-semibold">{filtered.length}</span>{' '}
-          {filtered.length === 1 ? t('restaurants_page.results_one') : t('restaurants_page.results_other')}
+          <span className="text-dark font-semibold">{total}</span>{' '}
+          {total === 1 ? t('restaurants_page.results_one') : t('restaurants_page.results_other')}
         </p>
 
-        {loading ? (
+        {loading && !isPlaceholderData ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="bg-white rounded-2xl overflow-hidden border border-black/5 animate-pulse">
@@ -218,6 +234,11 @@ export default function Restaurants() {
               )
             })}
           </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && (
+          <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} className="mt-10" />
         )}
       </div>
     </div>

@@ -19,6 +19,8 @@ function timeAgo(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
+const CONV_PAGE_SIZE = 30
+
 export default function MessagingPanel({ heightClass = 'h-[calc(100vh-240px)] min-h-[500px]' }: { heightClass?: string }) {
   const { user, profile } = useAuth()
   const { fetchUnreadCount } = useMessages()
@@ -26,6 +28,8 @@ export default function MessagingPanel({ heightClass = 'h-[calc(100vh-240px)] mi
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [conversations, setConversations] = useState<any[]>([])
+  const [conversationsHasMore, setConversationsHasMore] = useState(false)
+  const [loadingMoreConvs, setLoadingMoreConvs] = useState(false)
   const [activeConv, setActiveConv] = useState<any | null>(null)
   const [messages, setMessages] = useState<any[]>([])
   const [newMessage, setNewMessage] = useState('')
@@ -34,6 +38,28 @@ export default function MessagingPanel({ heightClass = 'h-[calc(100vh-240px)] mi
   const [search, setSearch] = useState('')
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+
+  const CONV_SELECT = `
+          *,
+          restaurant:restaurants(name, cuisine_label, flag),
+          customer:profiles!conversations_customer_id_fkey(full_name),
+          vendor:profiles!conversations_vendor_id_fkey(full_name)
+        `
+
+  async function loadMoreConversations() {
+    if (!user) return
+    setLoadingMoreConvs(true)
+    const { data } = await supabase
+      .from('conversations')
+      .select(CONV_SELECT)
+      .or(`customer_id.eq.${user.id},vendor_id.eq.${user.id}`)
+      .order('last_message_at', { ascending: false })
+      .range(conversations.length, conversations.length + CONV_PAGE_SIZE - 1)
+    const more = (data || []) as any[]
+    setConversations(prev => [...prev, ...more])
+    setConversationsHasMore(more.length === CONV_PAGE_SIZE)
+    setLoadingMoreConvs(false)
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -47,17 +73,14 @@ export default function MessagingPanel({ heightClass = 'h-[calc(100vh-240px)] mi
       if (conversations.length === 0) setLoading(true)
       const { data } = await supabase
         .from('conversations')
-        .select(`
-          *,
-          restaurant:restaurants(name, cuisine_label, flag),
-          customer:profiles!conversations_customer_id_fkey(full_name),
-          vendor:profiles!conversations_vendor_id_fkey(full_name)
-        `)
+        .select(CONV_SELECT)
         .or(`customer_id.eq.${user!.id},vendor_id.eq.${user!.id}`)
         .order('last_message_at', { ascending: false })
+        .range(0, CONV_PAGE_SIZE - 1)
 
       const convs = (data || []) as any[]
       setConversations(convs)
+      setConversationsHasMore(convs.length === CONV_PAGE_SIZE)
 
       // Fetch unread message counts per conversation
       if (convs.length > 0) {
@@ -289,6 +312,14 @@ export default function MessagingPanel({ heightClass = 'h-[calc(100vh-240px)] mi
                   </button>
                 )
               })
+            )}
+            {!loading && !search && conversationsHasMore && (
+              <div className="text-center py-3">
+                <button onClick={loadMoreConversations} disabled={loadingMoreConvs}
+                  className="text-xs font-semibold text-gold hover:underline disabled:opacity-50">
+                  {loadingMoreConvs ? 'Chargement...' : 'Charger plus'}
+                </button>
+              </div>
             )}
           </div>
         </div>
