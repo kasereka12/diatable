@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import {
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import AssignDriverModal from '../AssignDriverModal'
+import PaginationControls from '../ui/PaginationControls'
 
 interface OrderItem { id: string; quantity: number; name: string; price: number }
 interface OrderCustomer { full_name: string | null; email: string | null }
@@ -51,30 +52,58 @@ const NEXT_LABEL: Record<string, string> = {
   ready:     'Marquer comme livrée',
 }
 
+const PAST_ORDERS_PAGE_SIZE = 15
+const ORDER_SELECT = '*, order_items(*), customer:profiles!orders_customer_id_fkey(full_name, email)'
+
 export default function VendorOrders({ restaurantId }: { restaurantId: string }) {
-  const [orders, setOrders] = useState<Order[]>([])
+  // Active orders need to always be fully visible (a restaurant can't afford
+  // to have an in-progress order hidden behind pagination), so that list
+  // stays unbounded — it's naturally small since it only holds live orders.
+  // Past orders accumulate forever, so only that tab is paginated.
+  const [activeOrders, setActiveOrders] = useState<Order[]>([])
+  const [pastOrders, setPastOrders] = useState<Order[]>([])
+  const [pastTotal, setPastTotal] = useState(0)
+  const [pastPage, setPastPage] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [pastLoading, setPastLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('active')
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
   const [assignModal, setAssignModal] = useState<string | null>(null) // order id
 
+  const loadActive = useCallback(async () => {
+    if (!restaurantId) return
+    setLoading(true)
+    const { data } = await supabase
+      .from('orders')
+      .select(ORDER_SELECT)
+      .eq('restaurant_id', restaurantId)
+      .not('status', 'in', '(delivered,cancelled)')
+      .order('created_at', { ascending: false })
+    setActiveOrders((data || []) as unknown as Order[])
+    setLoading(false)
+  }, [restaurantId])
+
+  const loadPast = useCallback(async () => {
+    if (!restaurantId) return
+    setPastLoading(true)
+    const from = pastPage * PAST_ORDERS_PAGE_SIZE
+    const to = from + PAST_ORDERS_PAGE_SIZE - 1
+    const { data, count } = await supabase
+      .from('orders')
+      .select(ORDER_SELECT, { count: 'exact' })
+      .eq('restaurant_id', restaurantId)
+      .in('status', ['delivered', 'cancelled'])
+      .order('created_at', { ascending: false })
+      .range(from, to)
+    setPastOrders((data || []) as unknown as Order[])
+    setPastTotal(count ?? 0)
+    setPastLoading(false)
+  }, [restaurantId, pastPage])
+
   useEffect(() => {
     if (!restaurantId) { setLoading(false); return }
+    loadActive()
 
-    async function load() {
-      setLoading(true)
-      const { data } = await supabase
-        .from('orders')
-        .select('*, order_items(*), customer:profiles!orders_customer_id_fkey(full_name, email)')
-        .eq('restaurant_id', restaurantId)
-        .order('created_at', { ascending: false })
-
-      setOrders((data || []) as Order[])
-      setLoading(false)
-    }
-    load()
-
-    // Realtime for new orders
     const channel = supabase
       .channel('vendor-orders-' + restaurantId)
       .on(
@@ -85,20 +114,31 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
           table: 'orders',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        () => load()
+        () => { loadActive(); loadPast() }
       )
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [restaurantId])
+  }, [restaurantId, loadActive, loadPast])
+
+  useEffect(() => {
+    if (activeTab === 'past') loadPast()
+  }, [activeTab, loadPast])
+
+  const pastTotalPages = Math.max(1, Math.ceil(pastTotal / PAST_ORDERS_PAGE_SIZE))
 
   async function updateStatus(orderId: string, newStatus: string) {
     await (supabase.from('orders') as any).update({ status: newStatus }).eq('id', orderId)
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
+    if (['delivered', 'cancelled'].includes(newStatus)) {
+      setActiveOrders(prev => prev.filter(o => o.id !== orderId))
+      if (activeTab === 'past') loadPast()
+    } else {
+      setActiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
+    }
   }
 
   function handleDriverAssigned(orderId: string, driverId: string, driverName: string) {
-    setOrders(prev => prev.map(o =>
+    setActiveOrders(prev => prev.map(o =>
       o.id === orderId ? { ...o, driver_id: driverId || null, driver_name: driverName || null } : o
     ))
   }
@@ -107,9 +147,8 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
     await updateStatus(orderId, 'cancelled')
   }
 
-  const activeOrders = orders.filter(o => !['delivered', 'cancelled'].includes(o.status))
-  const pastOrders = orders.filter(o => ['delivered', 'cancelled'].includes(o.status))
   const displayedOrders = activeTab === 'active' ? activeOrders : pastOrders
+  const displayedLoading = activeTab === 'active' ? loading : pastLoading
 
   return (
     <div className="space-y-6">
@@ -142,11 +181,11 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
             activeTab === 'past' ? 'bg-yellow-400 text-gray-900' : 'text-gray-500 hover:text-dark'
           }`}
         >
-          Historique ({pastOrders.length})
+          Historique ({pastTotal})
         </button>
       </div>
 
-      {loading ? (
+      {displayedLoading ? (
         <div className="text-center py-12 text-gray-400">Chargement...</div>
       ) : displayedOrders.length === 0 ? (
         <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-light">
@@ -299,12 +338,16 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
         </div>
       )}
 
+      {activeTab === 'past' && !pastLoading && (
+        <PaginationControls page={pastPage} totalPages={pastTotalPages} onPageChange={setPastPage} />
+      )}
+
       {/* Modal assignation livreur */}
       {assignModal && (
         <AssignDriverModal
           orderId={assignModal}
           restaurantId={restaurantId}
-          currentDriverId={orders.find(o => o.id === assignModal)?.driver_id}
+          currentDriverId={activeOrders.find(o => o.id === assignModal)?.driver_id}
           onClose={() => setAssignModal(null)}
           onAssigned={(driverId, driverName) => handleDriverAssigned(assignModal, driverId, driverName)}
         />

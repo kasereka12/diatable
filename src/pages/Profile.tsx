@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
@@ -9,10 +9,13 @@ import { getCuisineIcon } from '../lib/cuisineIcons'
 import { getGradient } from '../lib/gradients'
 import { editProfileSchema, changePasswordSchema, flattenErrors } from '../lib/schemas'
 import { FormInput } from '../components/ui/FormInput'
+import PaginationControls from '../components/ui/PaginationControls'
 import {
   Package, Heart, Settings, MapPin, Check, ChefHat, Utensils,
   MessageCircle, Clock, ArrowRight, ShoppingBag, X
 } from 'lucide-react'
+
+const FAVORITES_PAGE_SIZE = 9
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-600',
@@ -66,18 +69,28 @@ export default function Profile() {
     enabled: !!user,
   })
 
-  const { data: favorites = [], isLoading: loadingFavorites } = useQuery({
-    queryKey: ['profile', 'favorites', user?.id],
+  const [favoritesPage, setFavoritesPage] = useState(0)
+  const { data: favoritesResult, isLoading: loadingFavorites } = useQuery({
+    queryKey: ['profile', 'favorites', user?.id, favoritesPage],
     queryFn: async () => {
-      const { data } = await supabase
+      const from = favoritesPage * FAVORITES_PAGE_SIZE
+      const to = from + FAVORITES_PAGE_SIZE - 1
+      const { data, count } = await supabase
         .from('restaurant_likes')
-        .select('*, restaurant:restaurants(id, name, cuisine, cuisine_label, flag, gradient, location, image_url)')
+        .select('*, restaurant:restaurants(id, name, cuisine, cuisine_label, flag, gradient, location, image_url)', { count: 'exact' })
         .eq('user_id', user!.id)
         .order('created_at', { ascending: false })
-      return ((data || []) as any[]).map((l: any) => l.restaurant).filter(Boolean)
+        .range(from, to)
+      return {
+        data: ((data || []) as any[]).map((l: any) => l.restaurant).filter(Boolean),
+        count: count ?? 0,
+      }
     },
     enabled: !!user,
+    placeholderData: keepPreviousData,
   })
+  const favorites = favoritesResult?.data ?? []
+  const favoritesTotalPages = Math.max(1, Math.ceil((favoritesResult?.count ?? 0) / FAVORITES_PAGE_SIZE))
 
   async function handleSignOut() {
     await signOut()
@@ -240,6 +253,10 @@ export default function Profile() {
                   )
                 })}
               </div>
+            )}
+
+            {!loadingFavorites && (
+              <PaginationControls page={favoritesPage} totalPages={favoritesTotalPages} onPageChange={setFavoritesPage} className="mt-8" />
             )}
           </div>
         )}

@@ -7,10 +7,13 @@ import {
   ShieldCheck, AlertCircle, RefreshCw, Menu, X, ChevronLeft,
   Phone, MessageCircle, Instagram, Clock, MapPin, Utensils, Eye, ChevronRight,
   Package, Star, TrendingUp, Ban, UserCheck, Mail, Calendar, ArrowLeft,
-  BarChart2, ShoppingBag, Heart, Crown, Sparkles, Zap, CreditCard, Monitor, Bike, FileText, Truck, Save
+  BarChart2, ShoppingBag, Heart, Crown, Sparkles, Zap, CreditCard, Monitor, Bike, FileText, Truck, Save,
+  Wallet, Banknote, Download, ArrowUpRight
 } from 'lucide-react'
+import ExcelJS from 'exceljs'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import PaginationControls from '../components/ui/PaginationControls'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -552,31 +555,53 @@ function UserDetailPanel({ user: u, onClose }: { user: any; onClose: () => void 
   )
 }
 
+const USERS_PAGE_SIZE = 20
+
 function SectionUsers() {
   const { user: currentUser } = useAuth()
   const [users, setUsers] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('tous')
+  const [page, setPage] = useState(0)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [selectedUser, setSelectedUser] = useState<any | null>(null)
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(id)
+  }, [search])
+
+  useEffect(() => { setPage(0) }, [roleFilter, debouncedSearch])
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: err } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
+      const from = page * USERS_PAGE_SIZE
+      const to = from + USERS_PAGE_SIZE - 1
+      let query = supabase.from('profiles').select('*', { count: 'exact' })
+      if (roleFilter !== 'tous') query = query.eq('role', roleFilter)
+      if (debouncedSearch) {
+        const term = `%${debouncedSearch.replace(/[%_]/g, '')}%`
+        query = query.or(`full_name.ilike.${term},email.ilike.${term}`)
+      }
+      const { data, error: err, count } = await query.order('created_at', { ascending: false }).range(from, to)
       if (err) throw err
       setUsers(data || [])
+      setTotal(count ?? 0)
     } catch (err) {
       setError((err as Error).message || 'Erreur lors du chargement')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, roleFilter, debouncedSearch])
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
+  const totalPages = Math.max(1, Math.ceil(total / USERS_PAGE_SIZE))
 
   const updateRole = async (userId: string, role: string) => {
     setUpdatingId(userId)
@@ -636,13 +661,6 @@ function SectionUsers() {
     { key: 'admin', label: 'Admins' },
   ]
 
-  const filtered = users.filter((u) => {
-    const matchRole = roleFilter === 'tous' || u.role === roleFilter
-    const q = search.toLowerCase()
-    const matchSearch = !q || (u.full_name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)
-    return matchRole && matchSearch
-  })
-
   return (
     <div>
       <h2 className="font-serif text-2xl font-bold text-dark mb-6">Utilisateurs</h2>
@@ -675,7 +693,7 @@ function SectionUsers() {
       </div>
 
       {error && <ErrorMsg msg={error} />}
-      {loading ? <SkeletonTable rows={7} cols={5} /> : filtered.length === 0 ? (
+      {loading ? <SkeletonTable rows={7} cols={5} /> : users.length === 0 ? (
         <EmptyState text="Aucun utilisateur trouvé" />
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-black/[0.05] shadow-sm">
@@ -690,7 +708,7 @@ function SectionUsers() {
               </tr>
             </thead>
             <tbody className="divide-y divide-black/[0.05]">
-              {filtered.map((u) => (
+              {users.map((u) => (
                 <tr key={u.id} className="bg-white hover:bg-cream/50 transition-colors">
                   <td className="px-4 py-3 text-dark">
                     <div className="flex items-center gap-3">
@@ -791,6 +809,8 @@ function SectionUsers() {
           </table>
         </div>
       )}
+
+      {!loading && <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} className="mt-5" />}
 
       {selectedUser && <UserDetailPanel user={selectedUser} onClose={() => setSelectedUser(null)} />}
     </div>
@@ -1028,32 +1048,53 @@ function RestaurantDetailPanel({ r, onClose, onUpdate }: { r: any; onClose: () =
 
 // ─── Section 3: Restaurants ────────────────────────────────────────────────────
 
+const RESTAURANTS_PAGE_SIZE = 20
+
 function SectionRestaurants() {
   const [restaurants, setRestaurants] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('tous')
+  const [page, setPage] = useState(0)
   const [selectedRestaurant, setSelectedRestaurant] = useState<any | null>(null)
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(id)
+  }, [search])
+
+  useEffect(() => { setPage(0) }, [statusFilter, debouncedSearch])
 
   const fetchRestaurants = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: err } = await supabase
-        .from('restaurants')
-        .select('*, profiles(full_name, email)')
-        .order('created_at', { ascending: false })
+      const from = page * RESTAURANTS_PAGE_SIZE
+      const to = from + RESTAURANTS_PAGE_SIZE - 1
+      let query = supabase.from('restaurants').select('*, profiles(full_name, email)', { count: 'exact' })
+      if (statusFilter === 'pending') query = query.eq('is_verified', false)
+      else if (statusFilter === 'verified') query = query.eq('is_verified', true)
+      else if (statusFilter === 'inactive') query = query.eq('is_active', false)
+      if (debouncedSearch) {
+        const term = `%${debouncedSearch.replace(/[%_]/g, '')}%`
+        query = query.or(`name.ilike.${term},location.ilike.${term}`)
+      }
+      const { data, error: err, count } = await query.order('created_at', { ascending: false }).range(from, to)
       if (err) throw err
       setRestaurants(data || [])
+      setTotal(count ?? 0)
     } catch (err) {
       setError((err as Error).message || 'Erreur lors du chargement')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, statusFilter, debouncedSearch])
 
   useEffect(() => { fetchRestaurants() }, [fetchRestaurants])
+  const totalPages = Math.max(1, Math.ceil(total / RESTAURANTS_PAGE_SIZE))
 
   const statusFilters = [
     { key: 'tous', label: 'Tous' },
@@ -1061,16 +1102,6 @@ function SectionRestaurants() {
     { key: 'verified', label: 'Vérifiés' },
     { key: 'inactive', label: 'Inactifs' },
   ]
-
-  const filtered = restaurants.filter((r) => {
-    let matchStatus = true
-    if (statusFilter === 'pending') matchStatus = !r.is_verified
-    else if (statusFilter === 'verified') matchStatus = r.is_verified === true
-    else if (statusFilter === 'inactive') matchStatus = r.is_active === false
-    const q = search.toLowerCase()
-    const matchSearch = !q || (r.name || '').toLowerCase().includes(q) || (r.location || '').toLowerCase().includes(q)
-    return matchStatus && matchSearch
-  })
 
   return (
     <div>
@@ -1104,11 +1135,11 @@ function SectionRestaurants() {
       </div>
 
       {error && <ErrorMsg msg={error} />}
-      {loading ? <SkeletonRestaurantList /> : filtered.length === 0 ? (
+      {loading ? <SkeletonRestaurantList /> : restaurants.length === 0 ? (
         <EmptyState text="Aucun restaurant trouvé" />
       ) : (
         <div className="space-y-2">
-          {filtered.map((r) => (
+          {restaurants.map((r) => (
             <div
               key={r.id}
               onClick={() => setSelectedRestaurant(r)}
@@ -1141,6 +1172,8 @@ function SectionRestaurants() {
           ))}
         </div>
       )}
+
+      {!loading && <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} className="mt-5" />}
 
       {selectedRestaurant && (
         <RestaurantDetailPanel
@@ -1182,32 +1215,54 @@ function CompletionRing({ restaurant: r }: { restaurant: any }) {
 
 // ─── Section 4: Commandes ──────────────────────────────────────────────────────
 
+const ORDERS_PAGE_SIZE = 20
+
 function SectionOrders() {
   const [orders, setOrders] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('tous')
+  const [page, setPage] = useState(0)
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(id)
+  }, [search])
+
+  useEffect(() => { setPage(0) }, [statusFilter, debouncedSearch])
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: err } = await supabase
+      const from = page * ORDERS_PAGE_SIZE
+      const to = from + ORDERS_PAGE_SIZE - 1
+      // Search spans embedded tables (restaurant name / customer name+email), so both
+      // relations must be !inner for the dotted-path or() filter below to apply.
+      let query = supabase
         .from('orders')
-        .select('*, restaurant:restaurants(name, flag), customer:profiles!orders_customer_id_fkey(full_name, email)')
-        .order('created_at', { ascending: false })
-        .limit(100)
+        .select('*, restaurant:restaurants!inner(name, flag), customer:profiles!orders_customer_id_fkey!inner(full_name, email)', { count: 'exact' })
+      if (statusFilter !== 'tous') query = query.eq('status', statusFilter)
+      if (debouncedSearch) {
+        const term = `%${debouncedSearch.replace(/[%_]/g, '')}%`
+        query = query.or(`restaurant.name.ilike.${term},customer.full_name.ilike.${term},customer.email.ilike.${term}`)
+      }
+      const { data, error: err, count } = await query.order('created_at', { ascending: false }).range(from, to)
       if (err) throw err
       setOrders(data || [])
+      setTotal(count ?? 0)
     } catch (err) {
       setError((err as Error).message || 'Erreur lors du chargement')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, statusFilter, debouncedSearch])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
+  const totalPages = Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE))
 
   const updateStatus = async (orderId: string, status: string) => {
     await (supabase.from('orders') as any).update({ status }).eq('id', orderId)
@@ -1234,16 +1289,6 @@ function SectionOrders() {
     }
     return map[status] || 'bg-gray-100 text-gray-600'
   }
-
-  const filtered = orders.filter((o) => {
-    const matchStatus = statusFilter === 'tous' || o.status === statusFilter
-    const q = search.toLowerCase()
-    const matchSearch = !q ||
-      (o.restaurant?.name || '').toLowerCase().includes(q) ||
-      (o.customer?.full_name || '').toLowerCase().includes(q) ||
-      (o.customer?.email || '').toLowerCase().includes(q)
-    return matchStatus && matchSearch
-  })
 
   return (
     <div>
@@ -1277,7 +1322,7 @@ function SectionOrders() {
       </div>
 
       {error && <ErrorMsg msg={error} />}
-      {loading ? <SkeletonTable rows={7} cols={6} /> : filtered.length === 0 ? (
+      {loading ? <SkeletonTable rows={7} cols={6} /> : orders.length === 0 ? (
         <EmptyState text="Aucune commande trouvée" />
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-black/[0.05] shadow-sm">
@@ -1293,7 +1338,7 @@ function SectionOrders() {
               </tr>
             </thead>
             <tbody className="divide-y divide-black/[0.05]">
-              {filtered.map((o) => (
+              {orders.map((o) => (
                 <tr key={o.id} className="bg-white hover:bg-cream/50 transition-colors">
                   <td className="px-4 py-3 text-dark font-medium">{o.restaurant?.flag} {o.restaurant?.name || '—'}</td>
                   <td className="px-4 py-3 text-muted">{o.customer?.full_name || o.customer?.email || '—'}</td>
@@ -1322,36 +1367,46 @@ function SectionOrders() {
           </table>
         </div>
       )}
+
+      {!loading && <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} className="mt-5" />}
     </div>
   )
 }
 
 // ─── Section 5: Avis ──────────────────────────────────────────────────────────
 
+const REVIEWS_PAGE_SIZE = 20
+
 function SectionReviews() {
   const [reviews, setReviews] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
 
   const fetchReviews = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: err } = await supabase
+      const from = page * REVIEWS_PAGE_SIZE
+      const to = from + REVIEWS_PAGE_SIZE - 1
+      const { data, error: err, count } = await supabase
         .from('reviews')
-        .select('*, restaurant:restaurants(name, flag), user:profiles!reviews_user_id_fkey(full_name, email)')
+        .select('*, restaurant:restaurants(name, flag), user:profiles!reviews_user_id_fkey(full_name, email)', { count: 'exact' })
         .order('created_at', { ascending: false })
-        .limit(50)
+        .range(from, to)
       if (err) throw err
       setReviews(data || [])
+      setTotal(count ?? 0)
     } catch (err) {
       setError((err as Error).message || 'Erreur lors du chargement')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page])
 
   useEffect(() => { fetchReviews() }, [fetchReviews])
+  const totalPages = Math.max(1, Math.ceil(total / REVIEWS_PAGE_SIZE))
 
   const deleteReview = async (id: string) => {
     if (!window.confirm('Supprimer cet avis ?')) return
@@ -1405,6 +1460,8 @@ function SectionReviews() {
           ))}
         </div>
       )}
+
+      {!loading && <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} className="mt-5" />}
     </div>
   )
 }
@@ -1417,10 +1474,14 @@ const DISH_FORM_INIT = {
   sort_order: 0, is_active: true,
 }
 
+const DISHES_PAGE_SIZE = 20
+
 function SectionGallery() {
   const [dishes, setDishes] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editingDish, setEditingDish] = useState<any | null>(null)
   const [form, setForm] = useState(DISH_FORM_INIT)
@@ -1430,17 +1491,21 @@ function SectionGallery() {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: err } = await supabase.from('dishes').select('*').order('sort_order')
+      const from = page * DISHES_PAGE_SIZE
+      const to = from + DISHES_PAGE_SIZE - 1
+      const { data, error: err, count } = await supabase.from('dishes').select('*', { count: 'exact' }).order('sort_order').range(from, to)
       if (err) throw err
       setDishes(data || [])
+      setTotal(count ?? 0)
     } catch (err) {
       setError((err as Error).message || 'Erreur lors du chargement')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page])
 
   useEffect(() => { fetchDishes() }, [fetchDishes])
+  const totalPages = Math.max(1, Math.ceil(total / DISHES_PAGE_SIZE))
 
   const openAdd = () => { setEditingDish(null); setForm(DISH_FORM_INIT); setShowForm(true) }
   const openEdit = (dish: any) => {
@@ -1615,6 +1680,8 @@ function SectionGallery() {
           </table>
         </div>
       )}
+
+      {!loading && <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} className="mt-5" />}
     </div>
   )
 }
@@ -1626,10 +1693,14 @@ const TEAM_FORM_INIT = {
   bio: '', avatar_bg: '', sort_order: 0, is_active: true,
 }
 
+const TEAM_PAGE_SIZE = 18
+
 function SectionTeam() {
   const [members, setMembers] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editingMember, setEditingMember] = useState<any | null>(null)
   const [form, setForm] = useState(TEAM_FORM_INIT)
@@ -1639,17 +1710,21 @@ function SectionTeam() {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: err } = await supabase.from('team').select('*').order('sort_order')
+      const from = page * TEAM_PAGE_SIZE
+      const to = from + TEAM_PAGE_SIZE - 1
+      const { data, error: err, count } = await supabase.from('team').select('*', { count: 'exact' }).order('sort_order').range(from, to)
       if (err) throw err
       setMembers(data || [])
+      setTotal(count ?? 0)
     } catch (err) {
       setError((err as Error).message || 'Erreur lors du chargement')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page])
 
   useEffect(() => { fetchMembers() }, [fetchMembers])
+  const totalPages = Math.max(1, Math.ceil(total / TEAM_PAGE_SIZE))
 
   const openAdd = () => { setEditingMember(null); setForm(TEAM_FORM_INIT); setShowForm(true) }
   const openEdit = (m: any) => {
@@ -1788,6 +1863,8 @@ function SectionTeam() {
           ))}
         </div>
       )}
+
+      {!loading && <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} className="mt-5" />}
     </div>
   )
 }
@@ -1797,8 +1874,16 @@ function SectionTeam() {
 // Payments are now confirmed automatically by youcanpay-webhook — this
 // section is read-only history for support/audit purposes, no more manual
 // approve/reject.
+const SUBSCRIPTIONS_PAGE_SIZE = 20
+
 function SectionSubscriptions() {
-  const [payments, setPayments] = useState<any[]>([])
+  // "En attente" stays a single unbounded query (bounded in practice — only
+  // currently in-flight payments); "Historique" grows without bound over
+  // time, so only that list is paginated.
+  const [pending, setPending] = useState<any[]>([])
+  const [reviewed, setReviewed] = useState<any[]>([])
+  const [reviewedTotal, setReviewedTotal] = useState(0)
+  const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -1806,23 +1891,27 @@ function SectionSubscriptions() {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: err } = await supabase
-        .from('subscription_payments')
-        .select('*, profiles:vendor_id(full_name, email, restaurants(name))')
-        .order('created_at', { ascending: false })
-      if (err) throw err
-      setPayments(data || [])
+      const from = page * SUBSCRIPTIONS_PAGE_SIZE
+      const to = from + SUBSCRIPTIONS_PAGE_SIZE - 1
+      const select = '*, profiles:vendor_id(full_name, email, restaurants(name))'
+      const [pendingRes, reviewedRes] = await Promise.all([
+        supabase.from('subscription_payments').select(select).eq('status', 'pending').order('created_at', { ascending: false }),
+        supabase.from('subscription_payments').select(select, { count: 'exact' }).neq('status', 'pending').order('created_at', { ascending: false }).range(from, to),
+      ])
+      if (pendingRes.error) throw pendingRes.error
+      if (reviewedRes.error) throw reviewedRes.error
+      setPending(pendingRes.data || [])
+      setReviewed(reviewedRes.data || [])
+      setReviewedTotal(reviewedRes.count ?? 0)
     } catch (e) {
       setError((e as Error).message || 'Erreur de chargement')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page])
 
   useEffect(() => { load() }, [load])
-
-  const pending  = payments.filter(p => p.status === 'pending')
-  const reviewed = payments.filter(p => p.status !== 'pending')
+  const totalPages = Math.max(1, Math.ceil(reviewedTotal / SUBSCRIPTIONS_PAGE_SIZE))
 
   function planBadge(plan: string) {
     const conf: Record<string, { bg: string; color: string; label: string; Icon: React.ElementType }> = {
@@ -1876,7 +1965,7 @@ function SectionSubscriptions() {
             </div>
           ))}
         </div>
-      ) : payments.length === 0 ? (
+      ) : pending.length === 0 && reviewed.length === 0 ? (
         <div className="rounded-xl p-10 text-center bg-white border border-black/[0.06]">
           <Crown size={36} className="mx-auto mb-2 text-gray-200" />
           <p className="text-sm text-muted">Aucun paiement pour le moment</p>
@@ -1949,6 +2038,7 @@ function SectionSubscriptions() {
                   )
                 })}
               </div>
+              <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} className="mt-5" />
             </section>
           )}
         </>
@@ -1959,29 +2049,431 @@ function SectionSubscriptions() {
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────────
 
+// ─── Section Portefeuilles / Retraits ─────────────────────────────────────────
+
+function downloadWorkbook(wb: ExcelJS.Workbook, filename: string) {
+  wb.xlsx.writeBuffer().then(buf => {
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  })
+}
+
+function styleHeader(ws: ExcelJS.Worksheet) {
+  const row = ws.getRow(1)
+  row.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+  row.eachCell(cell => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC5611A' } }
+    cell.alignment = { vertical: 'middle' }
+  })
+  row.height = 20
+}
+
+const WITHDRAWAL_STATUS: Record<string, { label: string; cls: string }> = {
+  pending:  { label: 'En attente', cls: 'bg-amber-50 text-amber-600 border-amber-200' },
+  approved: { label: 'Approuvé',   cls: 'bg-blue-50 text-blue-600 border-blue-200' },
+  paid:     { label: 'Payé',       cls: 'bg-green-50 text-green-600 border-green-200' },
+  rejected: { label: 'Rejeté',     cls: 'bg-red-50 text-red-600 border-red-200' },
+}
+
+function SectionWallets() {
+  const [wallets, setWallets] = useState<any[]>([])
+  const [profiles, setProfiles] = useState<Record<string, any>>({})
+  const [withdrawals, setWithdrawals] = useState<any[]>([])
+  const [txns, setTxns] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [acting, setActing] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const [wRes, wdRes, txRes] = await Promise.all([
+        (supabase.from('restaurant_wallets') as any).select('*'),
+        (supabase.from('withdrawals') as any).select('*').order('created_at', { ascending: false }),
+        (supabase.from('wallet_transactions') as any).select('*').order('created_at', { ascending: false }),
+      ])
+      if (wRes.error) throw wRes.error
+      if (wdRes.error) throw wdRes.error
+      if (txRes.error) throw txRes.error
+      const walletRows = (wRes.data as any[]) || []
+      const wdRows = (wdRes.data as any[]) || []
+      setWallets(walletRows)
+      setWithdrawals(wdRows)
+      setTxns((txRes.data as any[]) || [])
+
+      const ids = Array.from(new Set([
+        ...walletRows.map(w => w.owner_id).filter(Boolean),
+        ...wdRows.map(w => w.vendor_id).filter(Boolean),
+      ]))
+      if (ids.length > 0) {
+        const { data: profData } = await (supabase.from('profiles') as any)
+          .select('id, full_name, email, rib, bank_name, account_name')
+          .in('id', ids)
+        const map: Record<string, any> = {}
+        ;(profData as any[] || []).forEach(p => { map[p.id] = p })
+        setProfiles(map)
+      }
+    } catch (e) {
+      setError((e as Error).message || 'Erreur de chargement')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function updateWithdrawal(id: string, status: string, note?: string) {
+    setActing(id)
+    const patch: any = { status }
+    if (note !== undefined) patch.admin_note = note
+    const { error: err } = await (supabase.from('withdrawals') as any).update(patch).eq('id', id)
+    if (err) setError(err.message)
+    else await load()
+    setActing(null)
+  }
+
+  const walletById = (id: string) => wallets.find(w => w.restaurant_id === id)
+  const restaurantName = (id: string) => walletById(id)?.restaurant_name || '—'
+  const money = (n: any) => Number(n || 0).toFixed(2)
+
+  const pending = withdrawals.filter(w => w.status === 'pending' || w.status === 'approved')
+  const activeWallets = wallets
+    .filter(w => Number(w.total_credited) > 0 || Number(w.total_withdrawn) > 0 || Number(w.pending_withdrawals) > 0)
+    .sort((a, b) => Number(b.available_balance) - Number(a.available_balance))
+
+  const totals = wallets.reduce((acc, w) => ({
+    credited: acc.credited + Number(w.total_credited || 0),
+    withdrawn: acc.withdrawn + Number(w.total_withdrawn || 0),
+    pending: acc.pending + Number(w.pending_withdrawals || 0),
+    available: acc.available + Number(w.available_balance || 0),
+  }), { credited: 0, withdrawn: 0, pending: 0, available: 0 })
+
+  const today = new Date().toISOString().slice(0, 10)
+
+  // Export 1 : résumé par restaurant + retraits à virer.
+  async function exportResume() {
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Résumé restaurants')
+    ws.columns = [
+      { header: 'Restaurant', key: 'name', width: 28 },
+      { header: 'Titulaire', key: 'holder', width: 24 },
+      { header: 'Banque', key: 'bank', width: 20 },
+      { header: 'RIB / IBAN', key: 'rib', width: 32 },
+      { header: 'Total crédité (MAD)', key: 'credited', width: 18 },
+      { header: 'Total retiré (MAD)', key: 'withdrawn', width: 18 },
+      { header: 'En attente (MAD)', key: 'pending', width: 16 },
+      { header: 'Solde disponible (MAD)', key: 'available', width: 20 },
+    ]
+    activeWallets.forEach(w => {
+      const p = profiles[w.owner_id] || {}
+      ws.addRow({
+        name: w.restaurant_name || '—',
+        holder: p.account_name || p.full_name || '—',
+        bank: p.bank_name || '—',
+        rib: p.rib || '—',
+        credited: Number(w.total_credited || 0),
+        withdrawn: Number(w.total_withdrawn || 0),
+        pending: Number(w.pending_withdrawals || 0),
+        available: Number(w.available_balance || 0),
+      })
+    })
+    styleHeader(ws)
+
+    const ws2 = wb.addWorksheet('Retraits à virer')
+    ws2.columns = [
+      { header: 'Restaurant', key: 'name', width: 28 },
+      { header: 'Titulaire', key: 'holder', width: 24 },
+      { header: 'Banque', key: 'bank', width: 20 },
+      { header: 'RIB / IBAN', key: 'rib', width: 32 },
+      { header: 'Montant (MAD)', key: 'amount', width: 16 },
+      { header: 'Statut', key: 'status', width: 14 },
+      { header: 'Demandé le', key: 'requested', width: 16 },
+    ]
+    pending.forEach(w => {
+      ws2.addRow({
+        name: restaurantName(w.restaurant_id),
+        holder: w.account_name || '—',
+        bank: w.bank_name || '—',
+        rib: w.rib || '—',
+        amount: Number(w.amount || 0),
+        status: WITHDRAWAL_STATUS[w.status]?.label || w.status,
+        requested: formatDate(w.created_at),
+      })
+    })
+    styleHeader(ws2)
+    downloadWorkbook(wb, `diatable_resume_soldes_${today}.xlsx`)
+  }
+
+  // Export 2 : détail complet (toutes les transactions + tous les retraits).
+  async function exportDetail() {
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Transactions')
+    ws.columns = [
+      { header: 'Date', key: 'date', width: 16 },
+      { header: 'Restaurant', key: 'name', width: 28 },
+      { header: 'Description', key: 'desc', width: 36 },
+      { header: 'Sous-total (MAD)', key: 'gross', width: 16 },
+      { header: 'Commission (MAD)', key: 'commission', width: 16 },
+      { header: 'Commission (%)', key: 'pct', width: 14 },
+      { header: 'Crédité net (MAD)', key: 'amount', width: 16 },
+    ]
+    txns.forEach(tx => {
+      ws.addRow({
+        date: formatDate(tx.created_at),
+        name: restaurantName(tx.restaurant_id),
+        desc: tx.description || '—',
+        gross: tx.gross_amount != null ? Number(tx.gross_amount) : null,
+        commission: tx.commission_amount != null ? Number(tx.commission_amount) : null,
+        pct: tx.commission_pct != null ? Number(tx.commission_pct) : null,
+        amount: Number(tx.amount || 0),
+      })
+    })
+    styleHeader(ws)
+
+    const ws2 = wb.addWorksheet('Retraits')
+    ws2.columns = [
+      { header: 'Date demande', key: 'date', width: 16 },
+      { header: 'Restaurant', key: 'name', width: 28 },
+      { header: 'Titulaire', key: 'holder', width: 22 },
+      { header: 'Banque', key: 'bank', width: 18 },
+      { header: 'RIB / IBAN', key: 'rib', width: 32 },
+      { header: 'Montant (MAD)', key: 'amount', width: 16 },
+      { header: 'Statut', key: 'status', width: 14 },
+      { header: 'Traité le', key: 'reviewed', width: 16 },
+      { header: 'Payé le', key: 'paid', width: 16 },
+      { header: 'Note admin', key: 'note', width: 30 },
+    ]
+    withdrawals.forEach(w => {
+      ws2.addRow({
+        date: formatDate(w.created_at),
+        name: restaurantName(w.restaurant_id),
+        holder: w.account_name || '—',
+        bank: w.bank_name || '—',
+        rib: w.rib || '—',
+        amount: Number(w.amount || 0),
+        status: WITHDRAWAL_STATUS[w.status]?.label || w.status,
+        reviewed: formatDate(w.reviewed_at),
+        paid: formatDate(w.paid_at),
+        note: w.admin_note || '',
+      })
+    })
+    styleHeader(ws2)
+    downloadWorkbook(wb, `diatable_transactions_${today}.xlsx`)
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-dark flex items-center gap-2">
+            <Wallet size={22} className="text-[#c5611a]" /> Portefeuilles & Retraits
+          </h1>
+          <p className="text-sm text-muted mt-1">Soldes des restaurants (commandes payées par carte) et demandes de retrait à virer manuellement.</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={exportResume} disabled={loading}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#c5611a] hover:bg-[#d9722a] transition-colors disabled:opacity-50">
+            <Download size={14} /> Export résumé
+          </button>
+          <button onClick={exportDetail} disabled={loading}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-50"
+            style={{ color: '#c5611a', borderColor: 'rgba(197,97,26,0.35)' }}>
+            <FileText size={14} /> Export détaillé
+          </button>
+          <button onClick={load}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg border text-sm hover:bg-gray-50 transition-colors"
+            style={{ color: '#80716a', borderColor: 'rgba(80,70,64,0.20)' }}>
+            <RefreshCw size={14} /> Actualiser
+          </button>
+        </div>
+      </div>
+
+      {error && <ErrorMsg msg={error} />}
+
+      {/* Totaux plateforme */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total crédité', value: totals.credited, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'Total retiré', value: totals.withdrawn, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'En attente', value: totals.pending, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Solde à devoir', value: totals.available, color: 'text-[#c5611a]', bg: 'bg-orange-50' },
+        ].map(s => (
+          <div key={s.label} className="bg-white rounded-xl p-4 border border-black/[0.06]">
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${s.bg}`}>
+              <Banknote size={18} className={s.color} />
+            </div>
+            <p className={`text-xl font-bold ${s.color}`}>{loading ? '—' : money(s.value)} <span className="text-xs font-medium">MAD</span></p>
+            <p className="text-xs text-muted mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {loading ? <Spinner /> : (
+        <>
+          {/* Retraits à traiter */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold text-dark">Demandes de retrait</h2>
+              {pending.length > 0 && (
+                <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">{pending.length}</span>
+              )}
+            </div>
+            {pending.length === 0 ? (
+              <div className="rounded-xl p-8 text-center bg-white border border-black/[0.06]">
+                <Banknote size={30} className="mx-auto mb-2 text-gray-200" />
+                <p className="text-sm text-muted">Aucune demande de retrait en attente</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {pending.map(w => {
+                  const conf = WITHDRAWAL_STATUS[w.status] || WITHDRAWAL_STATUS.pending
+                  const vendor = profiles[w.vendor_id]
+                  return (
+                    <div key={w.id} className="rounded-xl p-4 bg-white flex flex-col gap-3 border border-black/[0.07]">
+                      <div className="flex items-start gap-4 flex-wrap">
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: 'rgba(197,97,26,0.10)' }}>
+                          <ArrowUpRight size={16} className="text-[#c5611a]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                            <p className="text-sm font-bold text-dark">{money(w.amount)} MAD</p>
+                            <span className="text-muted text-xs">·</span>
+                            <p className="text-sm font-medium text-dark">{restaurantName(w.restaurant_id)}</p>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${conf.cls}`}>{conf.label}</span>
+                          </div>
+                          <p className="text-xs text-muted">
+                            {vendor?.full_name || vendor?.email || '—'} · Demandé le {formatDate(w.created_at)}
+                          </p>
+                          <p className="text-xs text-muted mt-1 font-mono">
+                            {w.bank_name || '—'} · {w.account_name || '—'} · {w.rib || 'RIB manquant'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {w.status === 'pending' && (
+                          <button onClick={() => updateWithdrawal(w.id, 'approved')} disabled={acting === w.id}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50"
+                            style={{ color: '#2563eb', borderColor: 'rgba(37,99,235,0.30)' }}>
+                            Approuver
+                          </button>
+                        )}
+                        <button onClick={() => updateWithdrawal(w.id, 'paid')} disabled={acting === w.id}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors disabled:opacity-50">
+                          <CheckCircle size={13} /> Marquer viré
+                        </button>
+                        <button onClick={() => updateWithdrawal(w.id, 'rejected')} disabled={acting === w.id}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50"
+                          style={{ color: '#dc2626', borderColor: 'rgba(220,38,38,0.30)' }}>
+                          <XCircle size={13} /> Rejeter
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Soldes par restaurant */}
+          <section className="space-y-3">
+            <h2 className="text-base font-semibold text-dark">Soldes par restaurant</h2>
+            {activeWallets.length === 0 ? (
+              <div className="rounded-xl p-8 text-center bg-white border border-black/[0.06]">
+                <Wallet size={30} className="mx-auto mb-2 text-gray-200" />
+                <p className="text-sm text-muted">Aucun solde pour le moment</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-black/[0.07] bg-white">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-muted border-b border-black/[0.06]">
+                      <th className="px-4 py-3 font-semibold">Restaurant</th>
+                      <th className="px-4 py-3 font-semibold text-right">Crédité</th>
+                      <th className="px-4 py-3 font-semibold text-right">Retiré</th>
+                      <th className="px-4 py-3 font-semibold text-right">En attente</th>
+                      <th className="px-4 py-3 font-semibold text-right">Disponible</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeWallets.map(w => (
+                      <tr key={w.restaurant_id} className="border-b border-black/[0.04] last:border-0">
+                        <td className="px-4 py-3 font-medium text-dark">{w.restaurant_name || '—'}</td>
+                        <td className="px-4 py-3 text-right text-green-600">{money(w.total_credited)}</td>
+                        <td className="px-4 py-3 text-right text-blue-600">{money(w.total_withdrawn)}</td>
+                        <td className="px-4 py-3 text-right text-amber-600">{money(w.pending_withdrawals)}</td>
+                        <td className="px-4 py-3 text-right font-bold text-[#c5611a]">{money(w.available_balance)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  )
+}
+
+const VITRINE_PAGE_SIZE = 20
+
 function SectionVitrineAccueil() {
-  const [restaurants, setRestaurants] = useState<any[]>([])
+  // "En vitrine" stays unbounded — a curated highlight list is small by
+  // design. "Autres" is the full active catalog to pick new entries from,
+  // so it's the one that needs search + pagination as the catalog grows.
+  const [featured, setFeatured] = useState<any[]>([])
+  const [others, setOthers] = useState<any[]>([])
+  const [othersTotal, setOthersTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [page, setPage] = useState(0)
 
   useEffect(() => {
-    supabase
-      .from('restaurants')
-      .select('id, name, image_url, flag, cuisine_label, location, is_home_featured')
-      .eq('is_active', true)
-      .order('name')
-      .then(({ data }) => { setRestaurants(data || []); setLoading(false) })
-  }, [])
+    const id = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(id)
+  }, [search])
+  useEffect(() => { setPage(0) }, [debouncedSearch])
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const from = page * VITRINE_PAGE_SIZE
+    const to = from + VITRINE_PAGE_SIZE - 1
+    const select = 'id, name, image_url, flag, cuisine_label, location, is_home_featured'
+    let othersQuery = supabase.from('restaurants').select(select, { count: 'exact' }).eq('is_active', true).eq('is_home_featured', false)
+    if (debouncedSearch) {
+      const term = `%${debouncedSearch.replace(/[%_]/g, '')}%`
+      othersQuery = othersQuery.ilike('name', term)
+    }
+    const [{ data: featuredData }, { data: othersData, count }] = await Promise.all([
+      supabase.from('restaurants').select(select).eq('is_active', true).eq('is_home_featured', true).order('name'),
+      othersQuery.order('name').range(from, to),
+    ])
+    setFeatured(featuredData || [])
+    setOthers(othersData || [])
+    setOthersTotal(count ?? 0)
+    setLoading(false)
+  }, [page, debouncedSearch])
+
+  useEffect(() => { load() }, [load])
+  const totalPages = Math.max(1, Math.ceil(othersTotal / VITRINE_PAGE_SIZE))
 
   async function toggleFeatured(id: string, current: boolean) {
     setToggling(id)
-    await supabase.from('restaurants').update({ is_home_featured: !current }).eq('id', id)
-    setRestaurants(prev => prev.map(r => r.id === id ? { ...r, is_home_featured: !current } : r))
+    await (supabase.from('restaurants') as any).update({ is_home_featured: !current }).eq('id', id)
+    await load()
     setToggling(null)
   }
-
-  const featured = restaurants.filter(r => r.is_home_featured)
-  const others   = restaurants.filter(r => !r.is_home_featured)
 
   return (
     <div>
@@ -1999,7 +2491,7 @@ function SectionVitrineAccueil() {
 
       {loading ? <SkeletonRestaurantList /> : (
         <div className="space-y-3">
-          {[...featured, ...others].map(r => (
+          {featured.map(r => (
             <div
               key={r.id}
               className={`bg-white rounded-2xl p-4 flex items-center gap-4 border transition-all ${
@@ -2047,6 +2539,51 @@ function SectionVitrineAccueil() {
           ))}
         </div>
       )}
+
+      <div className="flex items-center justify-between mt-8 mb-4">
+        <h3 className="font-serif text-lg font-bold text-dark">Autres restaurants</h3>
+        <div className="relative max-w-xs w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un restaurant..."
+            className="w-full bg-white border border-black/[0.08] rounded-xl pl-9 pr-3 py-2.5 text-sm text-dark placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#c5611a]/30 focus:border-[#c5611a]"
+          />
+        </div>
+      </div>
+
+      {loading ? <SkeletonRestaurantList /> : others.length === 0 ? (
+        <EmptyState text="Aucun restaurant trouvé" />
+      ) : (
+        <div className="space-y-3">
+          {others.map(r => (
+            <div key={r.id} className="bg-white rounded-2xl p-4 flex items-center gap-4 border border-black/[0.05]">
+              <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-cream flex items-center justify-center">
+                {r.image_url
+                  ? <img src={r.image_url} alt={r.name} className="w-full h-full object-cover" />
+                  : <span className="text-2xl">{r.flag}</span>
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-dark text-sm truncate">{r.name}</p>
+                <p className="text-xs text-muted truncate">{r.flag} {r.cuisine_label} · {r.location}</p>
+              </div>
+              <button
+                onClick={() => toggleFeatured(r.id, r.is_home_featured)}
+                disabled={toggling === r.id}
+                aria-label="Mettre en vitrine"
+                className="relative w-11 h-6 rounded-full transition-colors shrink-0 disabled:opacity-50 bg-black/15"
+              >
+                <span className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform translate-x-0.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} className="mt-5" />}
     </div>
   )
 }
@@ -2057,40 +2594,59 @@ const VEHICLE_LABEL: Record<string, string> = {
   moto: '🛵 Moto', voiture: '🚗 Voiture', velo: '🚲 Vélo', pieton: '🚶 Piéton',
 }
 
+const DRIVERS_PAGE_SIZE = 20
+
 function SectionDrivers() {
   const [drivers, setDrivers] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [search, setSearch]   = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [page, setPage] = useState(0)
   const [toggling, setToggling] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase
+    const id = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(id)
+  }, [search])
+  useEffect(() => { setPage(0) }, [debouncedSearch])
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const from = page * DRIVERS_PAGE_SIZE
+    const to = from + DRIVERS_PAGE_SIZE - 1
+    let query = supabase
       .from('delivery_drivers')
-      .select('*, restaurant:restaurants(name, flag)')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => { setDrivers(data || []); setLoading(false) })
-  }, [])
+      .select('*, restaurant:restaurants(name, flag)', { count: 'exact' })
+    if (debouncedSearch) {
+      const term = `%${debouncedSearch.replace(/[%_]/g, '')}%`
+      query = query.or(`full_name.ilike.${term},phone.ilike.${term}`)
+    }
+    const { data, count } = await query.order('is_active', { ascending: false }).order('created_at', { ascending: false }).range(from, to)
+    setDrivers(data || [])
+    setTotal(count ?? 0)
+    setLoading(false)
+  }, [page, debouncedSearch])
+
+  useEffect(() => { load() }, [load])
+  const totalPages = Math.max(1, Math.ceil(total / DRIVERS_PAGE_SIZE))
 
   async function toggleActive(id: string, current: boolean) {
     setToggling(id)
-    await supabase.from('delivery_drivers').update({ is_active: !current }).eq('id', id)
+    await (supabase.from('delivery_drivers') as any).update({ is_active: !current }).eq('id', id)
     setDrivers(prev => prev.map(d => d.id === id ? { ...d, is_active: !current } : d))
     setToggling(null)
   }
 
   async function toggleAvailable(id: string, current: boolean) {
     setToggling(id + '_avail')
-    await supabase.from('delivery_drivers').update({ is_available: !current }).eq('id', id)
+    await (supabase.from('delivery_drivers') as any).update({ is_available: !current }).eq('id', id)
     setDrivers(prev => prev.map(d => d.id === id ? { ...d, is_available: !current } : d))
     setToggling(null)
   }
 
-  const filtered = drivers.filter(d =>
-    d.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    (d.phone || '').includes(search)
-  )
-
+  const filtered = drivers
   const active = filtered.filter(d => d.is_active)
   const inactive = filtered.filter(d => !d.is_active)
 
@@ -2269,6 +2825,8 @@ function SectionDrivers() {
           ))}
         </div>
       )}
+
+      {!loading && <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} className="mt-2" />}
     </div>
   )
 }
@@ -2279,19 +2837,21 @@ function SectionDeliverySettings() {
   const [baseFee, setBaseFee]       = useState('')
   const [pricePerKm, setPricePerKm] = useState('')
   const [maxFee, setMaxFee]         = useState('')
+  const [commissionPct, setCommissionPct] = useState('')
   const [loading, setLoading]       = useState(true)
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
 
   useEffect(() => {
     (supabase.from('platform_settings') as any)
-      .select('delivery_base_fee, delivery_price_per_km, delivery_max_fee')
+      .select('delivery_base_fee, delivery_price_per_km, delivery_max_fee, commission_pct')
       .eq('id', 1)
       .maybeSingle()
       .then(({ data }: any) => {
         setBaseFee(String(data?.delivery_base_fee ?? 8))
         setPricePerKm(String(data?.delivery_price_per_km ?? 2.5))
         setMaxFee(String(data?.delivery_max_fee ?? 30))
+        setCommissionPct(String(data?.commission_pct ?? 10))
         setLoading(false)
       })
   }, [])
@@ -2304,6 +2864,7 @@ function SectionDeliverySettings() {
         delivery_base_fee:     parseFloat(baseFee) || 0,
         delivery_price_per_km: parseFloat(pricePerKm) || 0,
         delivery_max_fee:      parseFloat(maxFee) || 0,
+        commission_pct:        parseFloat(commissionPct) || 0,
       })
       .eq('id', 1)
     setSaving(false)
@@ -2364,6 +2925,20 @@ function SectionDeliverySettings() {
             <p>Exemple 15 km : <strong className="text-dark">{cappedFee(15).toFixed(2)} MAD</strong>{cappedFee(15) === rawFee(15) ? '' : ' (plafonné)'}</p>
           </div>
 
+          <div className="pt-2 border-t border-black/[0.06]">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Commission plateforme (%)</label>
+            <input
+              type="number" min="0" max="100" step="0.5"
+              value={commissionPct}
+              onChange={e => setCommissionPct(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-dark focus:outline-none focus:ring-2 focus:ring-[#c5611a]/40"
+            />
+            <p className="text-xs text-muted mt-1.5">
+              Retenue sur le sous-total (plats) de chaque commande payée par carte, avant de créditer le solde du restaurant.
+              Ex : sous-total 100 MAD, commission {parseFloat(commissionPct) || 0}% → <strong className="text-dark">{(100 - (100 * (parseFloat(commissionPct) || 0) / 100)).toFixed(2)} MAD</strong> crédités.
+            </p>
+          </div>
+
           <button
             onClick={handleSave}
             disabled={saving}
@@ -2385,6 +2960,7 @@ const NAV_ITEMS = [
   { key: 'orders',         label: 'Commandes',     icon: Package },
   { key: 'reviews',        label: 'Avis',          icon: Star },
   { key: 'subscriptions',  label: 'Abonnements',   icon: Crown },
+  { key: 'wallets',        label: 'Portefeuilles', icon: Wallet },
   { key: 'gallery',        label: 'Galerie',       icon: ImageIcon },
   { key: 'team',           label: 'Équipe',        icon: Users2 },
   { key: 'drivers',        label: 'Livreurs',      icon: Bike },
@@ -2523,6 +3099,7 @@ export default function AdminDashboard() {
       case 'orders': return <SectionOrders />
       case 'reviews': return <SectionReviews />
       case 'subscriptions': return <SectionSubscriptions />
+      case 'wallets': return <SectionWallets />
       case 'gallery': return <SectionGallery />
       case 'team': return <SectionTeam />
       case 'drivers': return <SectionDrivers />

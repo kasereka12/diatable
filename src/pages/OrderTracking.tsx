@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -7,6 +7,7 @@ import {
   Package, Clock, CheckCircle, Utensils, Truck, XCircle,
   ArrowLeft, MessageCircle, ChefHat
 } from 'lucide-react'
+import PaginationControls from '../components/ui/PaginationControls'
 
 interface OrderItem { id: string; quantity: number; name: string; price: number | string }
 interface TrackOrder {
@@ -188,27 +189,56 @@ function OrderDetail({ order, onBack, onCancel }: { order: TrackOrder; onBack: (
   )
 }
 
+const ORDER_SELECT = '*, order_items(*), restaurant:restaurants(name, cuisine_label, flag)'
+const PAST_ORDERS_PAGE_SIZE = 10
+
 export default function OrderTracking() {
   const { user } = useAuth()
-  const [orders, setOrders]           = useState<TrackOrder[]>([])
-  const [loading, setLoading]         = useState(true)
+  // Active orders are always shown in full (naturally small — only what's
+  // currently in progress). Past orders accumulate forever, so that tab is
+  // paginated separately.
+  const [activeOrders, setActiveOrders] = useState<TrackOrder[]>([])
+  const [pastOrders, setPastOrders]     = useState<TrackOrder[]>([])
+  const [pastTotal, setPastTotal]       = useState(0)
+  const [pastPage, setPastPage]         = useState(0)
+  const [loading, setLoading]           = useState(true)
+  const [pastLoading, setPastLoading]   = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<TrackOrder | null>(null)
   const [activeTab, setActiveTab]     = useState('active')
 
+  const loadActive = useCallback(async () => {
+    if (!user) return
+    setLoading(true)
+    const { data } = await supabase
+      .from('orders')
+      .select(ORDER_SELECT)
+      .eq('customer_id', user.id)
+      .not('status', 'in', '(delivered,cancelled)')
+      .order('created_at', { ascending: false })
+    setActiveOrders((data || []) as unknown as TrackOrder[])
+    setLoading(false)
+  }, [user])
+
+  const loadPast = useCallback(async () => {
+    if (!user) return
+    setPastLoading(true)
+    const from = pastPage * PAST_ORDERS_PAGE_SIZE
+    const to = from + PAST_ORDERS_PAGE_SIZE - 1
+    const { data, count } = await supabase
+      .from('orders')
+      .select(ORDER_SELECT, { count: 'exact' })
+      .eq('customer_id', user.id)
+      .in('status', ['delivered', 'cancelled'])
+      .order('created_at', { ascending: false })
+      .range(from, to)
+    setPastOrders((data || []) as unknown as TrackOrder[])
+    setPastTotal(count ?? 0)
+    setPastLoading(false)
+  }, [user, pastPage])
+
   useEffect(() => {
     if (!user) { setLoading(false); return }
-
-    async function load() {
-      setLoading(true)
-      const { data } = await supabase
-        .from('orders')
-        .select('*, order_items(*), restaurant:restaurants(name, cuisine_label, flag)')
-        .eq('customer_id', user!.id)
-        .order('created_at', { ascending: false })
-      setOrders((data || []) as TrackOrder[])
-      setLoading(false)
-    }
-    load()
+    loadActive()
 
     const channel = supabase
       .channel('orders-realtime')
@@ -216,19 +246,29 @@ export default function OrderTracking() {
         event: 'UPDATE', schema: 'public', table: 'orders',
         filter: `customer_id=eq.${user.id}`,
       }, (payload) => {
-        setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o))
-        if (selectedOrder?.id === payload.new.id) {
-          setSelectedOrder(prev => prev ? ({ ...prev, ...(payload.new as Partial<TrackOrder>) }) : prev)
+        const updated = payload.new as any
+        if (['delivered', 'cancelled'].includes(updated.status)) {
+          setActiveOrders(prev => prev.filter(o => o.id !== updated.id))
+          loadPast()
+        } else {
+          setActiveOrders(prev => prev.map(o => o.id === updated.id ? { ...o, ...updated } : o))
+        }
+        if (selectedOrder?.id === updated.id) {
+          setSelectedOrder(prev => prev ? ({ ...prev, ...(updated as Partial<TrackOrder>) }) : prev)
         }
       })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [user])
+  }, [user, loadActive, loadPast])
 
-  const activeOrders   = orders.filter(o => !['delivered', 'cancelled'].includes(o.status))
-  const pastOrders     = orders.filter(o => ['delivered', 'cancelled'].includes(o.status))
+  useEffect(() => {
+    if (activeTab === 'past') loadPast()
+  }, [activeTab, loadPast])
+
+  const pastTotalPages = Math.max(1, Math.ceil(pastTotal / PAST_ORDERS_PAGE_SIZE))
   const displayedOrders = activeTab === 'active' ? activeOrders : pastOrders
+  const displayedLoading = activeTab === 'active' ? loading : pastLoading
 
   async function cancelOrder(orderId: string) {
     if (!window.confirm('Annuler cette commande ? Cette action est irréversible.')) return
@@ -236,7 +276,7 @@ export default function OrderTracking() {
       .update({ status: 'cancelled' })
       .eq('id', orderId)
     if (error) { window.alert("Impossible d'annuler la commande. Le restaurant a peut-être déjà commencé la préparation."); return }
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o))
+    setActiveOrders(prev => prev.filter(o => o.id !== orderId))
     setSelectedOrder(prev => prev && prev.id === orderId ? { ...prev, status: 'cancelled' } : prev)
   }
 
@@ -272,7 +312,7 @@ export default function OrderTracking() {
           style={{ backgroundColor: '#f8f8f8', border: '1px solid rgba(80,70,64,0.07)', boxShadow: '0 2px 8px rgba(80,70,64,0.06)' }}>
           {[
             { id: 'active', label: `En cours (${activeOrders.length})` },
-            { id: 'past',   label: `Historique (${pastOrders.length})` },
+            { id: 'past',   label: `Historique (${pastTotal})` },
           ].map(tab => (
             <button
               key={tab.id}
@@ -291,7 +331,7 @@ export default function OrderTracking() {
           ))}
         </div>
 
-        {loading ? (
+        {displayedLoading ? (
           <div className="text-center py-12" style={{ color: '#80716a' }}>Chargement...</div>
         ) : displayedOrders.length === 0 ? (
           <div className="rounded-2xl p-12 text-center shadow-sm"
@@ -313,6 +353,10 @@ export default function OrderTracking() {
               <OrderCard key={order.id} order={order} onSelect={setSelectedOrder} />
             ))}
           </div>
+        )}
+
+        {activeTab === 'past' && !pastLoading && (
+          <PaginationControls page={pastPage} totalPages={pastTotalPages} onPageChange={setPastPage} className="mt-8" />
         )}
       </div>
     </div>
