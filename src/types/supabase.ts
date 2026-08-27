@@ -68,6 +68,7 @@ export interface Database {
           created_at: string
           latitude: number | null
           longitude: number | null
+          prep_time_min: number
         }
         Insert: {
           id?: string
@@ -97,6 +98,7 @@ export interface Database {
           created_at?: string
           latitude?: number | null
           longitude?: number | null
+          prep_time_min?: number
         }
         Update: Partial<Database['public']['Tables']['restaurants']['Insert']>
       }
@@ -459,6 +461,27 @@ export interface Database {
           created_at?: string
         }
         Update: Partial<Database['public']['Tables']['testimonials']['Insert']>
+      }
+      contact_messages: {
+        Row: {
+          id:         string
+          name:       string
+          email:      string
+          reason:     string | null
+          message:    string
+          status:     'new' | 'read' | 'archived'
+          created_at: string
+        }
+        Insert: {
+          id?:         string
+          name:        string
+          email:       string
+          reason?:     string | null
+          message:     string
+          status?:     'new' | 'read' | 'archived'
+          created_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['contact_messages']['Insert']>
       }
       dishes: {
         Row: {

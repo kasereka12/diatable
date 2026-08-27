@@ -30,7 +30,7 @@
     "nav_menu": "Navigation menu"
   },
   "footer": {
-    "tagline": "Connecting diaspora communities through food. Find the taste of home, right here in Morocco.",
+    "tagline": "The platform connecting the diaspora to authentic, verified cuisine, anywhere in Morocco.",
     "col_about": "About",
     "col_cuisines": "Cuisines",
     "col_contact": "Contact",
@@ -47,29 +47,29 @@
   "why": {
     "label": "Our Commitment",
     "title": "Why Choose <em>DiaTable?</em>",
-    "feat1_title": "30+ Cuisines",
-    "feat1_desc": "From West Africa to East Asia, from the Middle East to Europe — if a diaspora community exists in Morocco, its cuisine is on DiaTable.",
+    "feat1_title": "30+ World Cuisines",
+    "feat1_desc": "From West Africa to East Asia, from the Middle East to Europe: if a diaspora community has settled in Morocco, its cuisine has a place on DiaTable.",
     "feat2_title": "Verified Vendors",
-    "feat2_desc": "Every restaurant and home cook on our platform is evaluated, verified and approved by our community of expats and locals.",
-    "feat3_title": "Community First",
-    "feat3_desc": "We support diaspora entrepreneurs building their lives and businesses in Morocco — because culture travels through food."
+    "feat2_desc": "Every restaurant and home cook is reviewed and approved by our team before going live, so every order is a safe bet.",
+    "feat3_title": "A Community, Not an App",
+    "feat3_desc": "We support diaspora entrepreneurs building their business in Morocco, because a country's culture also travels through its cuisine."
   },
   "how": {
     "label": "Simple & Fast",
     "title": "How does <em>DiaTable</em> work?",
     "step": "Step",
-    "step1_title": "Search Your Cuisine",
-    "step1_desc": "Browse over 30 cuisines from Africa, Asia, Europe and the Americas. Instantly find the flavors of home.",
-    "step2_title": "Find Nearby Vendors",
-    "step2_desc": "Restaurants, home cooks and pop-up kitchens near you — in Casablanca, Rabat, Marrakech and beyond.",
-    "step3_title": "Order or Visit",
-    "step3_desc": "Contact directly, order online or book a table. Enjoy authentic cuisine, right here in Morocco."
+    "step1_title": "Choose Your Cuisine",
+    "step1_desc": "Browse over 30 cuisines from Africa, Asia, Europe and the Americas, and find the flavors of home in seconds.",
+    "step2_title": "Find Vendors Near You",
+    "step2_desc": "Verified restaurants, home cooks and pop-up kitchens available in Casablanca, Rabat, Marrakech and Morocco's major cities.",
+    "step3_title": "Order with Confidence",
+    "step3_desc": "Contact the vendor, order online or book a table, and enjoy authentic cuisine, carefully prepared."
   },
   "vendor_cta": {
     "title": "Do You Cook Your Country's Dishes in Morocco?",
-    "desc": "Join DiaTable and reach thousands of expats looking for your cuisine. List your restaurant, home kitchen or pop-up for free.",
+    "desc": "Join DiaTable and put your cuisine in front of thousands of expats actively looking for it. Free listing for any restaurant, home kitchen or pop-up.",
     "button": "Become a Vendor",
-    "sub": "Free registration · No commission for the first 3 months · Join 200+ vendors already on DiaTable"
+    "sub": "Free registration · No commission for the first 3 months · Already 200+ active vendors on DiaTable"
   },
   "testimonials": {
     "label": "Testimonials",
@@ -85,7 +85,7 @@
   },
   "restaurants_page": {
     "title": "Restaurants",
-    "subtitle": "All diaspora cuisines in Morocco",
+    "subtitle": "World cuisines, verified and rated by the community in Morocco",
     "search_placeholder": "Search…",
     "cuisine": "Cuisine",
     "city": "City",
@@ -108,14 +108,11 @@
   "home_chef_page": {
     "label": "DiaTable Home Chef",
     "title": "Passionate cooks, <em>right around the corner</em>",
-    "subtitle": "Discover independent cooks preparing dishes from their own kitchen, featured and supported by DiaTable.",
-    "disclaimer": "These cooks sell under the DiaTable name, which supports them through their administrative process.",
+    "subtitle": "Diaspora home cooking, made with heart and backed by DiaTable.",
+    "disclaimer": "Independent cooks, supported by DiaTable.",
     "search_placeholder": "Search a cook, a specialty…",
     "slogan": "DiaTable by {{name}}",
     "handmade": "Homemade",
-    "stat_homemade": "100% homemade",
-    "stat_supported": "Supported by DiaTable",
-    "stat_cities": "Casablanca, Rabat, Marrakech…",
     "loading_title": "Setting the table…",
     "loading_sub": "DiaTable is gathering the best home cooks for you"
   },
@@ -213,7 +210,7 @@
     "title_before": "Contact",
     "title_em": "Us",
     "title": "Contact us",
-    "subtitle": "A question, a problem, or want to join DiaTable? We'll reply within 24h.",
+    "subtitle": "A question, an issue, or interested in joining DiaTable? Our team replies within 24h.",
     "name_label": "Full name",
     "name_placeholder": "Your name",
     "email_label": "Email address",
@@ -251,10 +248,10 @@
   },
   "hero": {
     "find_food": "Find Food",
-    "headline1": "Rediscover the",
-    "headline_shimmer": "Taste of Home,",
-    "headline2": "Right Here in Morocco",
-    "subtext": "One click away from a unique culinary diversity: international restaurants, home cooks and world specialties, all in one place.",
+    "headline1": "The Taste of Home,",
+    "headline_shimmer": "Verified",
+    "headline2": "Wherever You Are in Morocco",
+    "subtext": "Restaurants, home cooks and specialties from around the world: DiaTable brings together a verified selection of diaspora vendors, for authentic cuisine you can trust.",
     "modal_label": "Explore",
     "modal_title_before": "All",
     "modal_title_em": "Restaurants",
@@ -671,6 +668,8 @@
     "notifs_title": "Notifications",
     "mark_all_read": "Mark all as read",
     "mark_read": "Mark as read",
+    "delete_all_notifs": "Delete all",
+    "confirm_delete_all_notifs": "Delete all notifications? This action cannot be undone.",
     "no_notifs": "No notifications yet",
     "no_notifs_sub": "You will be notified of new orders, messages or reviews.",
     "load_more_notifs": "Load more notifications",

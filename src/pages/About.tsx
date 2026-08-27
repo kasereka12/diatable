@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { Globe, Users, ShieldCheck, Heart } from 'lucide-react'
 import WhyDiaTable from '../components/WhyDiaTable'
 import Testimonials from '../components/Testimonials'
+import PageHero from '../components/ui/PageHero'
 
 export default function About() {
   const { t } = useTranslation()
@@ -38,26 +39,13 @@ export default function About() {
 
   return (
     <div ref={ref}>
-      {/* Hero */}
-      <div className="pt-32 pb-24 relative overflow-hidden" style={{ backgroundColor: '#1f1f1f' }}>
-        <div className="absolute inset-0 zellige-pattern opacity-30" />
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'linear-gradient(to bottom, transparent, rgba(31,31,31,0.65))' }} />
-        <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <p className="section-label" data-reveal>{t('about_page.hero_label')}</p>
-          <h1 className="font-serif text-4xl md:text-5xl font-black mb-6 leading-tight"
-            style={{ color: '#f8f8f8' }} data-reveal data-delay="0.1s">
-            {t('about_page.hero_title_before')}{' '}
-            <em style={{ color: '#c5611a', fontStyle: 'italic' }}>{t('about_page.hero_title_em')}</em>
-          </h1>
-          <p className="text-lg leading-relaxed" style={{ color: 'rgba(248,248,248,0.70)' }}
-            data-reveal data-delay="0.2s">
-            {t('about_page.hero_desc_before')}{' '}
-            <em style={{ color: '#bd9f87' }}>{t('about_page.hero_quote')}</em><br/>
-            {t('about_page.hero_desc_after')}
-          </p>
-        </div>
-      </div>
+      <PageHero variant="tall" icon={Heart} eyebrow={t('about_page.hero_label')}
+        title={<>{t('about_page.hero_title_before')} <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>{t('about_page.hero_title_em')}</em></>}
+        subtitle={<>
+          {t('about_page.hero_desc_before')}{' '}
+          <em style={{ color: '#1f1f1f' }}>{t('about_page.hero_quote')}</em><br />
+          {t('about_page.hero_desc_after')}
+        </>} />
 
       {/* Story */}
       <section className="py-24" style={{ backgroundColor: '#eae5d9' }}>

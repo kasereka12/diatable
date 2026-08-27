@@ -11,6 +11,7 @@ import {
   Wallet, Banknote, ArrowDownLeft, ArrowUpRight, RefreshCw
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useConfirm } from '../context/ConfirmContext'
 import { supabase, callEdgeFunction } from '../lib/supabase'
 import VendorOrders from '../components/vendor/VendorOrders'
 import VendorDrivers from '../components/vendor/VendorDrivers'
@@ -177,6 +178,7 @@ export default function VendorDashboard() {
   const { user, profile, signOut } = useAuth()
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const confirm = useConfirm()
 
   const vendorName = profile?.full_name || user?.user_metadata?.full_name || t('vd.rest_name')
   const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -450,6 +452,14 @@ export default function VendorDashboard() {
     setVendorNotifs(prev => prev.map(n => ({ ...n, is_read: true })))
   }
 
+  async function deleteAllNotifs() {
+    if (!user || vendorNotifs.length === 0) return
+    if (!(await confirm(t('vd.confirm_delete_all_notifs')))) return
+    await (supabase.from('notifications') as any).delete().eq('user_id', user.id)
+    setVendorNotifs([])
+    setNotifsHasMore(false)
+  }
+
   async function toggleActive() {
     if (!restaurant) return
     const next = !restaurant.is_active
@@ -700,7 +710,7 @@ export default function VendorDashboard() {
       </nav>
 
       <div className="px-3 py-4 space-y-1" style={{ borderTop: '1px solid rgba(248,248,248,0.10)' }}>
-        <Link to="/restaurants/1" title={collapsed ? t('vd.view_page') : undefined}
+        <Link to={restaurant?.id ? `/restaurants/${restaurant.id}` : '/restaurants'} title={collapsed ? t('vd.view_page') : undefined}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${collapsed ? 'justify-center px-0' : ''}`}
           style={{ color: 'rgba(248,248,248,0.65)' }}
           onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(248,248,248,0.08)'; e.currentTarget.style.color = C.creamLight }}
@@ -2057,12 +2067,20 @@ export default function VendorDashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-2xl font-serif font-bold" style={{ color: C.dark }}>{t('vd.notifs_title')}</h1>
-          {unreadCount > 0 && (
-            <button onClick={markAllNotifsRead}
-              className="text-xs font-medium hover:underline" style={{ color: C.terra }}>
-              {t('vd.mark_all_read')}
-            </button>
-          )}
+          <div className="flex items-center gap-4">
+            {unreadCount > 0 && (
+              <button onClick={markAllNotifsRead}
+                className="text-xs font-medium hover:underline" style={{ color: C.terra }}>
+                {t('vd.mark_all_read')}
+              </button>
+            )}
+            {vendorNotifs.length > 0 && (
+              <button onClick={deleteAllNotifs}
+                className="text-xs font-medium hover:underline text-red-500">
+                {t('vd.delete_all_notifs')}
+              </button>
+            )}
+          </div>
         </div>
 
         {notifsLoading ? (

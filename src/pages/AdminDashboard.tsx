@@ -13,6 +13,8 @@ import {
 import ExcelJS from 'exceljs'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import { useConfirm } from '../context/ConfirmContext'
 import PaginationControls from '../components/ui/PaginationControls'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -559,6 +561,8 @@ const USERS_PAGE_SIZE = 20
 
 function SectionUsers() {
   const { user: currentUser } = useAuth()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [users, setUsers] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -610,36 +614,36 @@ function SectionUsers() {
       if (err) throw err
       await fetchUsers()
     } catch (err) {
-      alert((err as Error).message || 'Erreur')
+      toast.error((err as Error).message || 'Erreur')
     } finally {
       setUpdatingId(null)
     }
   }
 
   const updateStatus = async (userId: string, status: string) => {
-    if (status !== 'active' && !window.confirm(
+    if (status !== 'active' && !(await confirm(
       status === 'banned' ? 'Bannir cet utilisateur ? Il ne pourra plus se connecter.' : 'Suspendre cet utilisateur ?'
-    )) return
+    ))) return
     setUpdatingId(userId)
     try {
       const { error: err } = await (supabase.from('profiles') as any).update({ status }).eq('id', userId)
       if (err) throw err
       await fetchUsers()
     } catch (err) {
-      alert((err as Error).message || 'Erreur')
+      toast.error((err as Error).message || 'Erreur')
     } finally {
       setUpdatingId(null)
     }
   }
 
   const deleteUser = async (userId: string) => {
-    if (!window.confirm('Supprimer cet utilisateur ? Cette action est irréversible.')) return
+    if (!(await confirm('Supprimer cet utilisateur ? Cette action est irréversible.'))) return
     try {
       const { error: err } = await supabase.from('profiles').delete().eq('id', userId)
       if (err) throw err
       await fetchUsers()
     } catch (err) {
-      alert((err as Error).message || 'Erreur')
+      toast.error((err as Error).message || 'Erreur')
     }
   }
 
@@ -844,6 +848,7 @@ function profileScore(r: Record<string, unknown>, menuCount = 0): number {
 // ─── Restaurant detail panel ───────────────────────────────────────────────────
 
 function RestaurantDetailPanel({ r, onClose, onUpdate }: { r: any; onClose: () => void; onUpdate: () => void }) {
+  const confirm = useConfirm()
   const [menuItems, setMenuItems] = useState<any[]>([])
   const [loadingMenu, setLoadingMenu] = useState(true)
   const [updating, setUpdating] = useState(false)
@@ -884,7 +889,7 @@ function RestaurantDetailPanel({ r, onClose, onUpdate }: { r: any; onClose: () =
   }
 
   async function handleReject() {
-    if (!window.confirm('Rejeter et désactiver ce restaurant ?')) return
+    if (!(await confirm('Rejeter et désactiver ce restaurant ?'))) return
     setUpdating(true)
     await (supabase.from('restaurants') as any).update({ is_verified: false, is_active: false }).eq('id', r.id)
     setUpdating(false)
@@ -1378,6 +1383,7 @@ function SectionOrders() {
 const REVIEWS_PAGE_SIZE = 20
 
 function SectionReviews() {
+  const confirm = useConfirm()
   const [reviews, setReviews] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -1409,7 +1415,7 @@ function SectionReviews() {
   const totalPages = Math.max(1, Math.ceil(total / REVIEWS_PAGE_SIZE))
 
   const deleteReview = async (id: string) => {
-    if (!window.confirm('Supprimer cet avis ?')) return
+    if (!(await confirm('Supprimer cet avis ?'))) return
     await supabase.from('reviews').delete().eq('id', id)
     fetchReviews()
   }
@@ -1466,6 +1472,145 @@ function SectionReviews() {
   )
 }
 
+// ─── Section: Messages de contact ──────────────────────────────────────────────
+
+const MESSAGES_PAGE_SIZE = 20
+const MESSAGE_STATUS_FILTERS = ['all', 'new', 'read', 'archived']
+const MESSAGE_STATUS_LABEL: Record<string, string> = { all: 'Tous', new: 'Nouveaux', read: 'Lus', archived: 'Archivés' }
+const MESSAGE_STATUS_BADGE: Record<string, string> = {
+  new: 'bg-[#c5611a]/10 text-[#c5611a]',
+  read: 'bg-gray-100 text-gray-500',
+  archived: 'bg-gray-100 text-gray-400',
+}
+
+function SectionMessages() {
+  const toast = useToast()
+  const confirm = useConfirm()
+  const [messages, setMessages] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [expanded, setExpanded] = useState<string | null>(null)
+
+  const fetchMessages = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const from = page * MESSAGES_PAGE_SIZE
+      const to = from + MESSAGES_PAGE_SIZE - 1
+      let query = supabase.from('contact_messages').select('*', { count: 'exact' })
+      if (statusFilter !== 'all') query = query.eq('status', statusFilter)
+      const { data, error: err, count } = await query.order('created_at', { ascending: false }).range(from, to)
+      if (err) throw err
+      setMessages(data || [])
+      setTotal(count ?? 0)
+    } catch (err) {
+      setError((err as Error).message || 'Erreur lors du chargement')
+    } finally {
+      setLoading(false)
+    }
+  }, [page, statusFilter])
+
+  useEffect(() => { fetchMessages() }, [fetchMessages])
+  useEffect(() => { setPage(0) }, [statusFilter])
+  const totalPages = Math.max(1, Math.ceil(total / MESSAGES_PAGE_SIZE))
+
+  async function toggleExpand(m: any) {
+    const next = expanded === m.id ? null : m.id
+    setExpanded(next)
+    if (next && m.status === 'new') {
+      await (supabase.from('contact_messages') as any).update({ status: 'read' }).eq('id', m.id)
+      setMessages(prev => prev.map(x => x.id === m.id ? { ...x, status: 'read' } : x))
+    }
+  }
+
+  async function archiveMessage(id: string) {
+    await (supabase.from('contact_messages') as any).update({ status: 'archived' }).eq('id', id)
+    setMessages(prev => prev.map(x => x.id === id ? { ...x, status: 'archived' } : x))
+    toast.success('Message archivé.')
+  }
+
+  async function deleteMessage(id: string) {
+    if (!(await confirm('Supprimer ce message définitivement ?'))) return
+    await supabase.from('contact_messages').delete().eq('id', id)
+    setMessages(prev => prev.filter(x => x.id !== id))
+    setTotal(t => Math.max(0, t - 1))
+    toast.success('Message supprimé.')
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <h2 className="font-serif text-2xl font-bold text-dark">Messages de contact</h2>
+        <button onClick={fetchMessages} className="p-2.5 rounded-xl bg-white border border-black/[0.08] text-muted hover:text-[#c5611a] hover:border-[#c5611a]/40 transition-colors" title="Actualiser">
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-6">
+        {MESSAGE_STATUS_FILTERS.map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+              statusFilter === s ? 'bg-dark text-white border-dark' : 'bg-white text-gray-500 border-black/[0.08] hover:text-dark'
+            }`}>
+            {MESSAGE_STATUS_LABEL[s]}
+          </button>
+        ))}
+      </div>
+
+      {error && <ErrorMsg msg={error} />}
+      {loading ? <SkeletonReviews /> : messages.length === 0 ? (
+        <EmptyState text="Aucun message" />
+      ) : (
+        <div className="space-y-3">
+          {messages.map(m => {
+            const isExpanded = expanded === m.id
+            return (
+              <div key={m.id} className="bg-white rounded-2xl border border-black/[0.05] shadow-sm overflow-hidden">
+                <button onClick={() => toggleExpand(m)} className="w-full flex items-start justify-between gap-3 p-5 text-left hover:bg-cream/50 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <p className="text-sm font-semibold text-dark">{m.name}</p>
+                      <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${MESSAGE_STATUS_BADGE[m.status]}`}>
+                        {MESSAGE_STATUS_LABEL[m.status]}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted">{m.email}{m.reason ? ` · ${m.reason}` : ''} · {formatDate(m.created_at)}</p>
+                    {!isExpanded && <p className="text-sm text-dark/70 mt-2 truncate">{m.message}</p>}
+                  </div>
+                  <ChevronRight size={16} className={`text-muted flex-shrink-0 mt-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                </button>
+                {isExpanded && (
+                  <div className="px-5 pb-5 border-t border-black/[0.05] pt-4">
+                    <p className="text-sm text-dark/80 leading-relaxed whitespace-pre-wrap mb-4">{m.message}</p>
+                    <div className="flex gap-2 flex-wrap">
+                      <a href={`mailto:${m.email}`} className="text-xs font-semibold px-3 py-2 rounded-lg border border-black/10 text-dark hover:border-[#c5611a]/40 hover:text-[#c5611a] transition-colors flex items-center gap-1.5">
+                        <Mail size={13} /> Répondre par email
+                      </a>
+                      {m.status !== 'archived' && (
+                        <button onClick={() => archiveMessage(m.id)} className="text-xs font-semibold px-3 py-2 rounded-lg border border-black/10 text-muted hover:text-dark transition-colors">
+                          Archiver
+                        </button>
+                      )}
+                      <button onClick={() => deleteMessage(m.id)} className="text-xs font-semibold px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors flex items-center gap-1.5">
+                        <Trash2 size={13} /> Supprimer
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {!loading && <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} className="mt-5" />}
+    </div>
+  )
+}
+
 // ─── Section 6: Galerie (dishes) ───────────────────────────────────────────────
 
 const DISH_FORM_INIT = {
@@ -1477,6 +1622,8 @@ const DISH_FORM_INIT = {
 const DISHES_PAGE_SIZE = 20
 
 function SectionGallery() {
+  const toast = useToast()
+  const confirm = useConfirm()
   const [dishes, setDishes] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -1545,14 +1692,14 @@ function SectionGallery() {
       cancelForm()
       await fetchDishes()
     } catch (err) {
-      alert((err as Error).message || 'Erreur')
+      toast.error((err as Error).message || 'Erreur')
     } finally {
       setSaving(false)
     }
   }
 
   const deleteDish = async (dish: any) => {
-    if (!window.confirm(`Supprimer le plat "${dish.name}" ?`)) return
+    if (!(await confirm(`Supprimer le plat "${dish.name}" ?`))) return
     await supabase.from('dishes').delete().eq('id', dish.id)
     fetchDishes()
   }
@@ -1696,6 +1843,8 @@ const TEAM_FORM_INIT = {
 const TEAM_PAGE_SIZE = 18
 
 function SectionTeam() {
+  const toast = useToast()
+  const confirm = useConfirm()
   const [members, setMembers] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -1762,14 +1911,14 @@ function SectionTeam() {
       cancelForm()
       await fetchMembers()
     } catch (err) {
-      alert((err as Error).message || 'Erreur')
+      toast.error((err as Error).message || 'Erreur')
     } finally {
       setSaving(false)
     }
   }
 
   const deleteMember = async (m: any) => {
-    if (!window.confirm(`Supprimer "${m.name}" de l'équipe ?`)) return
+    if (!(await confirm(`Supprimer "${m.name}" de l'équipe ?`))) return
     await supabase.from('team').delete().eq('id', m.id)
     fetchMembers()
   }
@@ -2959,6 +3108,7 @@ const NAV_ITEMS = [
   { key: 'vitrine',        label: 'Vitrine',       icon: Monitor },
   { key: 'orders',         label: 'Commandes',     icon: Package },
   { key: 'reviews',        label: 'Avis',          icon: Star },
+  { key: 'messages',       label: 'Messages',      icon: Mail },
   { key: 'subscriptions',  label: 'Abonnements',   icon: Crown },
   { key: 'wallets',        label: 'Portefeuilles', icon: Wallet },
   { key: 'gallery',        label: 'Galerie',       icon: ImageIcon },
@@ -3098,6 +3248,7 @@ export default function AdminDashboard() {
       case 'vitrine': return <SectionVitrineAccueil />
       case 'orders': return <SectionOrders />
       case 'reviews': return <SectionReviews />
+      case 'messages': return <SectionMessages />
       case 'subscriptions': return <SectionSubscriptions />
       case 'wallets': return <SectionWallets />
       case 'gallery': return <SectionGallery />

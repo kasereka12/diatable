@@ -10,11 +10,9 @@ import StarRating from '../components/ui/StarRating'
 import { getCuisineIcon } from '../lib/cuisineIcons'
 import PaginationControls from '../components/ui/PaginationControls'
 import HomeChefLoader from '../components/HomeChefLoader'
-import { Search, MapPin, ShieldCheck, ArrowRight, ChefHat, ShieldQuestion, Utensils } from 'lucide-react'
+import { Search, MapPin, ShieldCheck, ArrowRight, ChefHat } from 'lucide-react'
 import { getGradient } from '../lib/gradients'
 import { getEffectivelyOpen } from '../lib/scheduleParser'
-
-const Logo = '/logo.png'
 
 export default function HomeChef() {
   const { t } = useTranslation()
@@ -83,70 +81,9 @@ export default function HomeChef() {
 
   return (
     <div className="min-h-screen pt-24" style={{ backgroundColor: '#f2ebe0' }} ref={ref}>
-      {/* Page header — no full-bleed banner: an editorial, left-aligned intro
-          sitting straight on the page background, unlike the centered dark
-          hero every other page on the site uses. */}
-      <div className="relative w-full px-6 md:px-12 lg:px-20 pt-14 pb-10 overflow-hidden">
-        <div className="absolute -top-16 -left-16 w-72 h-72 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: 'rgba(244,168,40,0.16)' }} />
-        <div className="absolute top-10 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: 'rgba(197,97,26,0.10)' }} />
-
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-12">
-          {/* Text */}
-          <div className="max-w-xl">
-            <div className="flex items-center gap-3 mb-5" data-reveal>
-              <img src={Logo} alt="DiaTable" style={{ width: 34, height: 34 }} className="object-contain" />
-              <p className="inline-flex items-center gap-1.5 text-[0.7rem] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full"
-                style={{ color: '#c5611a', border: '1px dashed rgba(197,97,26,0.4)' }}>
-                <ChefHat size={13} /> {t('home_chef_page.label')}
-              </p>
-            </div>
-            <h1 className="section-title font-black text-4xl md:text-5xl leading-tight mb-4" data-reveal data-delay="0.1s"
-              dangerouslySetInnerHTML={{ __html: t('home_chef_page.title') }} />
-            <p className="text-muted" data-reveal data-delay="0.2s">
-              {t('home_chef_page.subtitle')}
-            </p>
-
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-5 text-xs font-semibold" style={{ color: '#80716a' }} data-reveal data-delay="0.25s">
-              <span className="flex items-center gap-1.5">🍲 {t('home_chef_page.stat_homemade')}</span>
-              <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: 'rgba(128,113,106,0.4)' }} />
-              <span className="flex items-center gap-1.5">🤝 {t('home_chef_page.stat_supported')}</span>
-              <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: 'rgba(128,113,106,0.4)' }} />
-              <span className="flex items-center gap-1.5">📍 {t('home_chef_page.stat_cities')}</span>
-            </div>
-
-            <div className="inline-flex items-start gap-2.5 rounded-2xl bg-white p-4 mt-6 max-w-md"
-              style={{ border: '1.5px dashed rgba(197,97,26,0.35)' }} data-reveal data-delay="0.3s">
-              <ShieldQuestion size={16} className="flex-shrink-0 mt-0.5" style={{ color: '#c5611a' }} />
-              <p className="text-xs leading-relaxed" style={{ color: '#80716a' }}>{t('home_chef_page.disclaimer')}</p>
-            </div>
-          </div>
-
-          {/* Decorative chef collage — echoes the avatar cards below instead of a static logo */}
-          <div className="relative hidden md:block flex-shrink-0" style={{ width: 220, height: 220 }} data-reveal data-delay="0.15s">
-            <div className="absolute rounded-full flex items-center justify-center"
-              style={{ width: 128, height: 128, top: 0, left: 46, background: 'linear-gradient(135deg,#f4a828,#c8841a)', boxShadow: '0 14px 34px rgba(0,0,0,0.20)' }}>
-              <ChefHat size={46} className="text-white/90" />
-            </div>
-            <div className="absolute rounded-full flex items-center justify-center"
-              style={{ width: 92, height: 92, top: 118, left: 0, background: 'linear-gradient(135deg,#c5611a,#8b2500)', boxShadow: '0 10px 26px rgba(0,0,0,0.18)', transform: 'rotate(-6deg)' }}>
-              <Utensils size={30} className="text-white/85" />
-            </div>
-            <div className="absolute rounded-full flex items-center justify-center text-3xl"
-              style={{ width: 84, height: 84, top: 132, left: 134, background: 'linear-gradient(135deg,#e65100,#f57f17)', boxShadow: '0 10px 26px rgba(0,0,0,0.18)' }}>
-              🍲
-            </div>
-            <div className="absolute flex flex-col items-center justify-center rounded-full bg-white text-center leading-none"
-              style={{ width: 52, height: 52, top: -8, left: 152, border: '2px dashed #c5611a', transform: 'rotate(-12deg)', boxShadow: '0 4px 12px rgba(0,0,0,0.18)' }}>
-              <span className="text-[0.5rem] font-black" style={{ color: '#c5611a' }}>100%</span>
-              <span className="text-[0.45rem] font-bold uppercase tracking-wide" style={{ color: '#c5611a' }}>maison</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="w-full px-6 md:px-12 lg:px-20 py-12">
         {/* Search + Filters */}
-        <div className="rounded-[1.75rem] bg-white p-5 mb-10 max-w-sm" style={{ border: '1.5px dashed rgba(197,97,26,0.35)' }} data-reveal>
+        <div className="rounded-[1.75rem] bg-white p-5 mb-10" style={{ border: '1.5px dashed rgba(197,97,26,0.35)' }} data-reveal>
           {/* Search bar */}
           <div className="relative mb-4">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted flex items-center">
@@ -159,10 +96,10 @@ export default function HomeChef() {
               style={{ backgroundColor: '#f2ebe0' }}
             />
           </div>
-          {/* Filter column */}
-          <div className="flex flex-col gap-3">
+          {/* Filter row */}
+          <div className="flex flex-wrap gap-3">
             {/* Cuisine */}
-            <div>
+            <div className="flex-1 min-w-[160px]">
               <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">{t('restaurants_page.cuisine')}</label>
               <select value={cuisine} onChange={e => setCuisine(e.target.value)}
                 className="w-full border border-black/10 rounded-xl px-3 py-2.5 text-dark text-sm focus:outline-none focus:border-gold"
@@ -171,7 +108,7 @@ export default function HomeChef() {
               </select>
             </div>
             {/* Ville */}
-            <div>
+            <div className="flex-1 min-w-[140px]">
               <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">{t('restaurants_page.city')}</label>
               <select value={ville} onChange={e => setVille(e.target.value)}
                 className="w-full border border-black/10 rounded-xl px-3 py-2.5 text-dark text-sm focus:outline-none focus:border-gold"
@@ -180,7 +117,7 @@ export default function HomeChef() {
               </select>
             </div>
             {/* Note */}
-            <div>
+            <div className="flex-1 min-w-[140px]">
               <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">{t('restaurants_page.min_rating')}</label>
               <select value={note} onChange={e => setNote(parseFloat(e.target.value))}
                 className="w-full border border-black/10 rounded-xl px-3 py-2.5 text-dark text-sm focus:outline-none focus:border-gold"
@@ -190,7 +127,7 @@ export default function HomeChef() {
             </div>
             {/* Reset */}
             <button onClick={resetFilters}
-              className="px-4 py-2.5 rounded-xl border border-black/10 text-muted text-sm hover:text-gold hover:border-gold transition-all">
+              className="self-end px-4 py-2.5 rounded-xl border border-black/10 text-muted text-sm hover:text-gold hover:border-gold transition-all">
               {t('hero.reset')}
             </button>
           </div>

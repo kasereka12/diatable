@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { supabase } from '../lib/supabase'
-import { Search, ArrowRight, X, Utensils } from 'lucide-react'
+import { Search, ArrowRight, X, Utensils, ImageIcon } from 'lucide-react'
+import PageHero from '../components/ui/PageHero'
 
 interface Dish {
   id: string
@@ -150,30 +151,20 @@ export default function Galerie() {
   return (
     <>
       <div ref={ref}>
-        {/* Hero */}
-        <div className="bg-dark pt-32 pb-20 relative overflow-hidden">
-          <div className="absolute inset-0 zellige-pattern opacity-30" />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-dark/80" />
-          <div className="relative max-w-3xl mx-auto px-6 text-center">
-            <p className="section-label" data-reveal>Galerie mondiale</p>
-            <h1 className="font-serif text-4xl md:text-5xl font-black text-white mb-4" data-reveal data-delay="0.1s">
-              Les Plats du <em className="text-gold italic">Monde</em>
-            </h1>
-            <p className="text-light/70 text-lg mb-8" data-reveal data-delay="0.2s">
-              {loading ? '…' : `${dishes.length} plats emblématiques`} disponibles ici au Maroc.
-            </p>
-            <div className="relative max-w-sm mx-auto" data-reveal data-delay="0.3s">
-              <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Rechercher un plat ou un pays…"
-                className="w-full bg-white/10 border border-white/15 rounded-2xl pl-11 pr-4 py-3 text-white text-sm
-                           placeholder:text-white/35 focus:outline-none focus:border-gold/50 transition-all"
-              />
-            </div>
+        <PageHero variant="tall" icon={ImageIcon} eyebrow="Galerie mondiale"
+          title={<>Les Plats du <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>Monde</em></>}
+          subtitle={`${loading ? '…' : `${dishes.length} plats emblématiques`} disponibles ici au Maroc.`}>
+          <div className="relative max-w-sm mx-auto">
+            <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher un plat ou un pays…"
+              className="w-full bg-white/15 border border-white/20 rounded-2xl pl-11 pr-4 py-3 text-white text-sm
+                         placeholder:text-white/50 focus:outline-none focus:border-white/50 transition-all"
+            />
           </div>
-        </div>
+        </PageHero>
 
         {/* Filters */}
         {!loading && dishes.length > 0 && (

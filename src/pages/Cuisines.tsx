@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { supabase } from '../lib/supabase'
 import { getCuisineIcon } from '../lib/cuisineIcons'
-import { ChevronRight, Utensils } from 'lucide-react'
+import { ChevronRight, Utensils, Globe } from 'lucide-react'
 import FeaturedCuisines from '../components/FeaturedCuisines'
 import CuisineFilter from '../components/CuisineFilter'
 import FeaturedCarousel from '../components/FeaturedCarousel'
+import PageHero from '../components/ui/PageHero'
 
 // Visual mapping — UI-only, not stored in DB
 const CUISINE_META: Record<string, { bg: string; dish: string }> = {
@@ -58,20 +59,9 @@ export default function Cuisines() {
 
   return (
     <div className="bg-cream min-h-screen" ref={ref}>
-      {/* Header */}
-      <div className="bg-dark pt-32 pb-20 relative overflow-hidden">
-        <div className="absolute inset-0 zellige-pattern opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-dark/70" />
-        <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <p className="section-label" data-reveal>Explorer</p>
-          <h1 className="font-serif text-4xl md:text-5xl font-black text-white mb-4" data-reveal data-delay="0.1s">
-            Toutes les <em style={{ color: '#c5611a'}}>Cuisines</em>
-          </h1>
-          <p className="text-light/70" data-reveal data-delay="0.2s">
-            {loading ? '…' : cuisines.length} cuisines du monde entier, représentées par la diaspora au Maroc
-          </p>
-        </div>
-      </div>
+      <PageHero variant="tall" icon={Globe} eyebrow="Explorer"
+        title={<>Toutes les <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>Cuisines</em></>}
+        subtitle={`${loading ? '…' : cuisines.length} cuisines du monde entier, représentées par la diaspora au Maroc`} />
 
       {/* Grid */}
       <div className="max-w-6xl mx-auto px-6 py-16">

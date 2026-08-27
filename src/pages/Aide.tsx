@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import SectionHeader from '../components/ui/SectionHeader'
 import { Link } from 'react-router-dom'
-import { Search, ShoppingBag, ChefHat, CreditCard, User, MessageCircle, ChevronDown, ChevronUp, Mail, Phone, ArrowRight } from 'lucide-react'
+import { Search, ShoppingBag, ChefHat, CreditCard, User, MessageCircle, ChevronDown, ChevronUp, Mail, Phone, ArrowRight, LifeBuoy } from 'lucide-react'
+import PageHero from '../components/ui/PageHero'
 
 const CATEGORIES = [
   { Icon: ShoppingBag,  label: 'Commander',         id: 'commander' },
@@ -78,27 +79,18 @@ export default function Aide() {
 
   return (
     <div ref={ref}>
-      {/* Header */}
-      <div className="bg-dark pt-32 pb-20 relative overflow-hidden">
-        <div className="absolute inset-0 zellige-pattern opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-dark/70" />
-        <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <p className="section-label" data-reveal>Support</p>
-          <h1 className="font-serif text-4xl md:text-5xl font-black text-white mb-6" data-reveal data-delay="0.1s">
-            Aide &amp; <em className="text-gold italic">Support</em>
-          </h1>
-          {/* Search bar */}
-          <div data-reveal data-delay="0.2s" className="relative max-w-xl mx-auto">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Cherchez une question…"
-              className="w-full bg-white/10 border border-white/20 rounded-2xl pl-11 pr-5 py-3.5 text-white placeholder:text-white/40 text-sm focus:outline-none focus:border-gold/50 transition-all"
-            />
-          </div>
+      <PageHero variant="tall" icon={LifeBuoy} eyebrow="Support"
+        title={<>Aide &amp; <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>Support</em></>}>
+        <div className="relative max-w-xl mx-auto">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Cherchez une question…"
+            className="w-full bg-white/15 border border-white/20 rounded-2xl pl-11 pr-5 py-3.5 text-white placeholder:text-white/50 text-sm focus:outline-none focus:border-white/50 transition-all"
+          />
         </div>
-      </div>
+      </PageHero>
 
       {/* FAQ */}
       <section className="bg-cream py-24">

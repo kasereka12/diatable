@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -20,6 +20,8 @@ import {
 } from 'lucide-react'
 import { getEffectivelyOpen, getClosedReason } from '../lib/scheduleParser'
 import AdBanner from '../components/AdBanner'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 interface LightboxData { src: string; alt: string }
 
@@ -152,7 +154,11 @@ function StarSelector({ value, hover, onRate, onHover, onLeave }: { value: numbe
 
 export default function RestaurantDetail() {
   const { t } = useTranslation()
-  const { id } = useParams()
+  const { id: rawId } = useParams()
+  // Malformed/non-UUID route params (stale links, bad bookmarks, typos) would
+  // otherwise hit every query below and come back as Postgres 400s — treat
+  // them the same as "no id" so the page falls through to the not-found UI.
+  const id = rawId && UUID_RE.test(rawId) ? rawId : undefined
   const { user } = useAuth()
   const { addItem } = useCart()
   const navigate = useNavigate()
@@ -311,6 +317,18 @@ export default function RestaurantDetail() {
   const isHomecook = restaurant?.type === 'homecook'
   const effectivelyOpen = getEffectivelyOpen(restaurant)
   const closedReason = getClosedReason(restaurant)
+
+  // Log a page view for the vendor's stats — skipped for the owner previewing
+  // their own listing so "Vues ce mois" isn't inflated by their own visits,
+  // and logged at most once per browser session per restaurant so repeated
+  // visits/reloads in the same visit don't inflate the count either.
+  useEffect(() => {
+    if (!restaurant?.id || isOwner) return
+    const sessionKey = `dt_viewed_${restaurant.id}`
+    if (sessionStorage.getItem(sessionKey)) return
+    sessionStorage.setItem(sessionKey, '1')
+    ;(supabase.from('restaurant_views') as any).insert({ restaurant_id: restaurant.id })
+  }, [restaurant?.id, isOwner])
 
   if (loading) {
     return (

@@ -1,9 +1,10 @@
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import SectionHeader from '../components/ui/SectionHeader'
 import { Link } from 'react-router-dom'
-import { Search, MapPin, Utensils, ChefHat, Star, ShieldCheck, Bell, CreditCard, MessageCircle, ArrowRight } from 'lucide-react'
+import { Search, MapPin, Utensils, ChefHat, Star, ShieldCheck, Bell, CreditCard, MessageCircle, ArrowRight, Compass } from 'lucide-react'
 import HowItWorksHighlights from '../components/HowItWorks'
 import VendorCTA from '../components/VendorCTA'
+import PageHero from '../components/ui/PageHero'
 
 const STEPS_BUYER = [
   {
@@ -60,20 +61,9 @@ export default function HowItWorks() {
 
   return (
     <div ref={ref}>
-      {/* Header */}
-      <div className="bg-dark pt-32 pb-20 relative overflow-hidden">
-        <div className="absolute inset-0 zellige-pattern opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-dark/70" />
-        <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <p className="section-label" data-reveal>Guide</p>
-          <h1 className="font-serif text-4xl md:text-5xl font-black text-white mb-4" data-reveal data-delay="0.1s">
-            Comment ça <em className="text-gold italic">marche ?</em>
-          </h1>
-          <p className="text-light/70 text-lg" data-reveal data-delay="0.2s">
-            Trouver de la nourriture de chez vous ou vendre votre cuisine — DiaTable simplifie tout.
-          </p>
-        </div>
-      </div>
+      <PageHero variant="tall" icon={Compass} eyebrow="Guide"
+        title={<>Comment ça <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>marche ?</em></>}
+        subtitle="Trouver de la nourriture de chez vous ou vendre votre cuisine — DiaTable simplifie tout." />
 
       <HowItWorksHighlights />
 

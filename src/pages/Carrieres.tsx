@@ -3,6 +3,7 @@ import { useScrollReveal } from '../hooks/useScrollReveal'
 import SectionHeader from '../components/ui/SectionHeader'
 import { Link } from 'react-router-dom'
 import { MapPin, Clock, Briefcase, Heart, Users, Zap, Globe, ChevronDown, ChevronUp, ArrowRight, Mail } from 'lucide-react'
+import PageHero from '../components/ui/PageHero'
 
 const PERKS = [
   { Icon: Heart,   title: 'Mission qui a du sens',  desc: 'Contribuez à une plateforme qui soutient des entrepreneurs de la diaspora et célèbre la diversité culturelle.' },
@@ -135,19 +136,9 @@ export default function Carrieres() {
   return (
     <div ref={ref}>
       {/* Header */}
-      <div className="bg-dark pt-32 pb-20 relative overflow-hidden">
-        <div className="absolute inset-0 zellige-pattern opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-dark/70" />
-        <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <p className="section-label" data-reveal>Rejoignez-nous</p>
-          <h1 className="font-serif text-4xl md:text-5xl font-black text-white mb-4" data-reveal data-delay="0.1s">
-            Carrières chez <em className="text-gold italic">DiaTable</em>
-          </h1>
-          <p className="text-light/70 text-lg" data-reveal data-delay="0.2s">
-            Construisez avec nous la plus grande plateforme de cuisine de la diaspora en Afrique.
-          </p>
-        </div>
-      </div>
+      <PageHero variant="tall" icon={Briefcase} eyebrow="Rejoignez-nous"
+        title={<>Carrières chez <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>DiaTable</em></>}
+        subtitle="Construisez avec nous la plus grande plateforme de cuisine de la diaspora en Afrique." />
 
       {/* Perks */}
       <section className="bg-cream py-24">

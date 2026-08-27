@@ -264,7 +264,10 @@ export default function Hero() {
 
 function RestaurantsModal({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
-  const { restaurants, loading } = useRestaurants()
+  const { restaurants: allRestaurants, loading } = useRestaurants()
+  // Home cooks and pop-ups have their own dedicated listing (/home-chef) —
+  // this modal, like /restaurants, should only surface physical restaurants.
+  const restaurants = useMemo(() => allRestaurants.filter(r => r.type === 'restaurant'), [allRestaurants])
   const [cuisine, setCuisine] = useState('all')
   const [ville, setVille] = useState('')
   const [note, setNote] = useState(0)

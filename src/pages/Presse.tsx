@@ -1,7 +1,8 @@
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import SectionHeader from '../components/ui/SectionHeader'
 import { Link } from 'react-router-dom'
-import { Download, ExternalLink, Mail, ArrowRight } from 'lucide-react'
+import { Download, ExternalLink, Mail, ArrowRight, Newspaper } from 'lucide-react'
+import PageHero from '../components/ui/PageHero'
 
 const PRESS_ARTICLES = [
   {
@@ -62,20 +63,9 @@ export default function Presse() {
 
   return (
     <div ref={ref}>
-      {/* Header */}
-      <div className="bg-dark pt-32 pb-20 relative overflow-hidden">
-        <div className="absolute inset-0 zellige-pattern opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-dark/70" />
-        <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <p className="section-label" data-reveal>Médias</p>
-          <h1 className="font-serif text-4xl md:text-5xl font-black text-white mb-4" data-reveal data-delay="0.1s">
-            Espace <em className="text-gold italic">Presse</em>
-          </h1>
-          <p className="text-light/70 text-lg" data-reveal data-delay="0.2s">
-            Ressources, articles et contacts pour les journalistes et partenaires médias.
-          </p>
-        </div>
-      </div>
+      <PageHero variant="tall" icon={Newspaper} eyebrow="Médias"
+        title={<>Espace <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>Presse</em></>}
+        subtitle="Ressources, articles et contacts pour les journalistes et partenaires médias." />
 
       {/* Key figures */}
       <section className="bg-gold py-14">

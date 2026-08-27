@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { Mail, MessageCircle, MapPin, Clock, CheckCircle, Send } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { contactSchema, flattenErrors } from '../lib/schemas'
+import PageHero from '../components/ui/PageHero'
 
 export default function Contact() {
   const { t } = useTranslation()
@@ -53,31 +54,31 @@ export default function Contact() {
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
-  function handleSubmit(e: React.FormEvent) {
+  const [submitError, setSubmitError] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setFieldErrors({})
+    setSubmitError('')
     const result = contactSchema.safeParse(form)
     if (!result.success) { setFieldErrors(flattenErrors(result.error)); return }
     setLoading(true)
-    setTimeout(() => { setLoading(false); setSubmit(true) }, 1200)
+    const { error } = await (supabase.from('contact_messages') as any).insert({
+      name:    form.name.trim(),
+      email:   form.email.trim(),
+      reason:  form.reason || null,
+      message: form.message.trim(),
+    })
+    setLoading(false)
+    if (error) { setSubmitError(t('common.error')); return }
+    setSubmit(true)
   }
 
   return (
     <div className="bg-cream min-h-screen pt-24" ref={ref}>
-      {/* Header */}
-      <div className="bg-dark py-16 relative overflow-hidden">
-        <div className="absolute inset-0 zellige-pattern opacity-30" />
-        <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <p className="section-label" data-reveal>{t('contact_page.label')}</p>
-          <h1 className="font-serif text-4xl font-black text-white mb-3" data-reveal data-delay="0.1s">
-            {t('contact_page.title_before')}{' '}
-            <em style={{ color: '#c5611a' }}>{t('contact_page.title_em')}</em>
-          </h1>
-          <p className="text-light/70" data-reveal data-delay="0.2s">
-            {t('contact_page.subtitle')}
-          </p>
-        </div>
-      </div>
+      <PageHero icon={Mail} eyebrow={t('contact_page.label')}
+        title={<>{t('contact_page.title_before')} <em style={{ color: '#1f1f1f' }}>{t('contact_page.title_em')}</em></>}
+        subtitle={t('contact_page.subtitle')} />
 
       <div className="max-w-5xl mx-auto px-6 py-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
@@ -155,6 +156,7 @@ export default function Contact() {
                       className="w-full bg-cream border border-black/10 rounded-xl px-4 py-3 text-dark text-sm focus:outline-none focus:border-gold transition-all resize-none" />
                     {fieldErrors.message && <p className="text-red-500 text-xs mt-1">{fieldErrors.message}</p>}
                   </div>
+                  {submitError && <p className="text-red-500 text-sm">{submitError}</p>}
                   <button type="submit" disabled={loading}
                     className="w-full btn btn-gold justify-center py-3.5 disabled:opacity-60 flex items-center gap-2">
                     {loading ? t('contact_page.sending') : (

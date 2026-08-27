@@ -796,6 +796,9 @@ create policy "Utilisateur peut modifier ses notifications"
 create policy "Système peut créer des notifications"
   on notifications for insert with check (true);
 
+create policy "Utilisateur peut supprimer ses notifications"
+  on notifications for delete using (auth.uid() = user_id);
+
 
 -- ── 17. Triggers de notification (commandes / messages) ──
 create or replace function notify_new_order()
@@ -1444,3 +1447,31 @@ create policy "driver_documents_update"
 create policy "driver_documents_read"
   on storage.objects for select
   using (bucket_id = 'driver-documents');
+
+
+-- ── 26. CONTACT MESSAGES ──────────────────────────────
+create table if not exists contact_messages (
+  id          uuid primary key default uuid_generate_v4(),
+  name        text not null,
+  email       text not null,
+  reason      text,
+  message     text not null,
+  status      text not null default 'new' check (status in ('new','read','archived')),
+  created_at  timestamptz default now()
+);
+
+create index if not exists idx_contact_messages_created on contact_messages (created_at desc);
+
+alter table contact_messages enable row level security;
+
+create policy "Public peut envoyer un message de contact"
+  on contact_messages for insert with check (true);
+
+create policy "Admin peut lire les messages de contact"
+  on contact_messages for select using (is_admin());
+
+create policy "Admin peut modifier les messages de contact"
+  on contact_messages for update using (is_admin());
+
+create policy "Admin peut supprimer les messages de contact"
+  on contact_messages for delete using (is_admin());

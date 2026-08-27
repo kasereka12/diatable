@@ -1,13 +1,54 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TABS } from '../data/restaurants'
-import { Globe, Store, HomeIcon, Zap, Phone, MessageCircle, Instagram, Check, Sparkles, Lock } from 'lucide-react'
+import {
+  Store, HomeIcon, Zap, Phone, MessageCircle, Instagram, Check, Sparkles, Lock,
+  ArrowRight, Users, ShieldCheck, Percent, ChevronDown, LayoutDashboard,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import {
   vendorStep0Schema, vendorStep1Schema, vendorStep2Schema, vendorStep3Schema,
   flattenErrors,
 } from '../lib/schemas'
+
+const VALUE_PROPS = [
+  { icon: Users,       title: 'Une audience prête à acheter', desc: 'Touchez des milliers d\'expatriés et de locaux qui recherchent activement votre cuisine.' },
+  { icon: Percent,     title: 'Aucune commission les 3 premiers mois', desc: 'Démarrez sans risque : zéro frais sur vos premières ventes.' },
+  { icon: ShieldCheck, title: 'Vérifié, donc crédible', desc: 'Chaque profil est validé par notre équipe — les clients commandent en confiance.' },
+  { icon: LayoutDashboard, title: 'Un tableau de bord complet', desc: 'Gérez commandes, menu, avis et statistiques depuis un seul endroit.' },
+]
+
+const VENDOR_STEPS = [
+  { title: 'Créez votre profil',              desc: 'Présentez votre établissement : nom, cuisine, horaires.' },
+  { title: 'Vérification',                    desc: 'Notre équipe valide votre profil sous 24h.' },
+  { title: 'Premières commandes',              desc: 'Les clients vous découvrent et vous contactent directement.' },
+  { title: 'Suivez votre activité',            desc: 'Gérez commandes, avis et statistiques depuis votre tableau de bord.' },
+]
+
+const FAQ_ITEMS = [
+  { q: 'Dois-je avoir un restaurant physique ?', a: 'Non — DiaTable accueille aussi les cuisiniers à domicile et les pop-up/traiteurs, en plus des restaurants classiques.' },
+  { q: 'Combien coûte l\'inscription ?', a: 'L\'inscription est gratuite, sans commission pendant vos 3 premiers mois.' },
+  { q: 'Combien de temps avant d\'être visible ?', a: 'Votre profil est vérifié par notre équipe sous 24h après soumission.' },
+  { q: 'Comment les clients me contactent-ils ?', a: 'Directement par téléphone, WhatsApp ou message via DiaTable, selon les coordonnées que vous renseignez.' },
+  { q: 'Puis-je modifier mes informations plus tard ?', a: 'Oui, vous gérez votre profil (menu, horaires, photos) à tout moment depuis votre tableau de bord.' },
+  { q: 'Je cuisine à domicile et ne suis pas enregistré légalement, est-ce un problème ?', a: 'Pas de souci : les cuisiniers à domicile vendent sous l\'enseigne DiaTable, qui les accompagne dans leurs démarches.' },
+]
+
+function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
+  return (
+    <div className="border-b border-white/10 last:border-0">
+      <button type="button" onClick={onToggle}
+        className="w-full flex items-center justify-between gap-4 py-5 text-left">
+        <span className="font-medium text-white text-sm md:text-base">{q}</span>
+        <ChevronDown size={18} className={`flex-shrink-0 text-white/40 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <p className="text-white/50 text-sm leading-relaxed pb-5 pr-8">{a}</p>
+      )}
+    </div>
+  )
+}
 
 const STEPS = ['Votre restaurant', 'Localisation', 'Cuisine & horaires', 'Contact', 'Confirmation']
 
@@ -61,6 +102,7 @@ export default function VendorOnboarding() {
   const [step,        setStep]       = useState(0)
   const [submitting,  setSubmitting] = useState(false)
   const [stepErrors,  setStepErrors] = useState<Record<string, string>>({})
+  const [openFaq,     setOpenFaq]    = useState<number | null>(0)
   const [form, setForm] = useState({
     name: '', description: '', type: 'restaurant',
     cuisine: '', cuisineCustom: '', city: '', address: '',
@@ -140,16 +182,94 @@ export default function VendorOnboarding() {
   const progressPct = (step / (STEPS.length - 1)) * 100
 
   return (
-    <div className="min-h-screen bg-dark flex flex-col">
-      <div className="absolute inset-0 zellige-pattern opacity-30 pointer-events-none" />
-
-      <div className="relative flex-1 flex flex-col items-center justify-center px-4 py-20">
-        <a href="/" className="font-serif text-2xl font-bold text-white mb-10 flex items-center gap-1.5">
+    <div className="min-h-screen bg-dark">
+      {/* Top bar */}
+      <div className="relative z-10 flex items-center justify-between px-6 py-6 max-w-6xl mx-auto">
+        <a href="/" className="font-serif text-xl font-bold text-white flex items-center gap-1">
           Dia<span className="text-gold">Table</span>
-          <Globe size={20} className="text-gold" />
         </a>
+        {!user && (
+          <a href="/connexion" className="text-sm text-white/50 hover:text-white transition-colors">
+            Déjà inscrit ? <span className="text-gold font-semibold">Se connecter</span>
+          </a>
+        )}
+      </div>
 
-        <div className="w-full max-w-lg">
+      {/* Hero */}
+      <section className="relative overflow-hidden px-6 pt-10 pb-24">
+        <div className="absolute inset-0 zellige-pattern opacity-30 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-dark pointer-events-none" />
+        <div className="relative max-w-3xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-xs font-bold uppercase tracking-widest text-gold mb-6">
+            <Store size={13} /> Rejoindre DiaTable
+          </div>
+          <h1 className="font-serif text-4xl md:text-6xl font-black text-white leading-[1.08] mb-5">
+            Vous cuisinez les plats<br />de <span className="text-gold">votre pays au Maroc ?</span>
+          </h1>
+          <p className="text-white/60 text-base md:text-lg max-w-xl mx-auto mb-9">
+            Rejoignez DiaTable et touchez des milliers d'expatriés qui cherchent votre cuisine — restaurant, cuisine à domicile ou pop-up.
+          </p>
+          <a href="#inscription"
+            className="inline-flex items-center gap-2 bg-gold hover:bg-gold-light text-dark font-semibold px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(244,168,40,0.4)]">
+            Devenir vendeur <ArrowRight size={18} />
+          </a>
+        </div>
+      </section>
+
+      {/* Value props */}
+      <section className="relative px-6 py-16" style={{ backgroundColor: '#1c1b2a' }}>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {VALUE_PROPS.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="bg-white/[0.04] border border-white/10 rounded-2xl p-6">
+              <div className="w-11 h-11 rounded-xl bg-gold/15 flex items-center justify-center mb-4">
+                <Icon size={20} className="text-gold" />
+              </div>
+              <h3 className="font-serif font-bold text-white mb-2">{title}</h3>
+              <p className="text-white/50 text-sm leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="px-6 py-20">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold mb-3">Simple &amp; rapide</p>
+            <h2 className="font-serif text-3xl md:text-4xl font-black text-white">Comment ça marche</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {VENDOR_STEPS.map((s, i) => (
+              <div key={s.title}>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center font-serif font-black text-lg text-gold mb-4"
+                  style={{ backgroundColor: 'rgba(244,168,40,0.15)', border: '1px solid rgba(244,168,40,0.30)' }}>
+                  {i + 1}
+                </div>
+                <h3 className="font-serif font-bold text-white mb-2">{s.title}</h3>
+                <p className="text-white/50 text-sm leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Who can join */}
+      <section className="px-6 py-16" style={{ backgroundColor: '#1c1b2a' }}>
+        <div className="max-w-2xl mx-auto bg-white/[0.04] border border-white/10 rounded-2xl p-8">
+          <h3 className="font-serif text-xl font-bold text-white mb-5">Qui peut rejoindre DiaTable ?</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {TYPES.map(t => (
+              <div key={t.id} className="flex flex-col items-center text-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl p-4">
+                <t.Icon size={22} className="text-gold" />
+                <span className="text-white text-sm font-semibold">{t.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="relative px-4 py-24 scroll-mt-6" id="inscription">
+        <div className="w-full max-w-lg mx-auto">
           {/* Progress */}
           <div className="mb-6">
             <div className="flex justify-between text-xs text-muted mb-2">
@@ -409,6 +529,34 @@ export default function VendorOnboarding() {
           </div>
         </div>
       </div>
+
+      {/* FAQ */}
+      <section className="px-6 py-20" style={{ backgroundColor: '#1c1b2a' }}>
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold mb-3">Questions fréquentes</p>
+            <h2 className="font-serif text-3xl font-black text-white">Vous vous posez des questions ?</h2>
+          </div>
+          <div>
+            {FAQ_ITEMS.map((item, i) => (
+              <FaqItem key={item.q} q={item.q} a={item.a} open={openFaq === i} onToggle={() => setOpenFaq(openFaq === i ? null : i)} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="px-6 py-20 text-center">
+        <div className="max-w-xl mx-auto">
+          <Sparkles size={28} className="text-gold mx-auto mb-4" />
+          <h2 className="font-serif text-2xl md:text-3xl font-black text-white mb-3">Prêt à faire découvrir votre cuisine ?</h2>
+          <p className="text-white/50 text-sm mb-8">Rejoignez les vendeurs DiaTable dès aujourd'hui.</p>
+          <a href="#inscription"
+            className="inline-flex items-center gap-2 bg-gold hover:bg-gold-light text-dark font-semibold px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(244,168,40,0.4)]">
+            Devenir vendeur <ArrowRight size={18} />
+          </a>
+        </div>
+      </section>
     </div>
   )
 }

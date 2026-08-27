@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import { useConfirm } from '../context/ConfirmContext'
 import { supabase } from '../lib/supabase'
 import {
   Package, Clock, CheckCircle, Utensils, Truck, XCircle,
@@ -194,6 +196,8 @@ const PAST_ORDERS_PAGE_SIZE = 10
 
 export default function OrderTracking() {
   const { user } = useAuth()
+  const toast = useToast()
+  const confirm = useConfirm()
   // Active orders are always shown in full (naturally small — only what's
   // currently in progress). Past orders accumulate forever, so that tab is
   // paginated separately.
@@ -271,11 +275,11 @@ export default function OrderTracking() {
   const displayedLoading = activeTab === 'active' ? loading : pastLoading
 
   async function cancelOrder(orderId: string) {
-    if (!window.confirm('Annuler cette commande ? Cette action est irréversible.')) return
+    if (!(await confirm('Annuler cette commande ? Cette action est irréversible.'))) return
     const { error } = await (supabase.from('orders') as any)
       .update({ status: 'cancelled' })
       .eq('id', orderId)
-    if (error) { window.alert("Impossible d'annuler la commande. Le restaurant a peut-être déjà commencé la préparation."); return }
+    if (error) { toast.error("Impossible d'annuler la commande. Le restaurant a peut-être déjà commencé la préparation."); return }
     setActiveOrders(prev => prev.filter(o => o.id !== orderId))
     setSelectedOrder(prev => prev && prev.id === orderId ? { ...prev, status: 'cancelled' } : prev)
   }

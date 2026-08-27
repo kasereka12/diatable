@@ -52,53 +52,67 @@ const NEXT_LABEL: Record<string, string> = {
   ready:     'Marquer comme livrée',
 }
 
-const PAST_ORDERS_PAGE_SIZE = 15
+const ORDERS_PAGE_SIZE = 15
 const ORDER_SELECT = '*, order_items(*), customer:profiles!orders_customer_id_fkey(full_name, email)'
 
+const ACTIVE_STATUSES = ['pending', 'confirmed', 'preparing', 'ready']
+const PAST_STATUSES = ['delivered', 'cancelled']
+
+const ACTIVE_STATUS_FILTERS = ['all', ...ACTIVE_STATUSES]
+const PAST_STATUS_FILTERS = ['all', ...PAST_STATUSES]
+
 export default function VendorOrders({ restaurantId }: { restaurantId: string }) {
-  // Active orders need to always be fully visible (a restaurant can't afford
-  // to have an in-progress order hidden behind pagination), so that list
-  // stays unbounded — it's naturally small since it only holds live orders.
-  // Past orders accumulate forever, so only that tab is paginated.
+  // Both tabs are now paginated and filterable server-side — a busy
+  // restaurant can easily have dozens of orders sitting "en cours" at once,
+  // not just a handful.
   const [activeOrders, setActiveOrders] = useState<Order[]>([])
   const [pastOrders, setPastOrders] = useState<Order[]>([])
+  const [activeTotal, setActiveTotal] = useState(0)
   const [pastTotal, setPastTotal] = useState(0)
+  const [activePage, setActivePage] = useState(0)
   const [pastPage, setPastPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [pastLoading, setPastLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('active')
+  const [activeStatusFilter, setActiveStatusFilter] = useState('all')
+  const [pastStatusFilter, setPastStatusFilter] = useState('all')
+  const [modeFilter, setModeFilter] = useState('all') // 'all' | 'delivery' | 'pickup'
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
   const [assignModal, setAssignModal] = useState<string | null>(null) // order id
 
   const loadActive = useCallback(async () => {
     if (!restaurantId) return
     setLoading(true)
-    const { data } = await supabase
+    const from = activePage * ORDERS_PAGE_SIZE
+    const to = from + ORDERS_PAGE_SIZE - 1
+    let query = supabase
       .from('orders')
-      .select(ORDER_SELECT)
+      .select(ORDER_SELECT, { count: 'exact' })
       .eq('restaurant_id', restaurantId)
-      .not('status', 'in', '(delivered,cancelled)')
-      .order('created_at', { ascending: false })
+    query = activeStatusFilter === 'all' ? query.in('status', ACTIVE_STATUSES) : query.eq('status', activeStatusFilter)
+    if (modeFilter !== 'all') query = query.eq('delivery_mode', modeFilter)
+    const { data, count } = await query.order('created_at', { ascending: false }).range(from, to)
     setActiveOrders((data || []) as unknown as Order[])
+    setActiveTotal(count ?? 0)
     setLoading(false)
-  }, [restaurantId])
+  }, [restaurantId, activePage, activeStatusFilter, modeFilter])
 
   const loadPast = useCallback(async () => {
     if (!restaurantId) return
     setPastLoading(true)
-    const from = pastPage * PAST_ORDERS_PAGE_SIZE
-    const to = from + PAST_ORDERS_PAGE_SIZE - 1
-    const { data, count } = await supabase
+    const from = pastPage * ORDERS_PAGE_SIZE
+    const to = from + ORDERS_PAGE_SIZE - 1
+    let query = supabase
       .from('orders')
       .select(ORDER_SELECT, { count: 'exact' })
       .eq('restaurant_id', restaurantId)
-      .in('status', ['delivered', 'cancelled'])
-      .order('created_at', { ascending: false })
-      .range(from, to)
+    query = pastStatusFilter === 'all' ? query.in('status', PAST_STATUSES) : query.eq('status', pastStatusFilter)
+    if (modeFilter !== 'all') query = query.eq('delivery_mode', modeFilter)
+    const { data, count } = await query.order('created_at', { ascending: false }).range(from, to)
     setPastOrders((data || []) as unknown as Order[])
     setPastTotal(count ?? 0)
     setPastLoading(false)
-  }, [restaurantId, pastPage])
+  }, [restaurantId, pastPage, pastStatusFilter, modeFilter])
 
   useEffect(() => {
     if (!restaurantId) { setLoading(false); return }
@@ -125,7 +139,12 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
     if (activeTab === 'past') loadPast()
   }, [activeTab, loadPast])
 
-  const pastTotalPages = Math.max(1, Math.ceil(pastTotal / PAST_ORDERS_PAGE_SIZE))
+  // Any filter change restarts pagination from page 1 on the relevant tab.
+  useEffect(() => { setActivePage(0) }, [activeStatusFilter, modeFilter])
+  useEffect(() => { setPastPage(0) }, [pastStatusFilter, modeFilter])
+
+  const activeTotalPages = Math.max(1, Math.ceil(activeTotal / ORDERS_PAGE_SIZE))
+  const pastTotalPages   = Math.max(1, Math.ceil(pastTotal / ORDERS_PAGE_SIZE))
 
   async function updateStatus(orderId: string, newStatus: string) {
     await (supabase.from('orders') as any).update({ status: newStatus }).eq('id', orderId)
@@ -157,9 +176,9 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
           <Package size={24} className="text-gold" /> Commandes
         </h1>
         <div className="flex items-center gap-2">
-          {activeOrders.length > 0 && (
+          {activeTotal > 0 && (
             <span className="bg-gold text-dark text-xs font-bold px-3 py-1 rounded-full">
-              {activeOrders.length} en cours
+              {activeTotal} en cours
             </span>
           )}
         </div>
@@ -173,7 +192,7 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
             activeTab === 'active' ? 'bg-yellow-400 text-gray-900' : 'text-gray-500 hover:text-dark'
           }`}
         >
-          En cours ({activeOrders.length})
+          En cours ({activeTotal})
         </button>
         <button
           onClick={() => setActiveTab('past')}
@@ -185,17 +204,64 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
         </button>
       </div>
 
+      {/* Filters */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {(activeTab === 'active' ? ACTIVE_STATUS_FILTERS : PAST_STATUS_FILTERS).map(s => (
+            <button
+              key={s}
+              onClick={() => activeTab === 'active' ? setActiveStatusFilter(s) : setPastStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                (activeTab === 'active' ? activeStatusFilter : pastStatusFilter) === s
+                  ? 'bg-dark text-white border-dark'
+                  : 'bg-white text-gray-500 border-light hover:text-dark'
+              }`}
+            >
+              {s === 'all' ? 'Tous les statuts' : STATUS_CONFIG[s].label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {[
+            { val: 'all', label: 'Tous les modes' },
+            { val: 'delivery', label: '🛵 Livraison' },
+            { val: 'pickup', label: '🏪 Retrait' },
+          ].map(m => (
+            <button
+              key={m.val}
+              onClick={() => setModeFilter(m.val)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                modeFilter === m.val
+                  ? 'bg-dark text-white border-dark'
+                  : 'bg-white text-gray-500 border-light hover:text-dark'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {displayedLoading ? (
         <div className="text-center py-12 text-gray-400">Chargement...</div>
       ) : displayedOrders.length === 0 ? (
         <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-light">
           <Package size={40} className="text-gray-200 mx-auto mb-3" />
-          <p className="font-semibold text-dark mb-1">
-            {activeTab === 'active' ? 'Aucune commande en cours' : 'Aucune commande passée'}
-          </p>
-          <p className="text-sm text-gray-400">
-            {activeTab === 'active' ? 'Les nouvelles commandes apparaîtront ici en temps réel' : 'L\'historique de vos commandes apparaîtra ici'}
-          </p>
+          {(activeTab === 'active' ? activeStatusFilter : pastStatusFilter) !== 'all' || modeFilter !== 'all' ? (
+            <>
+              <p className="font-semibold text-dark mb-1">Aucune commande ne correspond à ces filtres</p>
+              <p className="text-sm text-gray-400">Essayez de modifier ou réinitialiser les filtres ci-dessus</p>
+            </>
+          ) : (
+            <>
+              <p className="font-semibold text-dark mb-1">
+                {activeTab === 'active' ? 'Aucune commande en cours' : 'Aucune commande passée'}
+              </p>
+              <p className="text-sm text-gray-400">
+                {activeTab === 'active' ? 'Les nouvelles commandes apparaîtront ici en temps réel' : 'L\'historique de vos commandes apparaîtra ici'}
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -338,6 +404,9 @@ export default function VendorOrders({ restaurantId }: { restaurantId: string })
         </div>
       )}
 
+      {activeTab === 'active' && !loading && (
+        <PaginationControls page={activePage} totalPages={activeTotalPages} onPageChange={setActivePage} />
+      )}
       {activeTab === 'past' && !pastLoading && (
         <PaginationControls page={pastPage} totalPages={pastTotalPages} onPageChange={setPastPage} />
       )}

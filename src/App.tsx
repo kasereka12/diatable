@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
 import { NotificationProvider } from './context/NotificationContext'
 import { ToastProvider } from './context/ToastContext'
+import { ConfirmProvider } from './context/ConfirmContext'
 import { MessageProvider } from './context/MessageContext'
 import Layout         from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -69,6 +70,7 @@ export default function App() {
           <NotificationProvider>
           <MessageProvider>
           <ToastProvider>
+          <ConfirmProvider>
             <ErrorBoundary>
               {/* Cart drawer + switch confirmation (always available) */}
               <CartDrawer />
@@ -171,6 +173,7 @@ export default function App() {
                 } />
               </Routes>
             </ErrorBoundary>
+          </ConfirmProvider>
           </ToastProvider>
           </MessageProvider>
           </NotificationProvider>

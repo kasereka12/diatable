@@ -27,7 +27,9 @@
       "Bash(npx eslint *)",
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('src/i18n/locales/fr.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('src/i18n/locales/en.json','utf8'\\)\\); console.log\\('OK'\\)\")",
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('src/i18n/locales/fr.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('src/i18n/locales/en.json','utf8'\\)\\); console.log\\('JSON OK'\\)\")",
-      "Bash(node -e \"console.log\\(require.resolve\\('playwright'\\)\\)\")"
+      "Bash(node -e \"console.log\\(require.resolve\\('playwright'\\)\\)\")",
+      "WebFetch(domain:yassir.com)",
+      "WebFetch(domain:glovoapp.com)"
     ],
     "additionalDirectories": [
       "c:\\Users\\dmutaka\\Downloads\\diatable-main\\diatable-main\\supabase\\functions"

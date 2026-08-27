@@ -30,7 +30,7 @@
     "nav_menu": "Menu de navigation"
   },
   "footer": {
-    "tagline": "Relier les communautés de la diaspora à travers la nourriture. Retrouvez le goût de chez vous, ici au Maroc.",
+    "tagline": "La plateforme qui connecte la diaspora à une cuisine authentique et vérifiée, partout au Maroc.",
     "col_about": "À propos",
     "col_cuisines": "Cuisines",
     "col_contact": "Contact",
@@ -47,29 +47,29 @@
   "why": {
     "label": "Notre Engagement",
     "title": "Pourquoi Choisir <em>DiaTable ?</em>",
-    "feat1_title": "30+ Cuisines",
-    "feat1_desc": "De l'Afrique de l'Ouest à l'Asie de l'Est, du Moyen-Orient à l'Europe — si une communauté de la diaspora existe au Maroc, sa cuisine est sur DiaTable.",
+    "feat1_title": "30+ Cuisines du Monde",
+    "feat1_desc": "De l'Afrique de l'Ouest à l'Asie de l'Est, du Moyen-Orient à l'Europe : si une communauté de la diaspora s'est installée au Maroc, sa cuisine a sa place sur DiaTable.",
     "feat2_title": "Vendeurs Vérifiés",
-    "feat2_desc": "Chaque restaurant et cuisinier à domicile sur notre plateforme est évalué, vérifié et approuvé par notre communauté d'expatriés et de locaux.",
-    "feat3_title": "La Communauté Avant Tout",
-    "feat3_desc": "Nous soutenons les entrepreneurs de la diaspora qui construisent leur vie et leur activité au Maroc — parce que la culture voyage à travers la nourriture."
+    "feat2_desc": "Chaque restaurant et cuisinier à domicile est contrôlé et validé par notre équipe avant sa mise en ligne, pour que chaque commande soit une valeur sûre.",
+    "feat3_title": "Une Communauté, Pas une Application",
+    "feat3_desc": "Nous accompagnons des entrepreneurs de la diaspora qui construisent leur activité au Maroc, parce que la culture d'un pays se transmet aussi par sa cuisine."
   },
   "how": {
     "label": "Simple & Rapide",
     "title": "Comment fonctionne <em>DiaTable</em> ?",
     "step": "Étape",
-    "step1_title": "Cherchez Votre Cuisine",
-    "step1_desc": "Parcourez plus de 30 cuisines d'Afrique, d'Asie, d'Europe et des Amériques. Retrouvez instantanément les saveurs de chez vous.",
-    "step2_title": "Trouvez des Vendeurs Proches",
-    "step2_desc": "Restaurants, cuisiniers à domicile et cuisines éphémères près de vous — à Casablanca, Rabat, Marrakech et ailleurs.",
-    "step3_title": "Commandez ou Rendez-vous",
-    "step3_desc": "Contactez directement, commandez en ligne ou réservez une table. Savourez une cuisine authentique, ici même au Maroc."
+    "step1_title": "Choisissez Votre Cuisine",
+    "step1_desc": "Parcourez plus de 30 cuisines venues d'Afrique, d'Asie, d'Europe et des Amériques, et retrouvez en quelques secondes les saveurs de chez vous.",
+    "step2_title": "Repérez les Vendeurs Près de Vous",
+    "step2_desc": "Restaurants, cuisiniers à domicile et cuisines éphémères vérifiés, disponibles à Casablanca, Rabat, Marrakech et dans les grandes villes du Maroc.",
+    "step3_title": "Commandez en Toute Confiance",
+    "step3_desc": "Contactez le vendeur, commandez en ligne ou réservez une table, et savourez une cuisine authentique, préparée avec soin."
   },
   "vendor_cta": {
     "title": "Vous Cuisinez les Plats de Votre Pays au Maroc ?",
-    "desc": "Rejoignez DiaTable et touchez des milliers d'expatriés qui cherchent votre cuisine. Référencez votre restaurant, cuisine à domicile ou pop-up gratuitement.",
+    "desc": "Rejoignez DiaTable et faites découvrir votre cuisine à des milliers d'expatriés qui la recherchent activement. Référencement gratuit pour tout restaurant, cuisine à domicile ou pop-up.",
     "button": "Devenir Vendeur",
-    "sub": "Inscription gratuite · Aucune commission les 3 premiers mois · Rejoignez 200+ vendeurs déjà sur DiaTable"
+    "sub": "Inscription gratuite · Aucune commission les 3 premiers mois · Déjà plus de 200 vendeurs actifs sur DiaTable"
   },
   "testimonials": {
     "label": "Témoignages",
@@ -77,7 +77,7 @@
   },
   "featured": {
     "label": "Les Plus Populaires",
-    "title": "Cuisines les plus <em>Aimées</em>",
+    "title": "Cuisines les plus <em>Plébiscitées</em>",
     "explore": "Explorer cette cuisine",
     "no_cuisine": "Aucune cuisine disponible pour le moment.",
     "restos_one": "resto",
@@ -85,7 +85,7 @@
   },
   "restaurants_page": {
     "title": "Restaurants",
-    "subtitle": "Toutes les cuisines diaspora au Maroc",
+    "subtitle": "Des cuisines du monde entier, vérifiées et notées par la communauté au Maroc",
     "search_placeholder": "Rechercher…",
     "cuisine": "Cuisine",
     "city": "Ville",
@@ -108,14 +108,11 @@
   "home_chef_page": {
     "label": "DiaTable Home Chef",
     "title": "Des cuisiniers passionnés, <em>juste à côté de chez vous</em>",
-    "subtitle": "Découvrez des cuisiniers indépendants qui préparent leurs plats à domicile, présentés et accompagnés par DiaTable.",
-    "disclaimer": "Ces cuisiniers vendent sous l'enseigne DiaTable, qui les accompagne dans leurs démarches administratives.",
+    "subtitle": "La cuisine faite maison de la diaspora, préparée avec cœur et portée par DiaTable.",
+    "disclaimer": "Cuisiniers indépendants, accompagnés par DiaTable.",
     "search_placeholder": "Rechercher un cuisinier, une spécialité…",
     "slogan": "DiaTable by {{name}}",
     "handmade": "Fait maison",
-    "stat_homemade": "Cuisine 100% maison",
-    "stat_supported": "Accompagnés par DiaTable",
-    "stat_cities": "Casablanca, Rabat, Marrakech…",
     "loading_title": "On dresse la table…",
     "loading_sub": "DiaTable réunit les meilleurs cuisiniers maison pour vous"
   },
@@ -213,7 +210,7 @@
     "title_before": "Nous",
     "title_em": "Contacter",
     "title": "Contactez-nous",
-    "subtitle": "Une question, un problème, ou vous souhaitez rejoindre DiaTable ? On vous répond dans les 24h.",
+    "subtitle": "Une question, un problème, ou l'envie de rejoindre DiaTable ? Notre équipe vous répond sous 24h.",
     "name_label": "Nom complet",
     "name_placeholder": "Votre nom",
     "email_label": "Adresse email",
@@ -251,10 +248,10 @@
   },
   "hero": {
     "find_food": "Trouver à Manger",
-    "headline1": "Retrouvez le",
-    "headline_shimmer": "Goût de Chez Vous,",
-    "headline2": "Même Loin de Chez Vous",
-    "subtext": "Accédez en un clic à une diversité culinaire unique : restaurants internationaux, cuisiniers à domicile et spécialités du monde, réunis au même endroit.",
+    "headline1": "Le Goût de Chez Vous,",
+    "headline_shimmer": "Vérifié",
+    "headline2": "Où Que Vous Soyez au Maroc",
+    "subtext": "Restaurants, cuisiniers à domicile et spécialités du monde entier : DiaTable rassemble une sélection vérifiée de vendeurs de la diaspora, pour une cuisine authentique en toute confiance.",
     "modal_label": "Explorer",
     "modal_title_before": "Tous les",
     "modal_title_em": "Restaurants",
@@ -671,6 +668,8 @@
     "notifs_title": "Notifications",
     "mark_all_read": "Tout marquer comme lu",
     "mark_read": "Marquer comme lu",
+    "delete_all_notifs": "Supprimer tout",
+    "confirm_delete_all_notifs": "Supprimer toutes les notifications ? Cette action est irréversible.",
     "no_notifs": "Aucune notification pour le moment",
     "no_notifs_sub": "Vous serez notifié lors de nouvelles commandes, messages ou avis.",
     "load_more_notifs": "Charger plus de notifications",

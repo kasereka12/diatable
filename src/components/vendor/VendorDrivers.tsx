@@ -3,13 +3,7 @@ import type React from 'react'
 import { supabase, callEdgeFunction } from '../../lib/supabase'
 import { Bike, Plus, Phone, CheckCircle, Clock, X, AlertCircle, Camera, FileText, PauseCircle, PlayCircle, Trash2, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { VEHICLE_LABEL } from '../../hooks/useDeliveryDrivers'
-
-const VEHICLE_OPTIONS = [
-  { value: 'moto',    label: '🛵 Moto' },
-  { value: 'voiture', label: '🚗 Voiture' },
-  { value: 'velo',    label: '🚲 Vélo' },
-  { value: 'pieton',  label: '🚶 Piéton' },
-]
+import { useConfirm } from '../../context/ConfirmContext'
 
 type DocKey = 'license' | 'front' | 'back' | 'left' | 'right'
 
@@ -59,6 +53,7 @@ function PhotoPicker({ label, preview, onChange, compact }: {
 }
 
 export default function VendorDrivers({ restaurantId }: { restaurantId: string }) {
+  const confirm = useConfirm()
   const [drivers, setDrivers]   = useState<Driver[]>([])
   const [loading, setLoading]   = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -176,7 +171,7 @@ export default function VendorDrivers({ restaurantId }: { restaurantId: string }
   }
 
   async function deleteDriver(id: string, name: string) {
-    if (!window.confirm(`Supprimer définitivement ${name} ? Il ne pourra plus se connecter. Cette action est irréversible.`)) return
+    if (!(await confirm(`Supprimer définitivement ${name} ? Il ne pourra plus se connecter. Cette action est irréversible.`))) return
     setToggling(id + '_del')
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -289,21 +284,8 @@ export default function VendorDrivers({ restaurantId }: { restaurantId: string }
 
           <div>
             <label className="block text-xs font-semibold text-dark/60 mb-2 uppercase tracking-wide">Véhicule</label>
-            <div className="flex gap-2 flex-wrap">
-              {VEHICLE_OPTIONS.map(v => (
-                <button
-                  key={v.value}
-                  type="button"
-                  onClick={() => setForm(p => ({ ...p, vehicle_type: v.value }))}
-                  className={`py-2 px-3 rounded-lg text-sm font-medium border transition-all ${
-                    form.vehicle_type === v.value
-                      ? 'bg-[#c5611a] border-[#c5611a] text-white'
-                      : 'border-black/10 text-dark/60 hover:border-black/20'
-                  }`}
-                >
-                  {v.label}
-                </button>
-              ))}
+            <div className="inline-flex items-center gap-2 py-2 px-3 rounded-lg text-sm font-medium border border-black/10 bg-black/[0.02] text-dark/60">
+              <Bike size={15} /> Moto
             </div>
           </div>
 
