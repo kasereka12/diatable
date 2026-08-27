@@ -50,7 +50,7 @@ export default function Restaurants() {
   useEffect(() => { setPage(0) }, [cuisine, ville, note, debouncedSearch])
 
   const { data, isLoading: loading, isPlaceholderData } = useRestaurantListings(
-    { cuisine, city: ville, minRating: note, search: debouncedSearch },
+    { type: 'restaurant', cuisine, city: ville, minRating: note, search: debouncedSearch },
     page,
   )
   const filtered = data?.data ?? []

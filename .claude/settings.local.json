@@ -24,7 +24,10 @@
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('c:/Users/dmutaka/Downloads/diatable-main/diatable-main/vercel.json','utf8'\\)\\); console.log\\('vercel.json OK'\\)\")",
       "Bash(node -e \"console.log\\(require\\('./node_modules/@tanstack/react-query/package.json'\\).version\\)\")",
       "Bash(npm view *)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('src/i18n/locales/fr.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('src/i18n/locales/en.json','utf8'\\)\\); console.log\\('OK'\\)\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('src/i18n/locales/fr.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('src/i18n/locales/en.json','utf8'\\)\\); console.log\\('JSON OK'\\)\")",
+      "Bash(node -e \"console.log\\(require.resolve\\('playwright'\\)\\)\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\dmutaka\\Downloads\\diatable-main\\diatable-main\\supabase\\functions"

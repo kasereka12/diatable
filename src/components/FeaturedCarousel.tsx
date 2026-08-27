@@ -10,7 +10,7 @@ const GAP = 20
 
 export default function FeaturedCarousel() {
   const { restaurants, loading } = useRestaurants()
-  const featured = restaurants.filter(r => r.plan === 'premium' || r.plan === 'pro')
+  const featured = restaurants.filter(r => r.type === 'restaurant' && (r.plan === 'premium' || r.plan === 'pro'))
 
   const trackRef  = useRef<HTMLDivElement>(null)
   const hoverRef  = useRef(false)

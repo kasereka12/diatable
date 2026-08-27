@@ -168,6 +168,13 @@
 .animate-scroll-ring      { animation: scrollHintRing 1.8s ease-in-out infinite; }
 .animate-sparkle          { animation: sparkleDrift 4.5s linear infinite; }
 
+/* Home Chef branded loader */
+@keyframes logoBob {
+  0%, 100% { transform: translateY(0)    scale(1); }
+  50%      { transform: translateY(-6px) scale(1.03); }
+}
+.animate-logo-bob { animation: logoBob 2.6s ease-in-out infinite; }
+
 @keyframes marqueeLeft {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }

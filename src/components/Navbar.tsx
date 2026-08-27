@@ -8,7 +8,7 @@ import { useMessages } from '../context/MessageContext'
 import {
   Globe, X, ChevronDown, LogOut, User, BarChart2, Utensils,
   ShieldCheck, ShoppingBag, MessageCircle, Bell,
-  Package, Bike
+  Package, Bike, ChefHat
 } from 'lucide-react'
 import Logo from '../assets/LogoBlanc.png'
 
@@ -81,6 +81,7 @@ export default function Navbar() {
 
   const EXPLORER_LINKS = [
     { label: t('nav.restaurants'), to: '/restaurants',  icon: Utensils,  desc: t('nav.all_restaurants') },
+    { label: t('nav.home_chef'),   to: '/home-chef',     icon: ChefHat,   desc: t('nav.home_chef_desc') },
   ]
 
   return (

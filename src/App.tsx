@@ -31,6 +31,7 @@ const Messages          = lazy(() => import('./pages/Messages'))
 const About             = lazy(() => import('./pages/About'))
 const Contact           = lazy(() => import('./pages/Contact'))
 const CuisinesPage      = lazy(() => import('./pages/Cuisines'))
+const HomeChef          = lazy(() => import('./pages/HomeChef'))
 const HowItWorks        = lazy(() => import('./pages/HowItWorks'))
 const Presse            = lazy(() => import('./pages/Presse'))
 const Carrieres         = lazy(() => import('./pages/Carrieres'))
@@ -79,6 +80,7 @@ export default function App() {
                 <Route path="/restaurants" element={<Layout><Restaurants /></Layout>} />
                 <Route path="/restaurants/:id" element={<Layout><RestaurantDetail /></Layout>} />
                 <Route path="/cuisines" element={<SuspenseLayout><CuisinesPage /></SuspenseLayout>} />
+                <Route path="/home-chef" element={<SuspenseLayout><HomeChef /></SuspenseLayout>} />
                 <Route path="/a-propos" element={<SuspenseLayout><About /></SuspenseLayout>} />
                 <Route path="/contact" element={<SuspenseLayout><Contact /></SuspenseLayout>} />
                 <Route path="/comment-ca-marche" element={<SuspenseLayout><HowItWorks /></SuspenseLayout>} />

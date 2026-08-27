@@ -9,6 +9,7 @@ export interface RestaurantListingsFilters {
   city?: string
   minRating?: number
   search?: string
+  type?: 'restaurant' | 'homecook' | 'popup'
 }
 
 // Server-side filtered + paginated restaurant listing, backed by the
@@ -27,6 +28,7 @@ export async function fetchRestaurantListings(
     .from('restaurant_listings')
     .select('*', { count: 'exact' })
 
+  if (filters.type) query = query.eq('type', filters.type)
   if (filters.cuisine && filters.cuisine !== 'all') query = query.eq('cuisine', filters.cuisine)
   if (filters.city) query = query.eq('location', filters.city)
   if (filters.minRating) query = query.gte('rating', filters.minRating)

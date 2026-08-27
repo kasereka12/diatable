@@ -16,7 +16,7 @@ import type { MenuItem as MenuItemType, ReviewWithAuthor } from '../types/supaba
 import {
   ArrowLeft, MapPin, Clock, CreditCard,
   MessageCircle, ShieldCheck, Star, Facebook, Instagram, Utensils,
-  Heart, Send, Pencil, Trash2, Plus, Check, ZoomIn, Power, X
+  Heart, Send, Pencil, Trash2, Plus, Check, ZoomIn, Power, X, ChefHat
 } from 'lucide-react'
 import { getEffectivelyOpen, getClosedReason } from '../lib/scheduleParser'
 import AdBanner from '../components/AdBanner'
@@ -308,6 +308,7 @@ export default function RestaurantDetail() {
 
   const isOwner = user && restaurant && restaurant.owner_id === user.id
   const canReview = user && !isOwner
+  const isHomecook = restaurant?.type === 'homecook'
   const effectivelyOpen = getEffectivelyOpen(restaurant)
   const closedReason = getClosedReason(restaurant)
 
@@ -374,6 +375,11 @@ export default function RestaurantDetail() {
                 <div className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: '#c5611a' }}>
                   {restaurant.flag} {restaurant.cuisine_label}
                 </div>
+                {isHomecook && (
+                  <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: '#f9c76a' }}>
+                    {t('home_chef_page.slogan', { name: restaurant.name })}
+                  </p>
+                )}
                 <h1 className="font-serif text-2xl md:text-3xl font-black leading-tight" style={{ color: '#f8f8f8' }}>
                   {restaurant.name}
                 </h1>
@@ -433,19 +439,21 @@ export default function RestaurantDetail() {
                   <Heart size={16} className={userLiked ? 'fill-pink-400' : ''} />
                   {likesCount > 0 && <span>{likesCount}</span>}
                 </button>
-                <button
-                  onClick={user ? startConversation : () => navigate('/connexion')}
-                  className="btn text-sm px-5 py-2.5 flex items-center gap-2 transition-all"
-                  style={{
-                    backgroundColor: 'rgba(248,248,248,0.10)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(248,248,248,0.20)',
-                    color: '#f8f8f8',
-                  }}
-                  aria-label={t('rd.contact_vendor')}
-                >
-                  <MessageCircle size={16} /> {t('rd.message')}
-                </button>
+                {!isHomecook && (
+                  <button
+                    onClick={user ? startConversation : () => navigate('/connexion')}
+                    className="btn text-sm px-5 py-2.5 flex items-center gap-2 transition-all"
+                    style={{
+                      backgroundColor: 'rgba(248,248,248,0.10)',
+                      backdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(248,248,248,0.20)',
+                      color: '#f8f8f8',
+                    }}
+                    aria-label={t('rd.contact_vendor')}
+                  >
+                    <MessageCircle size={16} /> {t('rd.message')}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -652,7 +660,9 @@ export default function RestaurantDetail() {
               <h3 className="font-serif font-bold text-base mb-4" style={{ color: '#1f1f1f' }}>{t('rd.info')}</h3>
               <div className="space-y-3 text-sm">
                 {[
-                  { icon: MapPin, label: t('rd.address'), value: address },
+                  isHomecook
+                    ? { icon: MapPin, label: t('rd.zone'), value: restaurant.location }
+                    : { icon: MapPin, label: t('rd.address'), value: address },
                   { icon: Clock, label: t('rd.hours'), value: hours },
                   { icon: CreditCard, label: t('rd.payment'), value: t('rd.payment_value') },
                 ].map(({ icon: Icon, label, value }) => (
@@ -665,18 +675,25 @@ export default function RestaurantDetail() {
                   </div>
                 ))}
               </div>
-              <div className="mt-5 pt-4 space-y-2.5" style={{ borderTop: '1px solid rgba(80,70,64,0.08)' }}>
-                <button
-                  onClick={user ? startConversation : () => navigate('/connexion')}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all"
-                  style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d9722a'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#c5611a'}
-                  aria-label={t('rd.contact_vendor')}
-                >
-                  <MessageCircle size={16} /> {t('rd.contact_vendor')}
-                </button>
-              </div>
+              {isHomecook ? (
+                <div className="mt-5 pt-4 flex items-start gap-2.5" style={{ borderTop: '1px solid rgba(80,70,64,0.08)' }}>
+                  <ChefHat size={15} className="flex-shrink-0 mt-0.5" style={{ color: '#c5611a' }} />
+                  <p className="text-xs leading-relaxed" style={{ color: '#80716a' }}>{t('rd.homecook_note')}</p>
+                </div>
+              ) : (
+                <div className="mt-5 pt-4 space-y-2.5" style={{ borderTop: '1px solid rgba(80,70,64,0.08)' }}>
+                  <button
+                    onClick={user ? startConversation : () => navigate('/connexion')}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all"
+                    style={{ backgroundColor: '#c5611a', color: '#f8f8f8' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d9722a'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#c5611a'}
+                    aria-label={t('rd.contact_vendor')}
+                  >
+                    <MessageCircle size={16} /> {t('rd.contact_vendor')}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl p-5 shadow-sm"
