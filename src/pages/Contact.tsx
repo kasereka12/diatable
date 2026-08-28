@@ -77,7 +77,7 @@ export default function Contact() {
   return (
     <div className="bg-cream min-h-screen pt-24" ref={ref}>
       <PageHero icon={Mail} eyebrow={t('contact_page.label')}
-        title={<>{t('contact_page.title_before')} <em style={{ color: '#1f1f1f' }}>{t('contact_page.title_em')}</em></>}
+        title={<>{t('contact_page.title_before')} <em style={{ color: '#f4a828' }}>{t('contact_page.title_em')}</em></>}
         subtitle={t('contact_page.subtitle')} />
 
       <div className="max-w-5xl mx-auto px-6 py-16">

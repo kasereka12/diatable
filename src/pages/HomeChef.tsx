@@ -10,7 +10,7 @@ import StarRating from '../components/ui/StarRating'
 import { getCuisineIcon } from '../lib/cuisineIcons'
 import PaginationControls from '../components/ui/PaginationControls'
 import HomeChefLoader from '../components/HomeChefLoader'
-import { Search, MapPin, ShieldCheck, ArrowRight, ChefHat } from 'lucide-react'
+import { Search, MapPin, ShieldCheck, ArrowRight, ChefHat, ChevronRight } from 'lucide-react'
 import { getGradient } from '../lib/gradients'
 import { getEffectivelyOpen } from '../lib/scheduleParser'
 
@@ -82,62 +82,81 @@ export default function HomeChef() {
   return (
     <div className="min-h-screen pt-24" style={{ backgroundColor: '#f2ebe0' }} ref={ref}>
       <div className="w-full px-6 md:px-12 lg:px-20 py-12">
-        {/* Search + Filters */}
-        <div className="rounded-[1.75rem] bg-white p-5 mb-10" style={{ border: '1.5px dashed rgba(197,97,26,0.35)' }} data-reveal>
-          {/* Search bar */}
-          <div className="relative mb-4">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted flex items-center">
-              <Search size={18} />
-            </span>
-            <input
-              type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder={t('home_chef_page.search_placeholder')}
-              className="w-full pl-11 pr-4 py-3 rounded-xl border border-black/10 text-dark text-sm"
-              style={{ backgroundColor: '#f2ebe0' }}
-            />
-          </div>
-          {/* Filter row */}
-          <div className="flex flex-wrap gap-3">
-            {/* Cuisine */}
-            <div className="flex-1 min-w-[160px]">
-              <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">{t('restaurants_page.cuisine')}</label>
-              <select value={cuisine} onChange={e => setCuisine(e.target.value)}
-                className="w-full border border-black/10 rounded-xl px-3 py-2.5 text-dark text-sm focus:outline-none focus:border-gold"
-                style={{ backgroundColor: '#f2ebe0' }}>
-                {TABS.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
-              </select>
-            </div>
-            {/* Ville */}
-            <div className="flex-1 min-w-[140px]">
-              <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">{t('restaurants_page.city')}</label>
-              <select value={ville} onChange={e => setVille(e.target.value)}
-                className="w-full border border-black/10 rounded-xl px-3 py-2.5 text-dark text-sm focus:outline-none focus:border-gold"
-                style={{ backgroundColor: '#f2ebe0' }}>
-                {VILLES.map(v => <option key={v.val} value={v.val}>{v.label}</option>)}
-              </select>
-            </div>
-            {/* Note */}
-            <div className="flex-1 min-w-[140px]">
-              <label className="block text-[0.68rem] font-bold uppercase tracking-widest text-muted mb-1.5">{t('restaurants_page.min_rating')}</label>
-              <select value={note} onChange={e => setNote(parseFloat(e.target.value))}
-                className="w-full border border-black/10 rounded-xl px-3 py-2.5 text-dark text-sm focus:outline-none focus:border-gold"
-                style={{ backgroundColor: '#f2ebe0' }}>
-                {NOTES.map(n => <option key={n.val} value={n.val}>{n.label}</option>)}
-              </select>
-            </div>
-            {/* Reset */}
-            <button onClick={resetFilters}
-              className="self-end px-4 py-2.5 rounded-xl border border-black/10 text-muted text-sm hover:text-gold hover:border-gold transition-all">
-              {t('hero.reset')}
-            </button>
-          </div>
+        {/* Breadcrumb + title */}
+        <p className="text-xs text-muted mb-2 flex items-center gap-1" data-reveal>
+          <span style={{ color: '#c5611a', fontWeight: 600 }}>Maroc</span> <ChevronRight size={11} /> {t('home_chef_page.label')}
+        </p>
+        <h1 className="font-serif text-4xl md:text-5xl font-black text-dark mb-6" data-reveal data-delay="0.05s">
+          {t('home_chef_page.label')}
+        </h1>
+
+        {/* Search */}
+        <div className="relative mb-6" data-reveal data-delay="0.1s">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted flex items-center">
+            <Search size={17} />
+          </span>
+          <input
+            type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder={t('home_chef_page.search_placeholder')}
+            className="w-full pl-11 pr-4 py-3 rounded-xl border border-black/10 text-dark text-sm bg-white focus:outline-none focus:border-gold transition-all"
+          />
         </div>
 
-        {/* Results count */}
-        <p className="text-muted text-sm mb-8" data-reveal>
-          <span className="text-dark font-semibold">{total}</span>{' '}
-          {total === 1 ? t('restaurants_page.results_one') : t('restaurants_page.results_other')}
-        </p>
+        {/* Cuisine — circular icon rail, same pattern as /restaurants */}
+        <div className="flex gap-5 overflow-x-auto scrollbar-hide pb-2 mb-5" data-reveal data-delay="0.12s">
+          {TABS.map(tab => {
+            const [flag, ...rest] = tab.label.split(' ')
+            const name = rest.join(' ')
+            const active = cuisine === tab.id
+            return (
+              <button key={tab.id} onClick={() => setCuisine(tab.id)}
+                className="flex flex-col items-center gap-1.5 flex-shrink-0 w-16">
+                <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-2xl transition-all"
+                  style={{ boxShadow: active ? '0 0 0 2px #c5611a' : 'none' }}>
+                  {flag}
+                </div>
+                <span className={`text-[0.7rem] text-center leading-tight ${active ? 'text-dark font-bold' : 'text-muted font-medium'}`}>
+                  {name}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Ville / Note / Reset — neutral pills */}
+        <div className="flex flex-wrap items-center gap-2 mb-10" data-reveal data-delay="0.15s">
+          {VILLES.map(v => (
+            <button key={v.val || 'all'} onClick={() => setVille(v.val)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all bg-white ${
+                ville === v.val ? '' : 'text-dark/70 hover:bg-black/5'
+              }`}
+              style={ville === v.val ? { backgroundColor: '#1f1f1f', color: '#fff' } : {}}>
+              {v.val && <MapPin size={11} className="inline -mt-0.5 mr-1" />}{v.label}
+            </button>
+          ))}
+          {NOTES.map(n => (
+            <button key={n.val} onClick={() => setNote(n.val)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all bg-white ${
+                note === n.val ? '' : 'text-dark/70 hover:bg-black/5'
+              }`}
+              style={note === n.val ? { backgroundColor: '#1f1f1f', color: '#fff' } : {}}>
+              {n.label}
+            </button>
+          ))}
+          <button onClick={resetFilters}
+            className="ml-auto px-3.5 py-1.5 rounded-full text-xs font-semibold text-muted hover:text-gold transition-all">
+            {t('hero.reset')}
+          </button>
+        </div>
+
+        {/* Section label */}
+        <div className="flex items-center justify-between mb-5" data-reveal>
+          <h2 className="font-serif text-xl font-bold text-dark">{t('home_chef_page.label')}</h2>
+          <p className="text-muted text-sm">
+            <span className="text-dark font-semibold">{total}</span>{' '}
+            {total === 1 ? t('restaurants_page.results_one') : t('restaurants_page.results_other')}
+          </p>
+        </div>
 
         {loading && !isPlaceholderData ? (
           <HomeChefLoader />

@@ -60,7 +60,7 @@ export default function Cuisines() {
   return (
     <div className="bg-cream min-h-screen" ref={ref}>
       <PageHero variant="tall" icon={Globe} eyebrow="Explorer"
-        title={<>Toutes les <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>Cuisines</em></>}
+        title={<>Toutes les <em style={{ color: '#f4a828', fontStyle: 'italic' }}>Cuisines</em></>}
         subtitle={`${loading ? '…' : cuisines.length} cuisines du monde entier, représentées par la diaspora au Maroc`} />
 
       {/* Grid */}

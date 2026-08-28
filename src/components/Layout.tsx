@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import Navbar from './Navbar'
 import Footer from './Footer'
+import ChatWidget from './ChatWidget'
 
 interface Props { children: ReactNode; noFooter?: boolean }
 
@@ -10,6 +11,7 @@ export default function Layout({ children, noFooter = false }: Props) {
       <Navbar />
       <main className="flex-1">{children}</main>
       {!noFooter && <Footer />}
+      <ChatWidget />
     </div>
   )
 }

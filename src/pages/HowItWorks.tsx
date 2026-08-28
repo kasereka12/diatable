@@ -62,7 +62,7 @@ export default function HowItWorks() {
   return (
     <div ref={ref}>
       <PageHero variant="tall" icon={Compass} eyebrow="Guide"
-        title={<>Comment ça <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>marche ?</em></>}
+        title={<>Comment ça <em style={{ color: '#f4a828', fontStyle: 'italic' }}>marche ?</em></>}
         subtitle="Trouver de la nourriture de chez vous ou vendre votre cuisine — DiaTable simplifie tout." />
 
       <HowItWorksHighlights />

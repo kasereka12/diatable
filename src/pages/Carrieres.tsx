@@ -137,7 +137,7 @@ export default function Carrieres() {
     <div ref={ref}>
       {/* Header */}
       <PageHero variant="tall" icon={Briefcase} eyebrow="Rejoignez-nous"
-        title={<>Carrières chez <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>DiaTable</em></>}
+        title={<>Carrières chez <em style={{ color: '#f4a828', fontStyle: 'italic' }}>DiaTable</em></>}
         subtitle="Construisez avec nous la plus grande plateforme de cuisine de la diaspora en Afrique." />
 
       {/* Perks */}

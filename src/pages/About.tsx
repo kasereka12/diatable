@@ -4,7 +4,7 @@ import { useScrollReveal } from '../hooks/useScrollReveal'
 import { useAuth } from '../context/AuthContext'
 import SectionHeader from '../components/ui/SectionHeader'
 import { supabase } from '../lib/supabase'
-import { Globe, Users, ShieldCheck, Heart } from 'lucide-react'
+import { Globe, Users, ShieldCheck, Heart, Store, MapPin } from 'lucide-react'
 import WhyDiaTable from '../components/WhyDiaTable'
 import Testimonials from '../components/Testimonials'
 import PageHero from '../components/ui/PageHero'
@@ -40,46 +40,48 @@ export default function About() {
   return (
     <div ref={ref}>
       <PageHero variant="tall" icon={Heart} eyebrow={t('about_page.hero_label')}
-        title={<>{t('about_page.hero_title_before')} <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>{t('about_page.hero_title_em')}</em></>}
+        title={<>{t('about_page.hero_title_before')} <em style={{ color: '#f4a828', fontStyle: 'italic' }}>{t('about_page.hero_title_em')}</em></>}
         subtitle={<>
           {t('about_page.hero_desc_before')}{' '}
-          <em style={{ color: '#1f1f1f' }}>{t('about_page.hero_quote')}</em><br />
+          <em style={{ color: '#f4a828' }}>{t('about_page.hero_quote')}</em><br />
           {t('about_page.hero_desc_after')}
         </>} />
 
       {/* Story */}
-      <section className="py-24" style={{ backgroundColor: '#eae5d9' }}>
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-            <div data-reveal>
-              <p className="section-label">{t('about_page.mission_label')}</p>
-              <h2 className="font-serif text-3xl font-bold mb-5" style={{ color: '#1f1f1f' }}>
-                {t('about_page.mission_title_before')}{' '}
-                <em style={{ color: '#c5611a', fontStyle: 'italic' }}>{t('about_page.mission_title_em')}</em>
-              </h2>
-              <p className="leading-relaxed mb-4" style={{ color: 'rgba(31,31,31,0.70)' }}>
-                {t('about_page.mission_p1')}
-              </p>
-              <p className="leading-relaxed" style={{ color: 'rgba(31,31,31,0.70)' }}>
-                {t('about_page.mission_p2')}
-              </p>
-            </div>
-            <div data-reveal data-delay="0.15s">
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { n: '30+',  l: t('about_page.stat_countries') },
-                  { n: '200+', l: t('about_page.stat_vendors') },
-                  { n: '8',    l: t('about_page.stat_cities') },
-                  { n: '5K+',  l: t('about_page.stat_expats') },
-                ].map(s => (
-                  <div key={s.l} className="rounded-2xl p-5 text-center"
-                    style={{ backgroundColor: '#f8f8f8', boxShadow: '0 2px 12px rgba(80,70,64,0.08)', border: '1px solid rgba(80,70,64,0.06)' }}>
-                    <div className="font-serif text-3xl font-black" style={{ color: '#c5611a' }}>{s.n}</div>
-                    <div className="text-xs mt-1" style={{ color: '#80716a' }}>{s.l}</div>
-                  </div>
-                ))}
+      <section className="py-20" style={{ backgroundColor: '#eae5d9' }}>
+        <div className="max-w-2xl mx-auto px-6 text-center" data-reveal>
+          <p className="section-label">{t('about_page.mission_label')}</p>
+          <h2 className="font-serif text-3xl font-bold mb-5" style={{ color: '#1f1f1f' }}>
+            {t('about_page.mission_title_before')}{' '}
+            <em style={{ color: '#c5611a', fontStyle: 'italic' }}>{t('about_page.mission_title_em')}</em>
+          </h2>
+          <p className="leading-relaxed mb-4" style={{ color: 'rgba(31,31,31,0.70)' }}>
+            {t('about_page.mission_p1')}
+          </p>
+          <p className="leading-relaxed" style={{ color: 'rgba(31,31,31,0.70)' }}>
+            {t('about_page.mission_p2')}
+          </p>
+        </div>
+      </section>
+
+      {/* Impact band — bold full-width scale metrics */}
+      <section className="py-16" style={{ backgroundColor: '#1f1f1f' }}>
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              { Icon: Globe, n: '30+',  l: t('about_page.stat_countries') },
+              { Icon: Store, n: '200+', l: t('about_page.stat_vendors') },
+              { Icon: MapPin, n: '8',    l: t('about_page.stat_cities') },
+              { Icon: Users, n: '5K+',  l: t('about_page.stat_expats') },
+            ].map((s, i) => (
+              <div key={s.l} data-reveal data-delay={`${i * 0.08}s`} className="text-center">
+                <div className="flex justify-center mb-3">
+                  <s.Icon size={22} style={{ color: '#c5611a' }} />
+                </div>
+                <div className="font-serif text-4xl md:text-5xl font-black" style={{ color: '#f8f8f8' }}>{s.n}</div>
+                <div className="text-xs mt-2 uppercase tracking-wide" style={{ color: '#bd9f87' }}>{s.l}</div>
               </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>

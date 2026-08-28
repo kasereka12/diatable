@@ -4,44 +4,17 @@ import SectionHeader from '../components/ui/SectionHeader'
 import { Link } from 'react-router-dom'
 import { Search, ShoppingBag, ChefHat, CreditCard, User, MessageCircle, ChevronDown, ChevronUp, Mail, Phone, ArrowRight, LifeBuoy } from 'lucide-react'
 import PageHero from '../components/ui/PageHero'
+import { FAQ_CATEGORIES, FAQS, type FaqEntry } from '../data/faq'
 
-const CATEGORIES = [
-  { Icon: ShoppingBag,  label: 'Commander',         id: 'commander' },
-  { Icon: ChefHat,      label: 'Vendeurs',           id: 'vendeurs' },
-  { Icon: CreditCard,   label: 'Paiement',           id: 'paiement' },
-  { Icon: User,         label: 'Mon compte',         id: 'compte' },
-]
-
-const FAQS = {
-  commander: [
-    { q: 'Comment trouver un restaurant ou un cuisinier ?', a: 'Utilisez la page Restaurants pour filtrer par cuisine, ville ou note. Vous pouvez aussi passer par la page Cuisines pour naviguer par pays.' },
-    { q: 'Comment contacter un vendeur ?', a: 'Sur la fiche de chaque restaurant, vous trouverez le numéro de téléphone, WhatsApp et un formulaire de contact. Les vendeurs répondent généralement sous 2h.' },
-    { q: 'Les commandes sont-elles livrées à domicile ?', a: 'Cela dépend du vendeur. Certains proposent la livraison, d\'autres uniquement le retrait sur place ou la réservation de table. Les options disponibles sont indiquées sur chaque fiche.' },
-    { q: 'Puis-je annuler une commande ?', a: 'L\'annulation se fait directement avec le vendeur. Contactez-le dès que possible via WhatsApp ou téléphone. DiaTable n\'intervient pas dans la gestion des commandes.' },
-    { q: 'Comment laisser un avis ?', a: 'Après votre commande, rendez-vous sur la fiche du restaurant et cliquez sur "Laisser un avis". Vous devez être connecté à votre compte.' },
-  ],
-  vendeurs: [
-    { q: 'Comment devenir vendeur sur DiaTable ?', a: 'Cliquez sur "Devenir vendeur" depuis le menu ou votre profil. Remplissez le formulaire en 5 étapes (type de cuisine, coordonnées, photos, menu). Votre profil est examiné sous 48h.' },
-    { q: 'Est-ce gratuit de s\'inscrire ?', a: 'Oui, l\'inscription est entièrement gratuite. De plus, DiaTable ne prend aucune commission pendant vos 3 premiers mois d\'activité.' },
-    { q: 'Combien de temps pour être validé ?', a: 'Notre équipe examine les nouveaux profils sous 24 à 48h en jours ouvrés. Vous recevez un email de confirmation une fois validé.' },
-    { q: 'Comment gérer mon menu ?', a: 'Depuis votre tableau de bord vendeur, section "Menu", vous pouvez ajouter, modifier ou supprimer des plats à tout moment.' },
-    { q: 'Puis-je vendre depuis mon domicile ?', a: 'Absolument. DiaTable accueille les cuisiniers à domicile, les traiteurs et les pop-ups, pas seulement les restaurants.' },
-  ],
-  paiement: [
-    { q: 'Quels modes de paiement sont acceptés ?', a: 'Le règlement se fait directement avec le vendeur : espèces, virement ou paiement mobile selon ce que propose chaque vendeur. Les options sont indiquées sur leur fiche.' },
-    { q: 'DiaTable prend-il des commissions ?', a: 'Aucune commission pendant les 3 premiers mois. Après cette période, un faible pourcentage est prélevé uniquement sur les paiements en ligne (si activés).' },
-    { q: 'Y a-t-il des frais d\'abonnement ?', a: 'Non. L\'inscription et la publication de votre profil sont gratuites. Des options premium (mise en avant, publicité) seront disponibles prochainement.' },
-  ],
-  compte: [
-    { q: 'Comment créer un compte ?', a: 'Cliquez sur "S\'inscrire" dans la barre de navigation. Choisissez votre rôle (client ou vendeur), entrez votre email et créez votre mot de passe. Vous pouvez aussi vous connecter avec Google.' },
-    { q: 'J\'ai oublié mon mot de passe.', a: 'Sur la page de connexion, cliquez sur "Mot de passe oublié". Vous recevrez un lien de réinitialisation par email dans quelques minutes.' },
-    { q: 'Comment modifier mes informations personnelles ?', a: 'Rendez-vous dans "Mon profil" (icône utilisateur en haut à droite), onglet "Paramètres". Vous pouvez y modifier votre nom, photo et coordonnées.' },
-    { q: 'Comment supprimer mon compte ?', a: 'Contactez-nous à hello@datable.ma avec la demande de suppression. Votre compte sera supprimé sous 72h conformément au RGPD.' },
-  ],
+const CATEGORY_ICONS: Record<string, typeof ShoppingBag> = {
+  commander: ShoppingBag,
+  vendeurs:  ChefHat,
+  paiement:  CreditCard,
+  compte:    User,
 }
+const CATEGORIES = FAQ_CATEGORIES.map(c => ({ ...c, Icon: CATEGORY_ICONS[c.id] }))
 
-interface FAQ { q: string; a: string }
-function FAQList({ items }: { items: FAQ[] }) {
+function FAQList({ items }: { items: FaqEntry[] }) {
   const [open, setOpen] = useState<number | null>(null)
   return (
     <div className="space-y-3">
@@ -75,12 +48,12 @@ export default function Aide() {
   const allFaqs = Object.values(FAQS).flat()
   const filteredFaqs = search.trim()
     ? allFaqs.filter(f => f.q.toLowerCase().includes(search.toLowerCase()) || f.a.toLowerCase().includes(search.toLowerCase()))
-    : (FAQS as Record<string, FAQ[]>)[activeCategory]
+    : FAQS[activeCategory]
 
   return (
     <div ref={ref}>
       <PageHero variant="tall" icon={LifeBuoy} eyebrow="Support"
-        title={<>Aide &amp; <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>Support</em></>}>
+        title={<>Aide &amp; <em style={{ color: '#f4a828', fontStyle: 'italic' }}>Support</em></>}>
         <div className="relative max-w-xl mx-auto">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
           <input

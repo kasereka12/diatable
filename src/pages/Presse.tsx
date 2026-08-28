@@ -64,7 +64,7 @@ export default function Presse() {
   return (
     <div ref={ref}>
       <PageHero variant="tall" icon={Newspaper} eyebrow="Médias"
-        title={<>Espace <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>Presse</em></>}
+        title={<>Espace <em style={{ color: '#f4a828', fontStyle: 'italic' }}>Presse</em></>}
         subtitle="Ressources, articles et contacts pour les journalistes et partenaires médias." />
 
       {/* Key figures */}

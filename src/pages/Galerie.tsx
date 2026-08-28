@@ -152,7 +152,7 @@ export default function Galerie() {
     <>
       <div ref={ref}>
         <PageHero variant="tall" icon={ImageIcon} eyebrow="Galerie mondiale"
-          title={<>Les Plats du <em style={{ color: '#1f1f1f', fontStyle: 'italic' }}>Monde</em></>}
+          title={<>Les Plats du <em style={{ color: '#f4a828', fontStyle: 'italic' }}>Monde</em></>}
           subtitle={`${loading ? '…' : `${dishes.length} plats emblématiques`} disponibles ici au Maroc.`}>
           <div className="relative max-w-sm mx-auto">
             <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
