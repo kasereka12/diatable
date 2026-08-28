@@ -32,16 +32,16 @@
   "footer": {
     "tagline": "La plateforme qui connecte la diaspora à une cuisine authentique et vérifiée, partout au Maroc.",
     "col_about": "À propos",
-    "col_cuisines": "Cuisines",
-    "col_contact": "Contact",
+    "col_join": "Rejoindre",
+    "col_support": "Support",
     "our_story": "Notre histoire",
     "how_it_works": "Comment ça marche",
     "press": "Presse",
     "careers": "Carrières",
-    "all_cuisines": "Toutes les cuisines",
     "become_vendor": "Devenir vendeur",
+    "become_driver": "Devenir livreur",
     "my_orders": "Mes commandes",
-    "help": "Aide & Support",
+    "help": "Aide",
     "copyright": "© 2026 DiaTable. Tous droits réservés."
   },
   "why": {

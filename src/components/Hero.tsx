@@ -355,69 +355,68 @@ function RestaurantsModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Filters + grid scrollable */}
-        <div className="flex-1 overflow-y-auto px-6 md:px-8 py-6">
-          {/* Filters card */}
-          <div
-            className="bg-white rounded-2xl p-5 mb-6"
-            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}
-          >
-            <div className="relative mb-4">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2"
-                style={{ color: '#80716a' }}>
-                <Search size={18} />
-              </span>
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={t('hero.search_placeholder')}
-                className="w-full pl-11 pr-4 py-3 rounded-xl border text-sm focus:outline-none transition-all"
-                style={{
-                  borderColor: 'rgba(0,0,0,0.10)',
-                  backgroundColor: '#eae5d9',
-                  color: '#1f1f1f',
-                }}
-              />
-            </div>
+        <div className="flex-1 overflow-y-auto px-6 md:px-8 py-6" style={{ backgroundColor: '#fff' }}>
+          {/* Search */}
+          <div className="relative mb-5">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted flex items-center">
+              <Search size={17} />
+            </span>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={t('hero.search_placeholder')}
+              className="w-full pl-11 pr-4 py-3 rounded-xl text-dark text-sm border border-black/10 focus:outline-none focus:border-gold transition-all"
+              style={{ backgroundColor: '#f2f2f2' }}
+            />
+          </div>
 
-            <div className="flex flex-wrap gap-3">
-              <div className="flex-1 min-w-[160px]">
-                <label className="block text-[0.68rem] font-bold uppercase tracking-widest mb-1.5"
-                  style={{ color: '#80716a' }}>{t('hero.cuisine')}</label>
-                <select value={cuisine} onChange={e => setCuisine(e.target.value)}
-                  className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none border"
-                  style={{ borderColor: 'rgba(0,0,0,0.10)', backgroundColor: '#eae5d9', color: '#1f1f1f' }}>
-                  {TABS.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
-                </select>
-              </div>
-              <div className="flex-1 min-w-[140px]">
-                <label className="block text-[0.68rem] font-bold uppercase tracking-widest mb-1.5"
-                  style={{ color: '#80716a' }}>{t('hero.city')}</label>
-                <select value={ville} onChange={e => setVille(e.target.value)}
-                  className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none border"
-                  style={{ borderColor: 'rgba(0,0,0,0.10)', backgroundColor: '#eae5d9', color: '#1f1f1f' }}>
-                  {VILLES.map(v => <option key={v.val} value={v.val}>{v.label}</option>)}
-                </select>
-              </div>
-              <div className="flex-1 min-w-[140px]">
-                <label className="block text-[0.68rem] font-bold uppercase tracking-widest mb-1.5"
-                  style={{ color: '#80716a' }}>{t('hero.min_rating')}</label>
-                <select value={note} onChange={e => setNote(parseFloat(e.target.value))}
-                  className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none border"
-                  style={{ borderColor: 'rgba(0,0,0,0.10)', backgroundColor: '#eae5d9', color: '#1f1f1f' }}>
-                  {NOTES.map(n => <option key={n.val} value={n.val}>{n.label}</option>)}
-                </select>
-              </div>
-              <button
-                onClick={() => { setCuisine('all'); setVille(''); setNote(0); setSearch('') }}
-                className="self-end px-4 py-2.5 rounded-xl border text-sm transition-all"
-                style={{ borderColor: 'rgba(0,0,0,0.10)', color: '#80716a' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#c5611a'; e.currentTarget.style.borderColor = '#c5611a' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#80716a'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.10)' }}
-              >
-                {t('hero.reset')}
+          {/* Cuisine — circular icon rail, same pattern as /restaurants */}
+          <div className="flex gap-5 overflow-x-auto scrollbar-hide pb-2 mb-4">
+            {TABS.map(tab => {
+              const [flag, ...rest] = tab.label.split(' ')
+              const name = rest.join(' ')
+              const active = cuisine === tab.id
+              return (
+                <button key={tab.id} onClick={() => setCuisine(tab.id)}
+                  className="flex flex-col items-center gap-1.5 flex-shrink-0 w-16">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all"
+                    style={{ backgroundColor: '#f2f2f2', boxShadow: active ? '0 0 0 2px #c5611a' : 'none' }}>
+                    {flag}
+                  </div>
+                  <span className={`text-[0.68rem] text-center leading-tight ${active ? 'text-dark font-bold' : 'text-muted font-medium'}`}>
+                    {name}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Ville / Note / Reset — neutral pills */}
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            {VILLES.map(v => (
+              <button key={v.val || 'all'} onClick={() => setVille(v.val)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  ville === v.val ? 'bg-dark text-white' : 'text-dark/70 hover:bg-black/10'
+                }`}
+                style={ville === v.val ? {} : { backgroundColor: '#f2f2f2' }}>
+                {v.val && <MapPin size={11} className="inline -mt-0.5 mr-1" />}{v.label}
               </button>
-            </div>
+            ))}
+            {NOTES.map(n => (
+              <button key={n.val} onClick={() => setNote(n.val)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  note === n.val ? 'bg-dark text-white' : 'text-dark/70 hover:bg-black/10'
+                }`}
+                style={note === n.val ? {} : { backgroundColor: '#f2f2f2' }}>
+                {n.label}
+              </button>
+            ))}
+            <button
+              onClick={() => { setCuisine('all'); setVille(''); setNote(0); setSearch('') }}
+              className="ml-auto px-3.5 py-1.5 rounded-full text-xs font-semibold text-muted hover:text-gold transition-all">
+              {t('hero.reset')}
+            </button>
           </div>
 
           <p className="text-sm mb-5" style={{ color: '#80716a' }}>
@@ -443,67 +442,63 @@ function RestaurantsModal({ onClose }: { onClose: () => void }) {
                     key={r.id}
                     to={`/restaurants/${r.id}`}
                     onClick={onClose}
-                    className="bg-white rounded-2xl overflow-hidden border block transition-all duration-300 hover:-translate-y-1.5"
-                    style={{
-                      borderColor: 'rgba(0,0,0,0.05)',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-                    }}
+                    className="bg-white rounded-xl overflow-hidden border border-black/[0.08] block transition-all duration-300
+                               hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,0.10)]"
                   >
-                    <div className="h-40 relative overflow-hidden"
-                      style={!r.image_url ? { background: getGradient(r.gradient) } : {}}>
-                      {r.image_url ? (
-                        <img src={r.image_url} alt={r.name} className="w-full h-full object-cover" loading="lazy" />
-                      ) : (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-lg">
-                          <CuisineIcon size={48} className="text-white/90" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
-                      <div className="absolute top-3 left-3 backdrop-blur-sm text-white text-[0.7rem] font-semibold px-3 py-1 rounded-full"
-                        style={{ backgroundColor: 'rgba(31,31,31,0.75)' }}>
-                        {r.flag} {r.cuisine_label}
-                      </div>
-                      {r.plan === 'premium' && (
-                        <div className="absolute top-3 right-3 text-[0.65rem] font-bold px-2 py-1 rounded-full flex items-center gap-1"
-                          style={{ backgroundColor: 'rgba(197,97,26,0.90)', color: '#fff' }}>
-                          <Crown size={10} /> Premium
-                        </div>
-                      )}
-                      {r.plan === 'pro' && (
-                        <div className="absolute top-3 right-3 text-[0.65rem] font-bold px-2 py-1 rounded-full flex items-center gap-1"
-                          style={{ backgroundColor: 'rgba(124,58,237,0.88)', color: '#fff' }}>
-                          <Sparkles size={10} /> Pro
-                        </div>
-                      )}
-                      {r.plan !== 'premium' && r.plan !== 'pro' && r.is_verified && (
-                        <div className="absolute top-3 right-3 text-white text-[0.65rem] font-bold px-2 py-1 rounded-full flex items-center gap-1"
-                          style={{ backgroundColor: 'rgba(34,197,94,0.92)' }}>
-                          <ShieldCheck size={11} /> {t('hero.verified')}
-                        </div>
-                      )}
-                      <div className={`absolute bottom-3 left-3 text-[0.65rem] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${isOpen ? 'bg-green-500/90 text-white' : 'bg-black/60 text-white/80'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-white' : 'bg-white/50'}`} />
-                        {isOpen ? t('hero.open') : t('hero.closed')}
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-serif font-bold text-sm leading-snug mb-2" style={{ color: '#1f1f1f' }}>{r.name}</h3>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs flex items-center gap-1" style={{ color: '#80716a' }}>
-                          <MapPin size={12} /> {r.location}
-                        </span>
-                        {r.reviews > 0 ? (
-                          <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: '#1f1f1f' }}>
-                            <StarRating rating={r.rating ?? 0} />
-                            {r.rating} <span className="font-normal" style={{ color: '#80716a' }}>({r.reviews})</span>
-                          </span>
+                    <div className="relative">
+                      <div className="h-32 relative overflow-hidden"
+                        style={!r.image_url ? { background: getGradient(r.gradient) } : {}}>
+                        {r.image_url ? (
+                          <img src={r.image_url} alt={r.name} className="w-full h-full object-cover" loading="lazy" />
                         ) : (
-                          <span className="text-xs italic" style={{ color: '#80716a' }}>{t('hero.no_reviews')}</span>
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-lg">
+                            <CuisineIcon size={40} className="text-white/90" />
+                          </div>
+                        )}
+                        {r.plan === 'premium' && (
+                          <div className="absolute top-2.5 left-2.5 text-[0.65rem] font-bold px-2 py-1 rounded-md flex items-center gap-1"
+                            style={{ backgroundColor: '#c5611a', color: '#fff' }}>
+                            <Crown size={10} /> Premium
+                          </div>
+                        )}
+                        {r.plan === 'pro' && (
+                          <div className="absolute top-2.5 left-2.5 text-[0.65rem] font-bold px-2 py-1 rounded-md flex items-center gap-1"
+                            style={{ backgroundColor: '#7c3aed', color: '#fff' }}>
+                            <Sparkles size={10} /> Pro
+                          </div>
+                        )}
+                        {r.plan !== 'premium' && r.plan !== 'pro' && r.is_verified && (
+                          <div className="absolute top-2.5 left-2.5 bg-green-600 text-white text-[0.65rem] font-bold px-2 py-1 rounded-md flex items-center gap-1">
+                            <ShieldCheck size={10} /> {t('hero.verified')}
+                          </div>
+                        )}
+                        {!isOpen && (
+                          <div className="absolute inset-0 bg-black/45 flex items-center justify-center">
+                            <span className="text-white text-xs font-bold px-3 py-1 rounded-full bg-black/50">
+                              {t('hero.closed')}
+                            </span>
+                          </div>
                         )}
                       </div>
-                      <div className="text-xs font-semibold flex items-center gap-1" style={{ color: '#c5611a' }}>
-                        {t('hero.view_profile')} <ArrowRight size={12} />
+                      <div className="absolute -bottom-4 left-3 w-10 h-10 rounded-full bg-white border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.20)] flex items-center justify-center text-lg">
+                        {r.flag}
                       </div>
+                    </div>
+                    <div className="p-3.5 pt-6">
+                      <h3 className="font-bold text-sm leading-snug mb-1.5 truncate" style={{ color: '#1f1f1f' }}>{r.name}</h3>
+                      <div className="flex items-center gap-1.5 text-xs flex-wrap" style={{ color: '#80716a' }}>
+                        {r.reviews > 0 ? (
+                          <span className="flex items-center gap-1 font-semibold" style={{ color: '#1f1f1f' }}>
+                            <StarRating rating={r.rating ?? 0} /> {r.rating}
+                            <span className="font-normal" style={{ color: '#80716a' }}>({r.reviews})</span>
+                          </span>
+                        ) : (
+                          <span className="italic">{t('hero.no_reviews')}</span>
+                        )}
+                      </div>
+                      <p className="text-[0.7rem] mt-1 flex items-center gap-1 truncate" style={{ color: '#80716a' }}>
+                        <MapPin size={10} /> {r.location}
+                      </p>
                     </div>
                   </Link>
                 )

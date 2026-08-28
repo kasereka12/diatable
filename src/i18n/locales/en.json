@@ -32,16 +32,16 @@
   "footer": {
     "tagline": "The platform connecting the diaspora to authentic, verified cuisine, anywhere in Morocco.",
     "col_about": "About",
-    "col_cuisines": "Cuisines",
-    "col_contact": "Contact",
+    "col_join": "Join us",
+    "col_support": "Support",
     "our_story": "Our story",
     "how_it_works": "How it works",
     "press": "Press",
     "careers": "Careers",
-    "all_cuisines": "All cuisines",
     "become_vendor": "Become a vendor",
+    "become_driver": "Become a driver",
     "my_orders": "My orders",
-    "help": "Help & Support",
+    "help": "Help",
     "copyright": "© 2026 DiaTable. All rights reserved."
   },
   "why": {

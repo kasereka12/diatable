@@ -27,3 +27,5 @@ create policy "Admin peut modifier les messages de contact"
 
 create policy "Admin peut supprimer les messages de contact"
   on contact_messages for delete using (is_admin());
+
+
